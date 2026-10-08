@@ -1,0 +1,98 @@
+@startuml
+' v1.0 class diagram — GameVault
+hide circle
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+class GameVault {
+  - storage : Storage
+  - games : GameList
+  - ui : Ui
+  + GameVault(filePath : String)
+  + run() : void
+  + {static} main(args : String[]) : void
+}
+
+class Ui {
+  + showWelcome() : void
+  + readCommand() : String
+  + showMessage(message : String) : void
+  + showGames(games : ArrayList<Game>) : void
+  + showError(message : String) : void
+}
+
+class Parser {
+  + {static} parse(input : String) : Command
+}
+
+class Storage {
+  - filePath : String
+  + Storage(filePath : String)
+  + load() : ArrayList<Game>
+  + save(games : GameList) : void
+}
+
+class GameList {
+  - games : ArrayList<Game>
+  + add(game : Game) : void
+  + delete(index : int) : Game
+  + get(index : int) : Game
+  + size() : int
+  + filterByPlayers(count : int) : ArrayList<Game>
+}
+
+class Game {
+  - title : String
+  - minPlayers : int
+  - maxPlayers : int
+  + Game(title : String, minPlayers : int, maxPlayers : int)
+  + fitsPlayerCount(count : int) : boolean
+  + toFileString() : String
+  + toString() : String
+}
+
+abstract class Command {
+  + {abstract} execute(games : GameList, ui : Ui, storage : Storage) : void
+  + isExit() : boolean
+}
+
+class AddCommand {
+  - game : Game
+}
+class DeleteCommand {
+  - index : int
+}
+class ListCommand
+class FilterCommand {
+  - playerCount : int
+}
+class HelpCommand
+class ExitCommand
+
+class GameVaultException
+
+GameVault --> "1" Ui
+GameVault --> "1" Storage
+GameVault --> "1" GameList
+GameList --> "*" Game
+
+GameVault ..> Parser : uses >
+Parser ..> Command : creates >
+Parser ..> GameVaultException : throws >
+Storage ..> GameVaultException : throws >
+Storage ..> Game : reads/writes >
+
+Command <|-- AddCommand
+Command <|-- DeleteCommand
+Command <|-- ListCommand
+Command <|-- FilterCommand
+Command <|-- HelpCommand
+Command <|-- ExitCommand
+
+Command ..> GameList
+Command ..> Ui
+Command ..> Storage
+AddCommand --> "1" Game
+
+Exception <|-- GameVaultException
+@enduml
