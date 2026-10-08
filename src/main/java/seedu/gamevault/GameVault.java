@@ -7,6 +7,7 @@ import seedu.gamevault.command.Command;
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.GameList;
 import seedu.gamevault.parser.Parser;
+import seedu.gamevault.storage.GameDecoder;
 import seedu.gamevault.storage.Storage;
 import seedu.gamevault.ui.Ui;
 
@@ -38,21 +39,16 @@ public class GameVault {
     GameVault(String filePath, Ui ui) {
         this.ui = ui;
         this.storage = new Storage(filePath);
-        try {
-            games = new GameList(storage.load());
-        } catch (GameVaultException e) {
-            // Don't stop the app just because the data could not be loaded; start empty instead.
-            ui.showError(e.getMessage() + " Starting with an empty collection.");
-            games = new GameList();
-        }
+        this.games = new GameList();
     }
 
     /**
-     * Runs the main loop: reads a command, executes it, and repeats until an exit command is given.
-     * Errors from a single command are shown to the user and the loop continues.
+     * Runs the app: loads the saved games, then reads a command, executes it, and repeats
+     * until an exit command is given. Errors from a single command are shown to the user and the loop continues.
      */
     public void run() {
         ui.showWelcome();
+        loadGames();
         boolean isExit = false;
         while (!isExit) {
             String input = ui.readCommand();
@@ -64,6 +60,22 @@ public class GameVault {
                 logger.log(Level.FINE, "Command failed: {0}", e.getMessage());
                 ui.showError(e.getMessage());
             }
+        }
+    }
+
+    /**
+     * Loads the saved games from the data file, warning the user about any lines that had to be skipped.
+     * If the file cannot be read at all, the app still starts, with an empty collection.
+     */
+    private void loadGames() {
+        try {
+            games = new GameList(storage.load());
+        } catch (GameVaultException e) {
+            ui.showError(e.getMessage() + " Starting with an empty collection.");
+            return;
+        }
+        if (!storage.getSkippedLines().isEmpty()) {
+            ui.showSkippedLines(storage.getSkippedLines(), GameDecoder.FORMAT);
         }
     }
 

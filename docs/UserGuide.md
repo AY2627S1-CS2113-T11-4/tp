@@ -52,6 +52,31 @@ Bye! Have a great game night.
 ____________________________________________________________
 ```
 
+### Editing the data file
+
+GameVault stores your games in `data/games.txt` (relative to the folder you run GameVault from).
+Advanced users can edit this file directly. Each line describes one game in the format `TITLE | MIN | MAX`:
+
+```
+Catan | 3 | 4
+Codenames | 2 | 8
+```
+
+* `MIN` and `MAX` must be whole numbers of at least 1, and `MAX` must not be less than `MIN`.
+* Blank lines are ignored.
+
+If a line is not in this format, GameVault skips that line, loads the rest of your games, and tells you which
+lines were skipped and why, for example:
+
+```
+Warning: 1 line(s) in your data file could not be read and were skipped:
+  Line 2: "Codenames | two | 8" (MIN should be a whole number, but was 'two')
+Each line should be in the format: TITLE | MIN | MAX
+```
+
+**Caution:** Skipped lines are not saved back to the file. To keep those games, exit GameVault and fix the lines
+before making any changes.
+
 ## FAQ
 
 **Q**: What happens if I type a command GameVault does not recognise?

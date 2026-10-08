@@ -2,6 +2,7 @@ package seedu.gamevault.ui;
 
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.util.List;
 import java.util.Scanner;
 
 /**
@@ -85,5 +86,28 @@ public class Ui {
      */
     public void showError(String message) {
         showMessage("Error: " + message);
+    }
+
+    /**
+     * Warns the user that some lines of the data file were invalid and have been skipped.
+     *
+     * @param skippedLines One description per skipped line, e.g. {@code Line 3: "..." (reason)}.
+     * @param expectedFormat The format each line should follow, shown so the user can fix the file.
+     */
+    public void showSkippedLines(List<String> skippedLines, String expectedFormat) {
+        assert !skippedLines.isEmpty() : "Should only warn when some lines were skipped";
+        StringBuilder message = new StringBuilder("Warning: ")
+                .append(skippedLines.size())
+                .append(" line(s) in your data file could not be read and were skipped:");
+        for (String skippedLine : skippedLines) {
+            message.append(System.lineSeparator()).append("  ").append(skippedLine);
+        }
+        message.append(System.lineSeparator())
+                .append("Each line should be in the format: ").append(expectedFormat)
+                .append(System.lineSeparator())
+                .append("To keep these games, fix the lines in the data file before making any changes,")
+                .append(System.lineSeparator())
+                .append("because skipped lines are not saved back to the file.");
+        showMessage(message.toString());
     }
 }
