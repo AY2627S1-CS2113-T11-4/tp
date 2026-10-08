@@ -1,0 +1,39 @@
+@startuml
+' v1.0 object diagram — snapshot just after the user enters: filter 4
+' Collection holds 3 games; FilterCommand is about to run.
+' Catan and Codenames fit 4 players; Werewolf (8-18) does not.
+hide circle
+skinparam classAttributeIconSize 0
+
+object "<u>:GameVault</u>" as app
+object "<u>:Ui</u>" as ui
+object "<u>:Storage</u>" as storage {
+  filePath = "data/games.txt"
+}
+object "<u>:GameList</u>" as list
+object "<u>catan:Game</u>" as catan {
+  title = "Catan"
+  minPlayers = 3
+  maxPlayers = 4
+}
+object "<u>codenames:Game</u>" as codenames {
+  title = "Codenames"
+  minPlayers = 2
+  maxPlayers = 8
+}
+object "<u>werewolf:Game</u>" as wonders {
+  title = "Werewolf"
+  minPlayers = 8
+  maxPlayers = 18
+}
+object "<u>:FilterCommand</u>" as filter {
+  playerCount = 4
+}
+
+app --> ui
+app --> storage
+app --> list
+list --> catan
+list --> codenames
+list --> wonders
+@enduml
