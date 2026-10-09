@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
+import seedu.gamevault.command.AddCommand;
 import seedu.gamevault.command.ExitCommand;
 import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.exception.GameVaultException;
@@ -46,5 +47,25 @@ class ParserTest {
         GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("exit now"));
         assertTrue(e.getMessage().contains("does not take any arguments"));
         assertThrows(GameVaultException.class, () -> Parser.parse("help me"));
+    }
+
+    @Test
+    void parse_validAdd_returnsAddCommand() throws GameVaultException {
+        assertInstanceOf(AddCommand.class, Parser.parse("add Catan /min 3 /max 4"));
+        assertInstanceOf(AddCommand.class, Parser.parse("add Chess /min 2 /max 2"));
+    }
+
+    @Test
+    void parse_addWithMissingField_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("add Catan /min 3"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("add /min 3 /max 4"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("add Catan /min /max 4"));
+    }
+
+    @Test
+    void parse_addWithInvalidCounts_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("add Catan /min 0 /max 4"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("add Catan /min 5 /max 4"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("add Catan /min three /max 4"));
     }
 }
