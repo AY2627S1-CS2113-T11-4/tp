@@ -16,6 +16,7 @@ public class HelpCommand extends Command {
      */
     static final String HELP_MESSAGE = """
             Here are the commands you can use:
+              add     Adds a game: add TITLE /min MIN /max MAX
               help    Shows this list of commands.
               exit    Exits GameVault.""";
 

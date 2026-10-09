@@ -45,4 +45,16 @@ public class Game {
     public String toFileString() {
         return title + " | " + minPlayers + " | " + maxPlayers;
     }
+
+    /**
+     * Returns this game as it is shown to the user, e.g. {@code Catan (3-4 players)},
+     * or {@code Chess (2 players)} when the minimum and maximum are the same.
+     */
+    @Override
+    public String toString() {
+        String players = minPlayers == maxPlayers
+                ? String.valueOf(minPlayers)
+                : minPlayers + "-" + maxPlayers;
+        return title + " (" + players + " players)";
+    }
 }

@@ -29,6 +29,16 @@ public class GameList {
     }
 
     /**
+     * Adds a game to the end of the list.
+     *
+     * @param game The game to add.
+     */
+    public void add(Game game) {
+        assert game != null : "Game to add should not be null";
+        games.add(game);
+    }
+
+    /**
      * Returns the number of games in the list.
      *
      * @return Number of games.
@@ -36,4 +46,6 @@ public class GameList {
     public int size() {
         return games.size();
     }
+
+    
 }
