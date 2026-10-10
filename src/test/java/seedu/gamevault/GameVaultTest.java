@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -74,5 +75,25 @@ class GameVaultTest {
         Path dataFile = tempDir.resolve("games.txt");
         Files.writeString(dataFile, "Catan | 3 | 4\n");
         assertFalse(runWithInput("exit\n", dataFile).contains("Warning"));
+    }
+
+    @Test
+    void run_missingDataFolder_createsDataFileOnStartup() {
+        Path dataFile = tempDir.resolve("data").resolve("games.txt");
+        runWithInput("exit\n", dataFile);
+        assertTrue(Files.exists(dataFile));
+    }
+
+    @Test
+    void run_addThenRestart_gameIsSavedAndLoadedAgain() throws IOException {
+        Path dataFile = tempDir.resolve("data").resolve("games.txt");
+        runWithInput("add Catan /min 3 /max 4\nexit\n", dataFile);
+        assertTrue(Files.readString(dataFile).contains("Catan | 3 | 4"));
+
+        // A second run with a corrupted extra line proves the saved game was loaded: only the bad line is skipped.
+        Files.writeString(dataFile, "not a game\n", StandardOpenOption.APPEND);
+        String printed = runWithInput("exit\n", dataFile);
+        assertTrue(printed.contains("Warning: 1 line(s)"));
+        assertTrue(printed.contains("Line 2:"));
     }
 }

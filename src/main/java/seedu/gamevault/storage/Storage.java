@@ -17,8 +17,7 @@ import seedu.gamevault.game.GameList;
 /**
  * Saves the game collection to, and loads it from, a text file on disk.
  * The file stores one game per line in the format {@code TITLE | MIN | MAX} (see {@link GameDecoder}).
- *
- * <p>Saving and creating the data folder are added in issue #11.</p>
+ * The data folder and file are created automatically when they do not exist yet.
  */
 public class Storage {
     private static final Logger logger = Logger.getLogger(Storage.class.getName());
@@ -83,13 +82,59 @@ public class Storage {
     }
 
     /**
-     * Writes all games in the list to the data file.
+     * Creates an empty data file, and any missing parent folders such as {@code data/}, if the file
+     * does not exist yet. An existing file is left untouched.
+     *
+     * @throws GameVaultException If the folder or file cannot be created.
+     */
+    public void createFileIfMissing() throws GameVaultException {
+        if (Files.exists(filePath)) {
+            return;
+        }
+        try {
+            createParentFolders();
+            Files.createFile(filePath);
+            logger.log(Level.FINE, "Created empty data file {0}", filePath);
+        } catch (IOException e) {
+            logger.log(Level.FINE, "Could not create data file " + filePath, e);
+            throw new GameVaultException("Could not create the data file " + filePath + ".");
+        }
+    }
+
+    /**
+     * Writes all games in the list to the data file, one per line, replacing what was there before.
+     * The data folder and file are created first if they do not exist.
      *
      * @param games Games to save.
      * @throws GameVaultException If the file cannot be written.
      */
     public void save(GameList games) throws GameVaultException {
-        // Implemented in issue #11.
+        assert games != null : "Game list to save should not be null";
+
+        List<String> lines = new ArrayList<>();
+        for (Game game : games.getGames()) {
+            lines.add(game.toFileString());
+        }
+
+        try {
+            createParentFolders();
+            // Files.write creates the file if needed and overwrites it otherwise.
+            Files.write(filePath, lines, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            logger.log(Level.FINE, "Could not write data file " + filePath, e);
+            throw new GameVaultException("Could not save to the data file " + filePath + ".");
+        }
+    }
+
+    /**
+     * Creates the folders that will contain the data file, e.g. {@code data/}, if they are missing.
+     * A bare file name such as {@code games.txt} has no parent folder, so nothing is created.
+     */
+    private void createParentFolders() throws IOException {
+        Path parent = filePath.getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
     }
 
     private List<String> readAllLines() throws GameVaultException {

@@ -1,6 +1,8 @@
 package seedu.gamevault.game;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Holds the user's collection of games.
@@ -45,6 +47,16 @@ public class GameList {
      */
     public int size() {
         return games.size();
+    }
+
+    /**
+     * Returns the games in the list, in order, e.g. so they can be saved to the data file.
+     * The returned list is read-only, so callers must use this class's methods to change the collection.
+     *
+     * @return Read-only view of the games.
+     */
+    public List<Game> getGames() {
+        return Collections.unmodifiableList(games);
     }
 
     
