@@ -64,10 +64,17 @@ public class GameVault {
     }
 
     /**
-     * Loads the saved games from the data file, warning the user about any lines that had to be skipped.
-     * If the file cannot be read at all, the app still starts, with an empty collection.
+     * Creates the data file if it is missing, then loads the saved games from it, warning the user about
+     * any lines that had to be skipped. If the file cannot be created or read, the app still starts,
+     * with an empty collection.
      */
     private void loadGames() {
+        try {
+            storage.createFileIfMissing();
+        } catch (GameVaultException e) {
+            // Not fatal: saving will try to create the file again after the next change.
+            ui.showError(e.getMessage());
+        }
         try {
             games = new GameList(storage.load());
         } catch (GameVaultException e) {
