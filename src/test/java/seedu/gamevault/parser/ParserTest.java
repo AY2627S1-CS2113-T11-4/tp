@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import seedu.gamevault.command.AddCommand;
 import seedu.gamevault.command.ExitCommand;
 import seedu.gamevault.command.HelpCommand;
+import seedu.gamevault.command.ListCommand;
 import seedu.gamevault.exception.GameVaultException;
 
 class ParserTest {
@@ -47,6 +48,18 @@ class ParserTest {
         GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("exit now"));
         assertTrue(e.getMessage().contains("does not take any arguments"));
         assertThrows(GameVaultException.class, () -> Parser.parse("help me"));
+    }
+
+    @Test
+    void parse_list_returnsListCommand() throws GameVaultException {
+        assertInstanceOf(ListCommand.class, Parser.parse("list"));
+        assertInstanceOf(ListCommand.class, Parser.parse("  LIST "));
+    }
+
+    @Test
+    void parse_listWithArguments_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("list 5"));
+        assertTrue(e.getMessage().contains("does not take any arguments"));
     }
 
     @Test

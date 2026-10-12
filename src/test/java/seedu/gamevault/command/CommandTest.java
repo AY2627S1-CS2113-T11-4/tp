@@ -33,6 +33,7 @@ class CommandTest {
         String printed = output.toString();
         assertTrue(printed.contains(HelpCommand.HELP_MESSAGE));
         assertTrue(printed.contains("help"));
+        assertTrue(printed.contains("list"));
         assertTrue(printed.contains("exit"));
     }
 
