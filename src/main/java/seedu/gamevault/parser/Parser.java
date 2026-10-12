@@ -7,6 +7,7 @@ import java.util.logging.Logger;
 import seedu.gamevault.command.Command;
 import seedu.gamevault.command.ExitCommand;
 import seedu.gamevault.command.HelpCommand;
+import seedu.gamevault.command.ListCommand;
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.command.AddCommand;
 import seedu.gamevault.game.Game;
@@ -51,6 +52,9 @@ public class Parser {
             return new ExitCommand();
         case AddCommand.COMMAND_WORD:
             return parseAdd(arguments);
+        case ListCommand.COMMAND_WORD:
+            checkNoArguments(commandWord, arguments);
+            return new ListCommand();
         default:
             throw new GameVaultException("Unknown command '" + parts[0]
                     + "'. Type 'help' to see all commands.");
