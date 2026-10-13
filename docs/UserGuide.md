@@ -33,10 +33,37 @@ Expected output:
 ```
 ____________________________________________________________
 Here are the commands you can use:
+  add     Adds a game: add TITLE /min MIN /max MAX
+  list    Lists all games in your collection.
+  filter  Shows games that fit a player count: filter COUNT
   help    Shows this list of commands.
   exit    Exits GameVault.
 ____________________________________________________________
 ```
+
+### Finding games for your group: `filter`
+
+Shows the games that can be played by the given number of players.
+
+Format: `filter COUNT`
+
+* `COUNT` is the number of players, and must be a whole number of at least 1.
+* A game is shown if `COUNT` is within its minimum and maximum players (both inclusive).
+* Your collection is not changed.
+
+Example of usage: `filter 4`
+
+Expected output:
+
+```
+____________________________________________________________
+Games that fit 4 players:
+  Catan (3-4 players)
+  Codenames (2-8 players)
+____________________________________________________________
+```
+
+If no game fits, GameVault shows `No games fit 4 players.` instead.
 
 ### Exiting the program: `exit`
 
@@ -88,5 +115,6 @@ and waits for your next command. Nothing is changed.
 
 Action | Format
 -------|-------
+Filter | `filter COUNT`, e.g. `filter 4`
 Help | `help`
 Exit | `exit`
