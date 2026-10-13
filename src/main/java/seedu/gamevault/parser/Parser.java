@@ -2,14 +2,14 @@ package seedu.gamevault.parser;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
-    
 
+import seedu.gamevault.command.AddCommand;
 import seedu.gamevault.command.Command;
 import seedu.gamevault.command.ExitCommand;
+import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.command.ListCommand;
 import seedu.gamevault.exception.GameVaultException;
-import seedu.gamevault.command.AddCommand;
 import seedu.gamevault.game.Game;
 
 /**
@@ -55,6 +55,8 @@ public class Parser {
         case ListCommand.COMMAND_WORD:
             checkNoArguments(commandWord, arguments);
             return new ListCommand();
+        case FilterCommand.COMMAND_WORD:
+            return parseFilter(arguments);
         default:
             throw new GameVaultException("Unknown command '" + parts[0]
                     + "'. Type 'help' to see all commands.");
@@ -98,8 +100,8 @@ public class Parser {
         if (title.contains("|")) {
             throw new GameVaultException("TITLE cannot contain the '|' character.");
         }
-        int minPlayers = parsePlayerCount(minText, "MIN");
-        int maxPlayers = parsePlayerCount(maxText, "MAX");
+        int minPlayers = parsePlayerCount(minText, "MIN", AddCommand.USAGE);
+        int maxPlayers = parsePlayerCount(maxText, "MAX", AddCommand.USAGE);
         if (maxPlayers < minPlayers) {
             throw new GameVaultException("MAX (" + maxPlayers + ") cannot be less than MIN (" + minPlayers + ").");
         }
@@ -107,14 +109,25 @@ public class Parser {
     }
 
     /**
+     * Builds a {@link FilterCommand} from arguments in the form {@code COUNT}, e.g. {@code 4}.
+     *
+     * @throws GameVaultException If COUNT is missing, not a whole number, or less than 1.
+     */
+    private static Command parseFilter(String arguments) throws GameVaultException {
+        int playerCount = parsePlayerCount(arguments, "COUNT", FilterCommand.USAGE);
+        return new FilterCommand(playerCount);
+    }
+
+    /**
      * Returns the player count in {@code text}, which must be a whole number of at least 1.
      *
-     * @param fieldName Name of the field (MIN or MAX), used in error messages.
+     * @param fieldName Name of the field (e.g. MIN, MAX or COUNT), used in error messages.
+     * @param usage Format of the command being parsed, shown when the field is missing.
      */
-    private static int parsePlayerCount(String text, String fieldName) throws GameVaultException {
+    private static int parsePlayerCount(String text, String fieldName, String usage) throws GameVaultException {
         String trimmedText = text.trim();
         if (trimmedText.isEmpty()) {
-            throw new GameVaultException(fieldName + " is missing. Format: " + AddCommand.USAGE);
+            throw new GameVaultException(fieldName + " is missing. Format: " + usage);
         }
         int count;
         try {

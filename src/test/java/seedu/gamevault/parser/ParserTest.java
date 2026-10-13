@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import seedu.gamevault.command.AddCommand;
 import seedu.gamevault.command.ExitCommand;
+import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.command.ListCommand;
 import seedu.gamevault.exception.GameVaultException;
@@ -80,5 +81,25 @@ class ParserTest {
         assertThrows(GameVaultException.class, () -> Parser.parse("add Catan /min 0 /max 4"));
         assertThrows(GameVaultException.class, () -> Parser.parse("add Catan /min 5 /max 4"));
         assertThrows(GameVaultException.class, () -> Parser.parse("add Catan /min three /max 4"));
+    }
+
+    @Test
+    void parse_validFilter_returnsFilterCommand() throws GameVaultException {
+        assertInstanceOf(FilterCommand.class, Parser.parse("filter 4"));
+        assertInstanceOf(FilterCommand.class, Parser.parse("FILTER   1 "));
+    }
+
+    @Test
+    void parse_filterWithMissingCount_throwsExceptionShowingFormat() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("filter"));
+        assertEquals("COUNT is missing. Format: filter COUNT", e.getMessage());
+    }
+
+    @Test
+    void parse_filterWithInvalidCount_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("filter 0"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("filter -2"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("filter four"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 5"));
     }
 }
