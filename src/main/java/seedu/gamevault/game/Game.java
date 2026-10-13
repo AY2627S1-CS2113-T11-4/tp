@@ -37,6 +37,17 @@ public class Game {
     }
 
     /**
+     * Returns whether this game can be played by the given number of players,
+     * i.e. the count is within the game's minimum and maximum (both inclusive).
+     *
+     * @param count Number of players to check; must be at least 1.
+     */
+    public boolean fitsPlayerCount(int count) {
+        assert count >= 1 : "Player count should be at least 1";
+        return minPlayers <= count && count <= maxPlayers;
+    }
+
+    /**
      * Returns this game as one line of the data file, in the format {@code TITLE | MIN | MAX}.
      * {@link seedu.gamevault.storage.GameDecoder} reads this format back.
      *

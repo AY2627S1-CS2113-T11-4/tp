@@ -59,5 +59,20 @@ public class GameList {
         return Collections.unmodifiableList(games);
     }
 
-    
+    /**
+     * Returns the games that can be played by the given number of players, in their original order.
+     * The collection itself is not changed.
+     *
+     * @param count Number of players to check; must be at least 1.
+     * @return A new list of the matching games; empty if none match.
+     */
+    public ArrayList<Game> filterByPlayers(int count) {
+        ArrayList<Game> matches = new ArrayList<>();
+        for (Game game : games) {
+            if (game.fitsPlayerCount(count)) {
+                matches.add(game);
+            }
+        }
+        return matches;
+    }
 }
