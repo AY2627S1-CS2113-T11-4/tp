@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import seedu.gamevault.command.AddCommand;
+import seedu.gamevault.command.DeleteCommand;
 import seedu.gamevault.command.ExitCommand;
 import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.HelpCommand;
@@ -101,5 +102,38 @@ class ParserTest {
         assertThrows(GameVaultException.class, () -> Parser.parse("filter -2"));
         assertThrows(GameVaultException.class, () -> Parser.parse("filter four"));
         assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 5"));
+    }
+
+    @Test
+    void parse_validDelete_returnsDeleteCommand() throws GameVaultException {
+        assertInstanceOf(DeleteCommand.class, Parser.parse("delete 1"));
+        assertInstanceOf(DeleteCommand.class, Parser.parse("DELETE   2 "));
+    }
+
+    @Test
+    void parse_deleteWithoutIndex_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("delete"));
+        assertTrue(e.getMessage().contains("INDEX is missing"));
+    }
+
+    @Test
+    void parse_deleteWithNonNumberIndex_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("delete two"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("delete 1.5"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("delete 1 2"));
+    }
+
+    @Test
+    void parse_deleteWithIndexBelowOne_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("delete 0"));
+        assertEquals("INDEX should be at least 1, but was 0.", e.getMessage());
+        assertThrows(GameVaultException.class, () -> Parser.parse("delete -3"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("delete -99999999999"));
+    }
+
+    @Test
+    void parse_deleteWithIndexTooBigForInt_reportsNoSuchGame() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("delete 99999999999"));
+        assertEquals(DeleteCommand.getNoSuchGameMessage("99999999999"), e.getMessage());
     }
 }

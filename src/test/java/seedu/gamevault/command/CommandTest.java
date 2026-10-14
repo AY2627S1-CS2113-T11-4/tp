@@ -36,6 +36,7 @@ class CommandTest {
         assertTrue(printed.contains("help"));
         assertTrue(printed.contains("list"));
         assertTrue(printed.contains("filter"));
+        assertTrue(printed.contains("delete"));
         assertTrue(printed.contains("exit"));
     }
 

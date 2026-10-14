@@ -5,6 +5,7 @@ import java.util.logging.Logger;
 
 import seedu.gamevault.command.AddCommand;
 import seedu.gamevault.command.Command;
+import seedu.gamevault.command.DeleteCommand;
 import seedu.gamevault.command.ExitCommand;
 import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.HelpCommand;
@@ -57,6 +58,8 @@ public class Parser {
             return new ListCommand();
         case FilterCommand.COMMAND_WORD:
             return parseFilter(arguments);
+        case DeleteCommand.COMMAND_WORD:
+            return parseDelete(arguments);
         default:
             throw new GameVaultException("Unknown command '" + parts[0]
                     + "'. Type 'help' to see all commands.");
@@ -116,6 +119,41 @@ public class Parser {
     private static Command parseFilter(String arguments) throws GameVaultException {
         int playerCount = parsePlayerCount(arguments, "COUNT", FilterCommand.USAGE);
         return new FilterCommand(playerCount);
+    }
+
+    /**
+     * Builds a {@link DeleteCommand} from arguments in the form {@code INDEX}, e.g. {@code 2}.
+     *
+     * @throws GameVaultException If INDEX is missing, is not a whole number, or is less than 1.
+     */
+    private static Command parseDelete(String arguments) throws GameVaultException {
+        String indexText = arguments.trim();
+        if (indexText.isEmpty()) {
+            throw new GameVaultException("INDEX is missing. Format: " + DeleteCommand.USAGE
+                    + " (e.g. delete 2)");
+        }
+        int displayNumber;
+        try {
+            displayNumber = Integer.parseInt(indexText);
+        } catch (NumberFormatException e) {
+            // Digits that still cannot be parsed form a number too big to fit in an int,
+            // e.g. "99999999999", so report what is really wrong instead of "not a whole number".
+            if (indexText.matches("-\\d+")) {
+                throw new GameVaultException(getIndexTooSmallMessage(indexText));
+            }
+            if (indexText.matches("\\+?\\d+")) {
+                throw new GameVaultException(DeleteCommand.getNoSuchGameMessage(indexText));
+            }
+            throw new GameVaultException("INDEX should be a whole number, but was '" + indexText + "'.");
+        }
+        if (displayNumber < 1) {
+            throw new GameVaultException(getIndexTooSmallMessage(indexText));
+        }
+        return new DeleteCommand(displayNumber);
+    }
+
+    private static String getIndexTooSmallMessage(String indexText) {
+        return "INDEX should be at least 1, but was " + indexText + ".";
     }
 
     /**

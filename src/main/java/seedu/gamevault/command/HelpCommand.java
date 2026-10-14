@@ -19,6 +19,7 @@ public class HelpCommand extends Command {
               add     Adds a game: add TITLE /min MIN /max MAX
               list    Lists all games in your collection.
               filter  Shows games that fit a player count: filter COUNT
+              delete  Deletes a game: delete INDEX
               help    Shows this list of commands.
               exit    Exits GameVault.""";
 

@@ -41,6 +41,18 @@ public class GameList {
     }
 
     /**
+     * Removes the game at the given position and returns it. Games after it move up by one.
+     * Callers must check the index first; the assertion here only catches programming errors.
+     *
+     * @param index Position of the game, counting from 0.
+     * @return The game that was removed.
+     */
+    public Game delete(int index) {
+        assert index >= 0 && index < games.size() : "Index to delete should be within the list";
+        return games.remove(index);
+    }
+
+    /**
      * Returns the number of games in the list.
      *
      * @return Number of games.

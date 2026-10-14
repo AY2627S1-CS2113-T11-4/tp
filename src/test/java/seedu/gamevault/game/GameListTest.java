@@ -37,4 +37,23 @@ class GameListTest {
         games.filterByPlayers(4);
         assertEquals(3, games.size());
     }
+
+    @Test
+    void delete_middleGame_returnsItAndShiftsLaterGamesUp() {
+        Game deleted = games.delete(1);
+
+        assertEquals("Chess", deleted.getTitle());
+        assertEquals(2, games.size());
+        assertEquals("Catan", games.getGames().get(0).getTitle());
+        assertEquals("Codenames", games.getGames().get(1).getTitle());
+    }
+
+    @Test
+    void delete_firstAndLastGames_removesThem() {
+        assertEquals("Codenames", games.delete(2).getTitle());
+        assertEquals("Catan", games.delete(0).getTitle());
+
+        assertEquals(1, games.size());
+        assertEquals("Chess", games.getGames().get(0).getTitle());
+    }
 }
