@@ -19,6 +19,9 @@ If you can type fast, GameVault gets you there faster than flipping through boxe
 Notes about the command format:
 
 * Command words are not case-sensitive, e.g. `HELP` works the same as `help`.
+* Words in `UPPER_CASE` are parameters you supply, e.g. in `filter COUNT`, `COUNT` can be `4`.
+* Parameters in square brackets are optional, e.g. `filter COUNT [/time MINUTES]` can be used as `filter 4`
+  or as `filter 4 /time 45`.
 * Commands that take no parameters (such as `help` and `exit`) reject any extra text,
   e.g. `exit now` shows an error instead of exiting.
 
@@ -33,25 +36,56 @@ Expected output:
 ```
 ____________________________________________________________
 Here are the commands you can use:
-  add     Adds a game: add TITLE /min MIN /max MAX
+  add     Adds a game: add TITLE /min MIN /max MAX [/time MINUTES]
   list    Lists all games in your collection.
-  filter  Shows games that fit a player count: filter COUNT
+  filter  Shows games that fit a player count: filter COUNT [/time MINUTES]
+  delete  Deletes a game: delete INDEX
   help    Shows this list of commands.
   exit    Exits GameVault.
 ____________________________________________________________
 ```
 
+### Adding a game: `add`
+
+Adds a game to your collection, with the number of players it supports and, optionally, how long it takes.
+
+Format: `add TITLE /min MIN /max MAX [/time MINUTES]`
+
+* `MIN` and `MAX` are the fewest and most players the game supports. Both must be whole numbers of at least 1,
+  and `MAX` must not be less than `MIN`.
+* `MINUTES` is how long one round usually takes, e.g. the time printed on the box.
+  It must be a whole number of at least 1. Leave it out if you do not know it.
+* `/min`, `/max` and `/time` can be given in any order after the title, but each only once.
+* `TITLE` cannot contain the `|` character.
+
+Examples of usage:
+
+* `add Catan /min 3 /max 4 /time 60`
+* `add Codenames /min 2 /max 8`
+
+Expected output:
+
+```
+____________________________________________________________
+Added: Catan (3-4 players, 60 min)
+You now have 1 game(s) in your collection.
+____________________________________________________________
+```
+
 ### Finding games for your group: `filter`
 
-Shows the games that can be played by the given number of players.
+Shows the games that can be played by the given number of players, optionally only those that fit in the time
+you have.
 
-Format: `filter COUNT`
+Format: `filter COUNT [/time MINUTES]`
 
 * `COUNT` is the number of players, and must be a whole number of at least 1.
 * A game is shown if `COUNT` is within its minimum and maximum players (both inclusive).
+* If you give `/time MINUTES`, only games that take `MINUTES` or less are shown.
+  Games with no play time recorded are left out, and GameVault tells you how many were left out for this reason.
 * Your collection is not changed.
 
-Example of usage: `filter 4`
+Examples of usage: `filter 4`, `filter 4 /time 45`
 
 Expected output:
 
@@ -64,6 +98,15 @@ ____________________________________________________________
 ```
 
 If no game fits, GameVault shows `No games fit 4 players.` instead.
+
+With a time limit, e.g. `filter 4 /time 45` when Catan takes 60 minutes and Codenames has no play time recorded:
+
+```
+____________________________________________________________
+No games fit 4 players in 45 minutes or less.
+(1 game(s) for 4 players were left out because they have no play time recorded.)
+____________________________________________________________
+```
 
 ### Exiting the program: `exit`
 
@@ -82,14 +125,16 @@ ____________________________________________________________
 ### Editing the data file
 
 GameVault stores your games in `data/games.txt` (relative to the folder you run GameVault from).
-Advanced users can edit this file directly. Each line describes one game in the format `TITLE | MIN | MAX`:
+Advanced users can edit this file directly. Each line describes one game in the format `TITLE | MIN | MAX`,
+optionally followed by `| TIME`, the play time in minutes:
 
 ```
-Catan | 3 | 4
+Catan | 3 | 4 | 60
 Codenames | 2 | 8
 ```
 
 * `MIN` and `MAX` must be whole numbers of at least 1, and `MAX` must not be less than `MIN`.
+* `TIME`, if given, must be a whole number of at least 1. A line with no `TIME` means no play time is recorded.
 * Blank lines are ignored.
 
 If a line is not in this format, GameVault skips that line, loads the rest of your games, and tells you which
@@ -98,7 +143,7 @@ lines were skipped and why, for example:
 ```
 Warning: 1 line(s) in your data file could not be read and were skipped:
   Line 2: "Codenames | two | 8" (MIN should be a whole number, but was 'two')
-Each line should be in the format: TITLE | MIN | MAX
+Each line should be in the format: TITLE | MIN | MAX | TIME (TIME is optional)
 ```
 
 **Caution:** Skipped lines are not saved back to the file. To keep those games, exit GameVault and fix the lines
@@ -115,6 +160,7 @@ and waits for your next command. Nothing is changed.
 
 Action | Format
 -------|-------
-Filter | `filter COUNT`, e.g. `filter 4`
+Add | `add TITLE /min MIN /max MAX [/time MINUTES]`, e.g. `add Catan /min 3 /max 4 /time 60`
+Filter | `filter COUNT [/time MINUTES]`, e.g. `filter 4 /time 45`
 Help | `help`
 Exit | `exit`
