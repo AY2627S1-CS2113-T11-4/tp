@@ -13,6 +13,7 @@ import seedu.gamevault.command.ExitCommand;
 import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.command.ListCommand;
+import seedu.gamevault.command.PickCommand;
 import seedu.gamevault.exception.GameVaultException;
 
 class ParserTest {
@@ -102,6 +103,26 @@ class ParserTest {
         assertThrows(GameVaultException.class, () -> Parser.parse("filter -2"));
         assertThrows(GameVaultException.class, () -> Parser.parse("filter four"));
         assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 5"));
+    }
+
+    @Test
+    void parse_validPick_returnsPickCommand() throws GameVaultException {
+        assertInstanceOf(PickCommand.class, Parser.parse("pick 4"));
+        assertInstanceOf(PickCommand.class, Parser.parse("  PICK   2 "));
+    }
+
+    @Test
+    void parse_pickWithMissingCount_throwsExceptionShowingFormat() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("pick"));
+        assertEquals("COUNT is missing. Format: pick COUNT", e.getMessage());
+    }
+
+    @Test
+    void parse_pickWithInvalidCount_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("pick 0"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("pick -1"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("pick four"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("pick 4 5"));
     }
 
     @Test
