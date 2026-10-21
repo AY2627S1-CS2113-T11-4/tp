@@ -10,6 +10,7 @@ import seedu.gamevault.command.ExitCommand;
 import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.command.ListCommand;
+import seedu.gamevault.command.PickCommand;
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Game;
 
@@ -60,6 +61,8 @@ public class Parser {
             return parseFilter(arguments);
         case DeleteCommand.COMMAND_WORD:
             return parseDelete(arguments);
+        case PickCommand.COMMAND_WORD:
+            return parsePick(arguments);
         default:
             throw new GameVaultException("Unknown command '" + parts[0]
                     + "'. Type 'help' to see all commands.");
@@ -119,6 +122,16 @@ public class Parser {
     private static Command parseFilter(String arguments) throws GameVaultException {
         int playerCount = parsePlayerCount(arguments, "COUNT", FilterCommand.USAGE);
         return new FilterCommand(playerCount);
+    }
+
+    /**
+     * Builds a {@link PickCommand} from arguments in the form {@code COUNT}, e.g. {@code 4}.
+     *
+     * @throws GameVaultException If COUNT is missing, not a whole number, or less than 1.
+     */
+    private static Command parsePick(String arguments) throws GameVaultException {
+        int playerCount = parsePlayerCount(arguments, "COUNT", PickCommand.USAGE);
+        return new PickCommand(playerCount);
     }
 
     /**
