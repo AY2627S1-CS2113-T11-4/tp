@@ -36,6 +36,8 @@ Here are the commands you can use:
   add     Adds a game: add TITLE /min MIN /max MAX
   list    Lists all games in your collection.
   filter  Shows games that fit a player count: filter COUNT
+  delete  Deletes a game: delete INDEX
+  edit    Edits a game: edit INDEX [/title TITLE] [/min MIN] [/max MAX]
   help    Shows this list of commands.
   exit    Exits GameVault.
 ____________________________________________________________
@@ -64,6 +66,33 @@ ____________________________________________________________
 ```
 
 If no game fits, GameVault shows `No games fit 4 players.` instead.
+
+### Editing a game: `edit`
+
+Changes the title and/or player range of a game in your collection.
+
+Format: `edit INDEX [/title TITLE] [/min MIN] [/max MAX]`
+
+* `INDEX` is the number shown next to the game in `list`, and must be a whole number of at least 1.
+* At least one of `/title`, `/min` or `/max` must be given. Fields can be in any order.
+* Fields you leave out keep their current values.
+* The same rules as `add` apply: `MIN` must be at least 1, `MAX` must not be less than `MIN`,
+  and `TITLE` cannot contain `|`. These are checked against the game's current values
+  for any field you leave out.
+* The game keeps its position in the list, and the change is saved to the data file.
+
+Examples:
+* `edit 1 /max 6` changes the 1st game's maximum to 6 players.
+* `edit 2 /title Catan Deluxe /min 2` changes the 2nd game's title and minimum.
+
+Expected output for `edit 1 /max 6`:
+
+```
+____________________________________________________________
+Edited: Catan (3-4 players)
+Now: Catan (3-6 players)
+____________________________________________________________
+```
 
 ### Exiting the program: `exit`
 
@@ -118,3 +147,4 @@ Action | Format
 Filter | `filter COUNT`, e.g. `filter 4`
 Help | `help`
 Exit | `exit`
+Edit | `edit INDEX [/title TITLE] [/min MIN] [/max MAX]`, e.g. `edit 1 /max 6` |
