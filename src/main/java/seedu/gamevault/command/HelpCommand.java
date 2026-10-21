@@ -21,6 +21,7 @@ public class HelpCommand extends Command {
               filter  Shows games that fit a player count: filter COUNT
               delete  Deletes a game: delete INDEX
               help    Shows this list of commands.
+              edit    Edits a game: edit INDEX [/title TITLE] [/min MIN] [/max MAX]
               exit    Exits GameVault.""";
 
     @Override
