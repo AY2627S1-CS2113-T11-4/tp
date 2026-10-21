@@ -36,6 +36,8 @@ Here are the commands you can use:
   add     Adds a game: add TITLE /min MIN /max MAX
   list    Lists all games in your collection.
   filter  Shows games that fit a player count: filter COUNT
+  pick    Picks a random game that fits a player count: pick COUNT
+  delete  Deletes a game: delete INDEX
   help    Shows this list of commands.
   exit    Exits GameVault.
 ____________________________________________________________
@@ -64,6 +66,30 @@ ____________________________________________________________
 ```
 
 If no game fits, GameVault shows `No games fit 4 players.` instead.
+
+### Picking a random game: `pick`
+
+Picks one random game that can be played by the given number of players, so your group doesn't have to
+spend time deciding.
+
+Format: `pick COUNT`
+
+* `COUNT` is the number of players, and must be a whole number of at least 1.
+* The game is picked only from games where `COUNT` is within its minimum and maximum players (both inclusive).
+* Each use may pick a different game. Your collection is not changed.
+
+Example of usage: `pick 4`
+
+Expected output (the game shown may differ):
+
+```
+____________________________________________________________
+How about: Catan (3-4 players)
+(picked from 3 game(s) that fit 4 players)
+____________________________________________________________
+```
+
+If no game fits, GameVault shows `No games fit 4 players, so there is nothing to pick from.` instead.
 
 ### Exiting the program: `exit`
 
@@ -116,5 +142,6 @@ and waits for your next command. Nothing is changed.
 Action | Format
 -------|-------
 Filter | `filter COUNT`, e.g. `filter 4`
+Pick | `pick COUNT`, e.g. `pick 4`
 Help | `help`
 Exit | `exit`
