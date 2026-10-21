@@ -16,9 +16,9 @@ public class HelpCommand extends Command {
      */
     static final String HELP_MESSAGE = """
             Here are the commands you can use:
-              add     Adds a game: add TITLE /min MIN /max MAX
+              add     Adds a game: add TITLE /min MIN /max MAX [/time MINUTES]
               list    Lists all games in your collection.
-              filter  Shows games that fit a player count: filter COUNT
+              filter  Shows games that fit a player count: filter COUNT [/time MINUTES]
               delete  Deletes a game: delete INDEX
               help    Shows this list of commands.
               exit    Exits GameVault.""";

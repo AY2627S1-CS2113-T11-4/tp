@@ -79,4 +79,32 @@ class CommandTest {
     void exitCommand_isExit_returnsTrue() {
         assertTrue(new ExitCommand().isExit());
     }
+
+    @Test
+    void filterCommand_withTimeLimit_showsOnlyGamesThatFitInTime() {
+        GameList games = new GameList();
+        games.add(new Game("Catan", 3, 4, 60));
+        games.add(new Game("Love Letter", 2, 4, 20));
+
+        new FilterCommand(4, 30).execute(games, ui, new Storage("unused.txt"));
+        String printed = output.toString();
+        assertTrue(printed.contains("Games that fit 4 players in 30 minutes or less:"));
+        assertTrue(printed.contains("Love Letter (2-4 players, 20 min)"));
+        assertFalse(printed.contains("Catan"));
+        assertFalse(printed.contains("no play time recorded"));
+    }
+
+    @Test
+    void filterCommand_withTimeLimitAndUntimedGames_mentionsHowManyWereLeftOut() {
+        GameList games = new GameList();
+        games.add(new Game("Catan", 3, 4, 60));
+        games.add(new Game("Codenames", 2, 8));
+        games.add(new Game("Werewolf", 8, 18));
+
+        new FilterCommand(4, 45).execute(games, ui, new Storage("unused.txt"));
+        String printed = output.toString();
+        assertTrue(printed.contains("No games fit 4 players in 45 minutes or less."));
+        // Only Codenames fits 4 players; Werewolf is not counted because it needs at least 8.
+        assertTrue(printed.contains("(1 game(s) for 4 players were left out"));
+    }
 }
