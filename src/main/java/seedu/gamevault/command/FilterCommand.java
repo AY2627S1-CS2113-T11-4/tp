@@ -74,12 +74,7 @@ public class FilterCommand extends Command {
      * their play time was never recorded, so they know why a game they expected is missing.
      */
     private void appendUntimedNote(StringBuilder message, GameList games) {
-        int untimedCount = 0;
-        for (Game game : games.filterByPlayers(playerCount)) {
-            if (!game.hasPlayTime()) {
-                untimedCount++;
-            }
-        }
+        int untimedCount = games.countWithoutPlayTime(playerCount);
         if (untimedCount > 0) {
             message.append(System.lineSeparator())
                     .append("(").append(untimedCount)
