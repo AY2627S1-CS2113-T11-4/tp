@@ -1,7 +1,11 @@
 package seedu.gamevault.parser;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -16,6 +20,7 @@ import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.FilterTagCommand;
 import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.command.ListCommand;
+import seedu.gamevault.command.ListTagsCommand;
 import seedu.gamevault.command.PickCommand;
 import seedu.gamevault.command.TagCommand;
 import seedu.gamevault.command.UntagCommand;
@@ -81,6 +86,9 @@ public class Parser {
             return parseTag(arguments);
         case UntagCommand.COMMAND_WORD:
             return parseUntag(arguments);
+        case ListTagsCommand.COMMAND_WORD:
+            checkNoArguments(commandWord, arguments);
+            return new ListTagsCommand();
         case PickCommand.COMMAND_WORD:
             return parsePick(arguments);
         default:
@@ -100,14 +108,15 @@ public class Parser {
     }
 
     /**
-     * Builds an {@link AddCommand} from arguments in the form {@code TITLE /min MIN /max MAX [/time MINUTES]},
-     * e.g. {@code Catan /min 3 /max 4 /time 60}. The prefixes may come in any order after the title.
+     * Builds an {@link AddCommand} from arguments in the form
+     * {@code TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]},
+     * e.g. {@code Catan /min 3 /max 4 /time 60 /tag strategy}. The prefixes may come in any order after the title.
      *
      * @throws GameVaultException If a field is missing or repeated, a number is not a whole number,
-     *     a number is less than 1, or MAX is less than MIN.
+     *     a number is less than 1, MAX is less than MIN, or a tag is invalid.
      */
     private static Command parseAdd(String arguments) throws GameVaultException {
-        Map<String, String> fields = splitByPrefixes(arguments, MIN_PREFIX, MAX_PREFIX, TIME_PREFIX);
+        Map<String, String> fields = splitByPrefixes(arguments, MIN_PREFIX, MAX_PREFIX, TIME_PREFIX, TAG_PREFIX);
         if (!fields.containsKey(MIN_PREFIX) || !fields.containsKey(MAX_PREFIX)) {
             throw new GameVaultException("Please use the format: " + AddCommand.USAGE
                     + " (e.g. add Catan /min 3 /max 4 /time 60)");
@@ -126,17 +135,25 @@ public class Parser {
         if (maxPlayers < minPlayers) {
             throw new GameVaultException("MAX (" + maxPlayers + ") cannot be less than MIN (" + minPlayers + ").");
         }
+        Game game;
         if (!fields.containsKey(TIME_PREFIX)) {
-            return new AddCommand(new Game(title, minPlayers, maxPlayers));
+            game = new Game(title, minPlayers, maxPlayers);
+        } else {
+            int playTime = parsePositiveNumber(fields.get(TIME_PREFIX), "MINUTES", AddCommand.USAGE);
+            game = new Game(title, minPlayers, maxPlayers, playTime);
         }
-        int playTime = parsePositiveNumber(fields.get(TIME_PREFIX), "MINUTES", AddCommand.USAGE);
-        return new AddCommand(new Game(title, minPlayers, maxPlayers, playTime));
+        if (fields.containsKey(TAG_PREFIX)) {
+            for (String tag : parseTagList(fields.get(TAG_PREFIX), AddCommand.USAGE)) {
+                game.addTag(tag);
+            }
+        }
+        return new AddCommand(game);
     }
 
     /**
      * Builds a {@link FilterCommand} from arguments in the form {@code COUNT [/time MINUTES]},
      * e.g. {@code 4} or {@code 4 /time 45}, or a {@link FilterTagCommand} from arguments in the form
-     * {@code /tag TAG}, e.g. {@code /tag party}.
+     * {@code [COUNT] [/time MINUTES] /tag TAG}, e.g. {@code /tag party} or {@code 6 /tag party}.
      *
      * @throws GameVaultException If COUNT is missing, a number is not a whole number or is less than 1,
      *     /time is repeated, or the /tag form is invalid.
@@ -298,33 +315,33 @@ public class Parser {
 
     //@@author KRAZYZECTRON
     /**
-     * Builds a {@link TagCommand} from arguments in the form {@code INDEX TAG}, e.g. {@code 2 party}.
+     * Builds a {@link TagCommand} from arguments in the form {@code INDEX TAG [MORE_TAGS]...},
+     * e.g. {@code 2 party word}.
      *
      * @throws GameVaultException If INDEX or TAG is missing or invalid.
      */
     private static Command parseTag(String arguments) throws GameVaultException {
-        String[] parts = splitIndexAndTag(arguments, TagCommand.USAGE, "tag 2 party");
-        return new TagCommand(parseIndex(parts[0]), parseTagText(parts[1], TagCommand.USAGE));
+        String[] parts = splitIndexAndTag(arguments, TagCommand.USAGE, "tag 2 party word");
+        return new TagCommand(parseIndex(parts[0]), parseTagList(parts[1], TagCommand.USAGE));
     }
 
     /**
-     * Builds an {@link UntagCommand} from arguments in the form {@code INDEX TAG}, e.g. {@code 2 party}.
+     * Builds an {@link UntagCommand} from arguments in the form {@code INDEX TAG [MORE_TAGS]...},
+     * e.g. {@code 2 party word}.
      *
      * @throws GameVaultException If INDEX or TAG is missing or invalid.
      */
     private static Command parseUntag(String arguments) throws GameVaultException {
         String[] parts = splitIndexAndTag(arguments, UntagCommand.USAGE, "untag 2 party");
-        return new UntagCommand(parseIndex(parts[0]), parseTagText(parts[1], UntagCommand.USAGE));
+        return new UntagCommand(parseIndex(parts[0]), parseTagList(parts[1], UntagCommand.USAGE));
     }
 
     /**
-     * Splits arguments such as {@code 2 party} into the INDEX text and the TAG text.
-     * Everything after the INDEX is kept as the TAG text, so that a TAG of more than one word
-     * is reported as invalid by {@link #parseTagText} rather than having its extra words ignored.
+     * Splits arguments such as {@code 2 party word} into the INDEX text and the text of the tags after it.
      *
      * @param usage Format of the command being parsed, shown when a part is missing.
      * @param example A correct use of the command, shown when a part is missing.
-     * @return A two-element array: the INDEX text, then the TAG text.
+     * @return A two-element array: the INDEX text, then the tags text.
      * @throws GameVaultException If INDEX or TAG is missing.
      */
     private static String[] splitIndexAndTag(String arguments, String usage, String example)
@@ -341,17 +358,42 @@ public class Parser {
 
     /**
      * Builds a {@link FilterTagCommand} from the fields of a {@code filter} command that used /tag.
-     * Filtering by tag cannot be combined with COUNT or /time, to keep each form of {@code filter} simple.
+     * COUNT and /time are optional here, so {@code filter /tag party} shows every party game while
+     * {@code filter 6 /time 30 /tag party} narrows them down. Only one tag can be given.
      *
      * @param fields Fields returned by {@link #splitByPrefixes}, which include /tag.
-     * @throws GameVaultException If COUNT or /time was also given, or TAG is missing or invalid.
+     * @throws GameVaultException If TAG is missing or invalid, or COUNT or MINUTES is invalid.
      */
     private static Command parseFilterByTag(Map<String, String> fields) throws GameVaultException {
-        if (!fields.get(PREAMBLE).isEmpty() || fields.containsKey(TIME_PREFIX)) {
-            throw new GameVaultException("/tag cannot be combined with COUNT or /time. Format: "
-                    + FilterTagCommand.USAGE + " (e.g. filter /tag party)");
+        String tag = parseTagText(fields.get(TAG_PREFIX), FilterTagCommand.USAGE);
+        String countText = fields.get(PREAMBLE);
+        int playerCount = countText.isEmpty()
+                ? 0
+                : parsePositiveNumber(countText, "COUNT", FilterTagCommand.USAGE);
+        int minutes = fields.containsKey(TIME_PREFIX)
+                ? parsePositiveNumber(fields.get(TIME_PREFIX), "MINUTES", FilterTagCommand.USAGE)
+                : 0;
+        return new FilterTagCommand(tag, playerCount, minutes);
+    }
+
+    /**
+     * Returns the tags in {@code text}, which are separated by spaces, normalised and with repeats removed,
+     * e.g. {@code Party word party} gives {@code [party, word]}.
+     *
+     * @param usage Format of the command being parsed, shown when no tag is given.
+     * @return The tags in the order they were typed; never empty.
+     * @throws GameVaultException If no tag is given or any tag does not follow {@link Tag#RULES}.
+     */
+    private static List<String> parseTagList(String text, String usage) throws GameVaultException {
+        if (text.isBlank()) {
+            throw new GameVaultException("TAG is missing. Format: " + usage);
         }
-        return new FilterTagCommand(parseTagText(fields.get(TAG_PREFIX), FilterTagCommand.USAGE));
+        // A LinkedHashSet drops repeated tags while keeping the order the user typed them in.
+        Set<String> tags = new LinkedHashSet<>();
+        for (String word : text.trim().split("\\s+")) {
+            tags.add(parseTagText(word, usage));
+        }
+        return new ArrayList<>(tags);
     }
 
     /**

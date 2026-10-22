@@ -1,6 +1,7 @@
 package seedu.gamevault.parser;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -8,11 +9,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.nio.file.Path;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import seedu.gamevault.command.AddCommand;
-import seedu.gamevault.command.Command;
 import seedu.gamevault.command.DeleteCommand;
 import seedu.gamevault.command.EditCommand;
 import seedu.gamevault.command.ExitCommand;
@@ -20,12 +23,14 @@ import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.FilterTagCommand;
 import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.command.ListCommand;
+import seedu.gamevault.command.ListTagsCommand;
 import seedu.gamevault.command.TagCommand;
 import seedu.gamevault.command.UntagCommand;
 import seedu.gamevault.command.PickCommand;
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
+import seedu.gamevault.storage.Storage;
 import seedu.gamevault.ui.Ui;
 
 class ParserTest {
@@ -268,15 +273,18 @@ class ParserTest {
 
     //@@author KRAZYZECTRON
     @Test
-    void parse_tagAndUntag_returnTagCommands() throws GameVaultException {
+    void parse_tagUntagAndTags_returnTagCommands() throws GameVaultException {
         assertInstanceOf(TagCommand.class, Parser.parse("tag 2 party"));
         assertInstanceOf(UntagCommand.class, Parser.parse("UNTAG 2 co-op"));
+        assertInstanceOf(ListTagsCommand.class, Parser.parse("tags"));
+        assertInstanceOf(FilterTagCommand.class, Parser.parse("filter 4 /tag party"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("tags party"));
     }
 
     @Test
     void parse_tagWithMissingParts_throwsExceptionSayingWhatIsMissing() {
         GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("tag"));
-        assertEquals("INDEX and TAG are missing. Format: " + TagCommand.USAGE + " (e.g. tag 2 party)",
+        assertEquals("INDEX and TAG are missing. Format: " + TagCommand.USAGE + " (e.g. tag 2 party word)",
                 e.getMessage());
         e = assertThrows(GameVaultException.class, () -> Parser.parse("untag 2"));
         assertEquals("TAG is missing. Format: " + UntagCommand.USAGE + " (e.g. untag 2 party)", e.getMessage());
@@ -286,33 +294,80 @@ class ParserTest {
     void parse_tagWithInvalidIndexOrTag_throwsException() {
         assertThrows(GameVaultException.class, () -> Parser.parse("tag 0 party"));
         assertThrows(GameVaultException.class, () -> Parser.parse("tag party 2"));
-        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("tag 2 party game"));
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("tag 2 party b|d"));
         assertTrue(e.getMessage().startsWith("TAG should be one word"));
-        assertTrue(e.getMessage().endsWith("but was 'party game'."));
+        assertTrue(e.getMessage().endsWith("but was 'b|d'."));
+    }
+
+    @Test
+    void parse_tagWithSeveralTags_addsEachOnceInLowerCase(@TempDir Path tempDir) throws GameVaultException {
+        GameList games = new GameList();
+        games.add(new Game("Codenames", 4, 8));
+
+        run("tag 1 Party word PARTY", games, new Storage(tempDir.resolve("games.txt").toString()));
+
+        assertEquals(List.of("party", "word"), List.copyOf(games.get(0).getTags()));
+    }
+
+    @Test
+    void parse_addWithTags_addsTaggedGame(@TempDir Path tempDir) throws GameVaultException {
+        GameList games = new GameList();
+
+        Storage storage = new Storage(tempDir.resolve("games.txt").toString());
+        run("add Codenames /tag party word /min 4 /max 8", games, storage);
+
+        assertEquals("Codenames (4-8 players) [party, word]", games.get(0).toString());
+        assertThrows(GameVaultException.class, () -> Parser.parse("add Codenames /min 4 /max 8 /tag"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("add Codenames /min 4 /max 8 /tag a /tag b"));
     }
 
     @Test
     void parse_filterByTagInAnyCase_findsLowerCaseTag() throws GameVaultException {
-        GameList games = new GameList();
-        Game game = new Game("Codenames", 4, 8);
-        game.addTag("party");
-        games.add(game);
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        Ui ui = new Ui(new ByteArrayInputStream(new byte[0]), new PrintStream(output));
+        String printed = run("filter /tag PARTY", createGamesTaggedParty(), null);
 
-        Command command = Parser.parse("filter /tag PARTY");
-
-        assertInstanceOf(FilterTagCommand.class, command);
-        command.execute(games, ui, null); // Filtering does not save, so no Storage is needed.
-        assertTrue(output.toString().contains("Codenames"));
+        assertTrue(printed.contains("Games tagged 'party':"));
+        assertTrue(printed.contains("Codenames"));
     }
 
     @Test
-    void parse_filterByTagWithCountOrTimeOrNoTag_throwsException() {
-        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 /tag party"));
-        assertTrue(e.getMessage().startsWith("/tag cannot be combined with COUNT or /time."));
-        assertThrows(GameVaultException.class, () -> Parser.parse("filter /tag party /time 30"));
+    void parse_filterByTagWithCountAndTime_appliesAllConditions() throws GameVaultException {
+        // Filtering does not save, so no Storage is needed.
+        String printed = run("filter 6 /time 30 /tag party", createGamesTaggedParty(), null);
+
+        assertTrue(printed.contains("Games tagged 'party' for 6 players in 30 minutes or less:"));
+        assertTrue(printed.contains("Telestrations"));
+        assertFalse(printed.contains("Codenames"));
+    }
+
+    @Test
+    void parse_filterByTagWithInvalidParts_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("filter 0 /tag party"));
+        assertEquals("COUNT should be at least 1, but was 0.", e.getMessage());
+        assertThrows(GameVaultException.class, () -> Parser.parse("filter /tag party /time soon"));
         assertThrows(GameVaultException.class, () -> Parser.parse("filter /tag"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("filter /tag party word"));
         assertThrows(GameVaultException.class, () -> Parser.parse("filter /tag party /tag word"));
+    }
+
+    /**
+     * Returns games where Codenames (no play time) and Telestrations (30 min) are both tagged party.
+     */
+    private static GameList createGamesTaggedParty() {
+        GameList games = new GameList();
+        games.add(new Game("Codenames", 4, 8));
+        games.add(new Game("Telestrations", 4, 8, 30));
+        games.get(0).addTag("party");
+        games.get(1).addTag("party");
+        return games;
+    }
+
+    /**
+     * Parses and runs the input on the given games, and returns what it printed.
+     */
+    private static String run(String input, GameList games, Storage storage) throws GameVaultException {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        Ui ui = new Ui(new ByteArrayInputStream(new byte[0]), new PrintStream(output));
+        Parser.parse(input).execute(games, ui, storage);
+        return output.toString();
     }
 }

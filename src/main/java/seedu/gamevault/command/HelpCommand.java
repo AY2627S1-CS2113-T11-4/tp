@@ -16,15 +16,16 @@ public class HelpCommand extends Command {
      */
     static final String HELP_MESSAGE = """
             Here are the commands you can use:
-              add     Adds a game: add TITLE /min MIN /max MAX [/time MINUTES]
+              add     Adds a game: add TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]
               list    Lists all games in your collection.
               filter  Shows games that fit a player count: filter COUNT [/time MINUTES]
-                      or games with a tag: filter /tag TAG
+                      or games with a tag: filter [COUNT] [/time MINUTES] /tag TAG
               pick    Picks a random game that fits a player count: pick COUNT [/time MINUTES]
               delete  Deletes a game: delete INDEX
               edit    Edits a game: edit INDEX [/title TITLE] [/min MIN] [/max MAX]
-              tag     Adds a tag to a game: tag INDEX TAG
-              untag   Removes a tag from a game: untag INDEX TAG
+              tag     Adds tags to a game: tag INDEX TAG [MORE_TAGS]...
+              untag   Removes tags from a game: untag INDEX TAG [MORE_TAGS]...
+              tags    Lists all tags in use and how many games have each.
               help    Shows this list of commands.
               exit    Exits GameVault.""";
 
