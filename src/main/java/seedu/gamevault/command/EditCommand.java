@@ -8,7 +8,8 @@ import seedu.gamevault.ui.Ui;
 
 /**
  * Changes the title and/or player range of a game, then saves the updated collection to the data file.
- * Fields that are not given keep the game's existing values. The game keeps its position in the list.
+ * Fields that are not given keep the game's existing values, and the game's play time (if any) is kept.
+ * The game keeps its position in the list.
  */
 public class EditCommand extends Command {
     public static final String COMMAND_WORD = "edit";
@@ -57,7 +58,10 @@ public class EditCommand extends Command {
                     + "). The game is currently: " + oldGame);
         }
 
-        Game editedGame = new Game(title, minPlayers, maxPlayers);
+        // Play time cannot be edited yet, so carry it over unchanged.
+        Game editedGame = oldGame.hasPlayTime()
+                ? new Game(title, minPlayers, maxPlayers, oldGame.getPlayTime())
+                : new Game(title, minPlayers, maxPlayers);
         games.set(index, editedGame);
         storage.save(games);
         ui.showMessage("Edited: " + oldGame + System.lineSeparator() + "Now: " + editedGame);

@@ -104,4 +104,13 @@ class EditCommandTest {
     void isExit_returnsFalse() {
         assertFalse(new EditCommand(1, "X", null, null).isExit());
     }
+
+    @Test
+    void execute_gameWithPlayTime_keepsPlayTime() throws GameVaultException {
+        games.add(new Game("Azul", 2, 4, 45));
+
+        new EditCommand(3, "Azul Summer", null, null).execute(games, ui, storage);
+
+        assertEquals("Azul Summer (2-4 players, 45 min)", games.getGames().get(2).toString());
+    }
 }
