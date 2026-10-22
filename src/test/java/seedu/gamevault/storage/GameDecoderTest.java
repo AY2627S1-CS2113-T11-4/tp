@@ -1,7 +1,9 @@
 package seedu.gamevault.storage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -45,7 +47,7 @@ class GameDecoderTest {
         assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan"));
         assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan | 3"));
         assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan | 3 |"));
-        assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan | 3 | 4 | 5"));
+        assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan | 3 | 4 | 60 | 5"));
         assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan, 3, 4"));
     }
 
@@ -75,5 +77,32 @@ class GameDecoderTest {
         GameVaultException e = assertThrows(GameVaultException.class,
                 () -> GameDecoder.decodeLine("Catan | 5 | 2"));
         assertEquals("MAX (2) is less than MIN (5)", e.getMessage());
+    }
+
+    @Test
+    void decodeLine_withPlayTime_returnsGameWithPlayTime() throws GameVaultException {
+        Game game = GameDecoder.decodeLine("Catan | 3 | 4 | 60");
+        assertTrue(game.hasPlayTime());
+        assertEquals(60, game.getPlayTime());
+    }
+
+    @Test
+    void decodeLine_oldFormatOrEmptyTime_returnsGameWithoutPlayTime() throws GameVaultException {
+        assertFalse(GameDecoder.decodeLine("Catan | 3 | 4").hasPlayTime());
+        assertFalse(GameDecoder.decodeLine("Catan | 3 | 4 |  ").hasPlayTime());
+    }
+
+    @Test
+    void decodeLine_invalidPlayTime_throwsExceptionNamingField() {
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> GameDecoder.decodeLine("Catan | 3 | 4 | an hour"));
+        assertEquals("TIME should be a whole number, but was 'an hour'", e.getMessage());
+        assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan | 3 | 4 | 0"));
+    }
+
+    @Test
+    void decodeLine_toFileStringWithPlayTime_decodesToSameGame() throws GameVaultException {
+        Game original = new Game("Catan", 3, 4, 60);
+        assertEquals(original.toString(), GameDecoder.decodeLine(original.toFileString()).toString());
     }
 }

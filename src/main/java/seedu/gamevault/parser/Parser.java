@@ -1,7 +1,11 @@
 package seedu.gamevault.parser;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import seedu.gamevault.command.AddCommand;
 import seedu.gamevault.command.Command;
@@ -21,6 +25,9 @@ public class Parser {
     private static final Logger logger = Logger.getLogger(Parser.class.getName());
     private static final String MIN_PREFIX = "/min";
     private static final String MAX_PREFIX = "/max";
+    private static final String TIME_PREFIX = "/time";
+    /** Key under which {@link #splitByPrefixes} stores the text that comes before the first prefix. */
+    private static final String PREAMBLE = "";
 
     /**
      * Returns the command that matches the user's input.
@@ -77,25 +84,20 @@ public class Parser {
     }
 
     /**
-     * Builds an {@link AddCommand} from arguments in the form {@code TITLE /min MIN /max MAX},
-     * e.g. {@code Catan /min 3 /max 4}.
+     * Builds an {@link AddCommand} from arguments in the form {@code TITLE /min MIN /max MAX [/time MINUTES]},
+     * e.g. {@code Catan /min 3 /max 4 /time 60}. The prefixes may come in any order after the title.
      *
-     * @throws GameVaultException If a field is missing, a count is not a whole number,
-     *     MIN is less than 1, or MAX is less than MIN.
+     * @throws GameVaultException If a field is missing or repeated, a number is not a whole number,
+     *     a number is less than 1, or MAX is less than MIN.
      */
     private static Command parseAdd(String arguments) throws GameVaultException {
-        int minIndex = arguments.indexOf(MIN_PREFIX);
-        int maxIndex = arguments.indexOf(MAX_PREFIX);
-        if (minIndex == -1 || maxIndex == -1 || maxIndex < minIndex) {
+        Map<String, String> fields = splitByPrefixes(arguments, MIN_PREFIX, MAX_PREFIX, TIME_PREFIX);
+        if (!fields.containsKey(MIN_PREFIX) || !fields.containsKey(MAX_PREFIX)) {
             throw new GameVaultException("Please use the format: " + AddCommand.USAGE
-                    + " (e.g. add Catan /min 3 /max 4)");
+                    + " (e.g. add Catan /min 3 /max 4 /time 60)");
         }
 
-        // "Catan /min 3 /max 4" -> title "Catan", min "3", max "4"
-        String title = arguments.substring(0, minIndex).trim();
-        String minText = arguments.substring(minIndex + MIN_PREFIX.length(), maxIndex);
-        String maxText = arguments.substring(maxIndex + MAX_PREFIX.length());
-
+        String title = fields.get(PREAMBLE);
         if (title.isEmpty()) {
             throw new GameVaultException("TITLE is missing. Format: " + AddCommand.USAGE);
         }
@@ -103,22 +105,65 @@ public class Parser {
         if (title.contains("|")) {
             throw new GameVaultException("TITLE cannot contain the '|' character.");
         }
-        int minPlayers = parsePlayerCount(minText, "MIN", AddCommand.USAGE);
-        int maxPlayers = parsePlayerCount(maxText, "MAX", AddCommand.USAGE);
+        int minPlayers = parsePositiveNumber(fields.get(MIN_PREFIX), "MIN", AddCommand.USAGE);
+        int maxPlayers = parsePositiveNumber(fields.get(MAX_PREFIX), "MAX", AddCommand.USAGE);
         if (maxPlayers < minPlayers) {
             throw new GameVaultException("MAX (" + maxPlayers + ") cannot be less than MIN (" + minPlayers + ").");
         }
-        return new AddCommand(new Game(title, minPlayers, maxPlayers));
+        if (!fields.containsKey(TIME_PREFIX)) {
+            return new AddCommand(new Game(title, minPlayers, maxPlayers));
+        }
+        int playTime = parsePositiveNumber(fields.get(TIME_PREFIX), "MINUTES", AddCommand.USAGE);
+        return new AddCommand(new Game(title, minPlayers, maxPlayers, playTime));
     }
 
     /**
-     * Builds a {@link FilterCommand} from arguments in the form {@code COUNT}, e.g. {@code 4}.
+     * Builds a {@link FilterCommand} from arguments in the form {@code COUNT [/time MINUTES]},
+     * e.g. {@code 4} or {@code 4 /time 45}.
      *
-     * @throws GameVaultException If COUNT is missing, not a whole number, or less than 1.
+     * @throws GameVaultException If COUNT is missing, a number is not a whole number or is less than 1,
+     *     or /time is repeated.
      */
     private static Command parseFilter(String arguments) throws GameVaultException {
-        int playerCount = parsePlayerCount(arguments, "COUNT", FilterCommand.USAGE);
-        return new FilterCommand(playerCount);
+        Map<String, String> fields = splitByPrefixes(arguments, TIME_PREFIX);
+        int playerCount = parsePositiveNumber(fields.get(PREAMBLE), "COUNT", FilterCommand.USAGE);
+        if (!fields.containsKey(TIME_PREFIX)) {
+            return new FilterCommand(playerCount);
+        }
+        int minutes = parsePositiveNumber(fields.get(TIME_PREFIX), "MINUTES", FilterCommand.USAGE);
+        return new FilterCommand(playerCount, minutes);
+    }
+
+    /**
+     * Splits arguments such as {@code Catan /min 3 /max 4} into the text before the first prefix
+     * (stored under {@link #PREAMBLE}) and the text after each prefix (stored under the prefix itself).
+     * A prefix only counts when it stands alone as a word, so a title like {@code Foo/minimal} is not split.
+     * Prefixes that do not appear are left out of the result.
+     *
+     * @param arguments Arguments typed after the command word.
+     * @param prefixes Prefixes this command accepts, e.g. {@code /min}.
+     * @return Trimmed text for the preamble and for each prefix found.
+     * @throws GameVaultException If a prefix appears more than once.
+     */
+    private static Map<String, String> splitByPrefixes(String arguments, String... prefixes)
+            throws GameVaultException {
+        // Matches any of the prefixes when it has whitespace (or the start/end of the text) on both sides.
+        Pattern prefixPattern = Pattern.compile("(?<!\\S)(" + String.join("|", prefixes) + ")(?!\\S)");
+        Matcher matcher = prefixPattern.matcher(arguments);
+
+        Map<String, String> fields = new HashMap<>();
+        String currentKey = PREAMBLE;
+        int valueStart = 0;
+        while (matcher.find()) {
+            fields.put(currentKey, arguments.substring(valueStart, matcher.start()).trim());
+            currentKey = matcher.group(1);
+            if (fields.containsKey(currentKey)) {
+                throw new GameVaultException(currentKey + " can only be given once.");
+            }
+            valueStart = matcher.end();
+        }
+        fields.put(currentKey, arguments.substring(valueStart).trim());
+        return fields;
     }
 
     /**
@@ -157,12 +202,13 @@ public class Parser {
     }
 
     /**
-     * Returns the player count in {@code text}, which must be a whole number of at least 1.
+     * Returns the number in {@code text}, such as a player count or a number of minutes,
+     * which must be a whole number of at least 1.
      *
-     * @param fieldName Name of the field (e.g. MIN, MAX or COUNT), used in error messages.
+     * @param fieldName Name of the field (e.g. MIN, MAX, COUNT or MINUTES), used in error messages.
      * @param usage Format of the command being parsed, shown when the field is missing.
      */
-    private static int parsePlayerCount(String text, String fieldName, String usage) throws GameVaultException {
+    private static int parsePositiveNumber(String text, String fieldName, String usage) throws GameVaultException {
         String trimmedText = text.trim();
         if (trimmedText.isEmpty()) {
             throw new GameVaultException(fieldName + " is missing. Format: " + usage);

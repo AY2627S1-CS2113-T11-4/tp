@@ -87,4 +87,23 @@ public class GameList {
         }
         return matches;
     }
+
+    /**
+     * Returns the games that can be played by the given number of players and are known to take
+     * at most the given number of minutes, in their original order. Games with no play time recorded
+     * are left out. The collection itself is not changed.
+     *
+     * @param count Number of players to check; must be at least 1.
+     * @param minutes Time available; must be at least 1.
+     * @return A new list of the matching games; empty if none match.
+     */
+    public ArrayList<Game> filterByPlayersAndTime(int count, int minutes) {
+        ArrayList<Game> matches = new ArrayList<>();
+        for (Game game : filterByPlayers(count)) {
+            if (game.fitsTime(minutes)) {
+                matches.add(game);
+            }
+        }
+        return matches;
+    }
 }
