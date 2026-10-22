@@ -75,6 +75,19 @@ class GameListTest {
         assertTrue(timedGames.filterByPlayersAndTime(4, 10).isEmpty());
     }
 
+    @Test
+    void countWithoutPlayTime_mixOfTimes_countsOnlyUntimedGamesThatFit() {
+        GameList timedGames = new GameList();
+        timedGames.add(new Game("Catan", 3, 4, 60));
+        timedGames.add(new Game("Codenames", 2, 8));
+        timedGames.add(new Game("Chess", 2, 2));
+        timedGames.add(new Game("Werewolf", 8, 18));
+
+        assertEquals(1, timedGames.countWithoutPlayTime(4)); // Codenames only; Werewolf does not fit 4.
+        assertEquals(2, timedGames.countWithoutPlayTime(2)); // Codenames and Chess.
+        assertEquals(0, new GameList().countWithoutPlayTime(4));
+    }
+
     //@@author KRAZYZECTRON
     @Test
     void filterByTag_someGamesHaveTag_returnsMatchesInOriginalOrder() {

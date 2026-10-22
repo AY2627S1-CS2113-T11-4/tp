@@ -26,6 +26,7 @@ import seedu.gamevault.command.ListCommand;
 import seedu.gamevault.command.ListTagsCommand;
 import seedu.gamevault.command.TagCommand;
 import seedu.gamevault.command.UntagCommand;
+import seedu.gamevault.command.PickCommand;
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
@@ -119,6 +120,41 @@ class ParserTest {
         assertThrows(GameVaultException.class, () -> Parser.parse("filter -2"));
         assertThrows(GameVaultException.class, () -> Parser.parse("filter four"));
         assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 5"));
+    }
+
+    @Test
+    void parse_validPick_returnsPickCommand() throws GameVaultException {
+        assertInstanceOf(PickCommand.class, Parser.parse("pick 4"));
+        assertInstanceOf(PickCommand.class, Parser.parse("  PICK   2 "));
+    }
+
+    @Test
+    void parse_pickWithMissingCount_throwsExceptionShowingFormat() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("pick"));
+        assertEquals("COUNT is missing. Format: pick COUNT [/time MINUTES]", e.getMessage());
+    }
+
+    @Test
+    void parse_pickWithInvalidCount_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("pick 0"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("pick -1"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("pick four"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("pick 4 5"));
+    }
+
+    @Test
+    void parse_pickWithTime_returnsPickCommand() throws GameVaultException {
+        assertInstanceOf(PickCommand.class, Parser.parse("pick 4 /time 45"));
+    }
+
+    @Test
+    void parse_pickWithInvalidTime_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("pick 4 /time"));
+        assertEquals("MINUTES is missing. Format: pick COUNT [/time MINUTES]", e.getMessage());
+        assertThrows(GameVaultException.class, () -> Parser.parse("pick 4 /time 0"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("pick 4 /time soon"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("pick 4 /time 30 /time 45"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("pick /time 30"));
     }
 
     @Test

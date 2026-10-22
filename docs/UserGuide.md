@@ -40,6 +40,7 @@ Here are the commands you can use:
   list    Lists all games in your collection.
   filter  Shows games that fit a player count: filter COUNT [/time MINUTES]
           or games with a tag: filter [COUNT] [/time MINUTES] /tag TAG
+  pick    Picks a random game that fits a player count: pick COUNT [/time MINUTES]
   delete  Deletes a game: delete INDEX
   edit    Edits a game: edit INDEX [/title TITLE] [/min MIN] [/max MAX]
   tag     Adds tags to a game: tag INDEX TAG [MORE_TAGS]...
@@ -155,6 +156,43 @@ ____________________________________________________________
 If no game matches, GameVault says so, e.g. `No games tagged 'party' for 3 players.`
 <!-- @@author -->
  
+### Picking a random game: `pick`
+
+Picks one random game that can be played by the given number of players, optionally only from those that fit in
+the time you have, so your group doesn't have to spend time deciding.
+
+Format: `pick COUNT [/time MINUTES]`
+
+* `COUNT` is the number of players, and must be a whole number of at least 1.
+* The game is picked only from games where `COUNT` is within its minimum and maximum players (both inclusive).
+* If you give `/time MINUTES`, the game is picked only from games that take `MINUTES` or less.
+  Games with no play time recorded are not considered, and GameVault tells you how many were left out for this reason.
+* Each use may pick a different game. Your collection is not changed.
+
+Examples of usage: `pick 4`, `pick 4 /time 45`
+
+Expected output for `pick 4` (the game shown may differ):
+
+```
+____________________________________________________________
+How about: Catan (3-4 players)
+(picked from 3 game(s) that fit 4 players)
+____________________________________________________________
+```
+
+With a time limit, e.g. `pick 4 /time 45` when Love Letter takes 20 minutes, Catan takes 60 minutes
+and Codenames has no play time recorded:
+
+```
+____________________________________________________________
+How about: Love Letter (2-4 players, 20 min)
+(picked from 1 game(s) that fit 4 players in 45 minutes or less)
+(1 game(s) for 4 players were not considered because they have no play time recorded.)
+____________________________________________________________
+```
+
+If no game fits, GameVault shows e.g. `No games fit 4 players, so there is nothing to pick from.` instead.
+
 ### Editing a game: `edit`
  
 Changes the title and/or player range of a game in your collection.
@@ -301,6 +339,7 @@ Action | Format
 -------|-------
 Add | `add TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]`, e.g. `add Catan /min 3 /max 4 /time 60 /tag strategy`
 Filter | `filter COUNT [/time MINUTES]`, e.g. `filter 4 /time 45`<br>`filter [COUNT] [/time MINUTES] /tag TAG`, e.g. `filter 6 /tag party`
+Pick | `pick COUNT [/time MINUTES]`, e.g. `pick 4 /time 45`
 Edit | `edit INDEX [/title TITLE] [/min MIN] [/max MAX]`, e.g. `edit 1 /max 6`
 Tag | `tag INDEX TAG [MORE_TAGS]...`, e.g. `tag 2 party drawing`
 Untag | `untag INDEX TAG [MORE_TAGS]...`, e.g. `untag 2 co-op`

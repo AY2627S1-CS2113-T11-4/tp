@@ -14,13 +14,14 @@ import java.util.regex.Pattern;
 import seedu.gamevault.command.AddCommand;
 import seedu.gamevault.command.Command;
 import seedu.gamevault.command.DeleteCommand;
+import seedu.gamevault.command.EditCommand;
 import seedu.gamevault.command.ExitCommand;
 import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.FilterTagCommand;
 import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.command.ListCommand;
 import seedu.gamevault.command.ListTagsCommand;
-import seedu.gamevault.command.EditCommand;
+import seedu.gamevault.command.PickCommand;
 import seedu.gamevault.command.TagCommand;
 import seedu.gamevault.command.UntagCommand;
 import seedu.gamevault.exception.GameVaultException;
@@ -88,6 +89,8 @@ public class Parser {
         case ListTagsCommand.COMMAND_WORD:
             checkNoArguments(commandWord, arguments);
             return new ListTagsCommand();
+        case PickCommand.COMMAND_WORD:
+            return parsePick(arguments);
         default:
             throw new GameVaultException("Unknown command '" + parts[0]
                     + "'. Type 'help' to see all commands.");
@@ -198,6 +201,23 @@ public class Parser {
         }
         fields.put(currentKey, arguments.substring(valueStart).trim());
         return fields;
+    }
+
+    /**
+     * Builds a {@link PickCommand} from arguments in the form {@code COUNT [/time MINUTES]},
+     * e.g. {@code 4} or {@code 4 /time 45}.
+     *
+     * @throws GameVaultException If COUNT is missing, a number is not a whole number or is less than 1,
+     *     or /time is repeated.
+     */
+    private static Command parsePick(String arguments) throws GameVaultException {
+        Map<String, String> fields = splitByPrefixes(arguments, TIME_PREFIX);
+        int playerCount = parsePositiveNumber(fields.get(PREAMBLE), "COUNT", PickCommand.USAGE);
+        if (!fields.containsKey(TIME_PREFIX)) {
+            return new PickCommand(playerCount);
+        }
+        int minutes = parsePositiveNumber(fields.get(TIME_PREFIX), "MINUTES", PickCommand.USAGE);
+        return new PickCommand(playerCount, minutes);
     }
 
     /**
