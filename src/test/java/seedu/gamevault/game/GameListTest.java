@@ -86,4 +86,18 @@ class GameListTest {
         assertEquals(2, timedGames.countWithoutPlayTime(2)); // Codenames and Chess.
         assertEquals(0, new GameList().countWithoutPlayTime(4));
     }
+
+    //@@author KRAZYZECTRON
+    @Test
+    void filterByTag_someGamesHaveTag_returnsMatchesInOriginalOrder() {
+        games.get(2).addTag("party");
+        games.get(0).addTag("party");
+        games.get(1).addTag("abstract");
+
+        ArrayList<Game> matches = games.filterByTag("party");
+        assertEquals(2, matches.size());
+        assertEquals("Catan", matches.get(0).getTitle());
+        assertEquals("Codenames", matches.get(1).getTitle());
+        assertTrue(games.filterByTag("co-op").isEmpty());
+    }
 }

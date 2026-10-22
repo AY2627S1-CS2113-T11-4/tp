@@ -147,4 +147,23 @@ public class GameList {
         }
         return untimedCount;
     }
+
+    //@@author KRAZYZECTRON
+    /**
+     * Returns the games that have the given tag, in their original order.
+     * The collection itself is not changed.
+     *
+     * @param tag A normalised tag (see {@link Tag#normalise}).
+     * @return A new list of the matching games; empty if none match.
+     */
+    public ArrayList<Game> filterByTag(String tag) {
+        assert Tag.isValid(tag) : "Tag to filter by should be valid and normalised";
+        ArrayList<Game> matches = new ArrayList<>();
+        for (Game game : games) {
+            if (game.hasTag(tag)) {
+                matches.add(game);
+            }
+        }
+        return matches;
+    }
 }

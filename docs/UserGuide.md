@@ -39,9 +39,12 @@ Here are the commands you can use:
   add     Adds a game: add TITLE /min MIN /max MAX [/time MINUTES]
   list    Lists all games in your collection.
   filter  Shows games that fit a player count: filter COUNT [/time MINUTES]
+          or games with a tag: filter /tag TAG
   pick    Picks a random game that fits a player count: pick COUNT [/time MINUTES]
   delete  Deletes a game: delete INDEX
   edit    Edits a game: edit INDEX [/title TITLE] [/min MIN] [/max MAX]
+  tag     Adds a tag to a game: tag INDEX TAG
+  untag   Removes a tag from a game: untag INDEX TAG
   help    Shows this list of commands.
   exit    Exits GameVault.
 ____________________________________________________________
@@ -109,6 +112,31 @@ No games fit 4 players in 45 minutes or less.
 (1 game(s) for 4 players were left out because they have no play time recorded.)
 ____________________________________________________________
 ```
+
+<!-- @@author KRAZYZECTRON -->
+#### Finding games by tag: `filter /tag`
+
+Shows the games that have the given tag (see [Tagging a game](#tagging-a-game-tag-untag)).
+
+Format: `filter /tag TAG`
+
+* `TAG` is not case-sensitive, e.g. `filter /tag PARTY` finds games tagged `party`.
+* `/tag` cannot be combined with `COUNT` or `/time`.
+* Your collection is not changed.
+
+Example of usage: `filter /tag party`
+
+Expected output:
+
+```
+____________________________________________________________
+Games tagged 'party':
+  Codenames (4-8 players) [co-op, party]
+____________________________________________________________
+```
+
+If no game has the tag, GameVault shows `No games are tagged 'party'.` instead.
+<!-- @@author -->
  
 ### Picking a random game: `pick`
 
@@ -159,7 +187,8 @@ Format: `edit INDEX [/title TITLE] [/min MIN] [/max MAX]`
 * The same rules as `add` apply: `MIN` must be at least 1, `MAX` must not be less than `MIN`,
   and `TITLE` cannot contain `|`. These are checked against the game's current values
   for any field you leave out.
-* The game keeps its position in the list and its play time (if any), and the change is saved to the data file.
+* The game keeps its position in the list, its play time (if any) and its tags, and the change is saved to the
+  data file.
 
 Examples:
 * `edit 1 /max 6` changes the 1st game's maximum to 6 players.
@@ -173,6 +202,42 @@ Edited: Catan (3-4 players)
 Now: Catan (3-6 players)
 ____________________________________________________________
 ```
+
+<!-- @@author KRAZYZECTRON -->
+### Tagging a game: `tag`, `untag`
+
+Tags let you group games by mood or style (e.g. `party`, `strategy`, `co-op`), so you can pick games that suit
+your group. Use `filter /tag TAG` to [find games by tag](#finding-games-by-tag-filter-tag).
+
+Format: `tag INDEX TAG` to add a tag, `untag INDEX TAG` to remove one.
+
+* `INDEX` is the number shown next to the game in `list`, and must be a whole number of at least 1.
+* `TAG` must be one word of letters and digits, optionally joined by hyphens, e.g. `party` or `co-op`.
+* Tags are not case-sensitive and are shown in lower case, e.g. `tag 1 Party` adds the tag `party`.
+* A game cannot have the same tag twice, and you can only remove a tag the game has.
+* A game can have any number of tags. They are shown in alphabetical order after the game's details,
+  and the change is saved to the data file.
+
+Examples:
+* `tag 2 party` adds the tag `party` to the 2nd game.
+* `untag 2 co-op` removes the tag `co-op` from the 2nd game.
+
+Expected output for `tag 2 party`:
+
+```
+____________________________________________________________
+Tagged: Codenames (4-8 players) [co-op, party]
+____________________________________________________________
+```
+
+Expected output for `untag 2 co-op`:
+
+```
+____________________________________________________________
+Removed tag 'co-op': Codenames (4-8 players) [party]
+____________________________________________________________
+```
+<!-- @@author -->
  
 ### Exiting the program: `exit`
  
@@ -192,15 +257,19 @@ ____________________________________________________________
  
 GameVault stores your games in `data/games.txt` (relative to the folder you run GameVault from).
 Advanced users can edit this file directly. Each line describes one game in the format `TITLE | MIN | MAX`,
-optionally followed by `| TIME`, the play time in minutes:
+optionally followed by `| TIME`, the play time in minutes, and `| TAGS`, the game's tags separated by commas:
  
 ```
 Catan | 3 | 4 | 60
 Codenames | 2 | 8
+Azul | 2 | 4 | 45 | family,strategy
+Werewolf | 8 | 18 |  | party
 ```
  
 * `MIN` and `MAX` must be whole numbers of at least 1, and `MAX` must not be less than `MIN`.
 * `TIME`, if given, must be a whole number of at least 1. A line with no `TIME` means no play time is recorded.
+* `TAGS`, if given, must be the fifth field. For a game with tags but no play time, leave `TIME` blank,
+  as in the `Werewolf` line above. Each tag must follow the rules in [Tagging a game](#tagging-a-game-tag-untag).
 * Blank lines are ignored.
 
 If a line is not in this format, GameVault skips that line, loads the rest of your games, and tells you which
@@ -209,7 +278,7 @@ lines were skipped and why, for example:
 ```
 Warning: 1 line(s) in your data file could not be read and were skipped:
   Line 2: "Codenames | two | 8" (MIN should be a whole number, but was 'two')
-Each line should be in the format: TITLE | MIN | MAX | TIME (TIME is optional)
+Each line should be in the format: TITLE | MIN | MAX | TIME | TAGS (TIME and TAGS are optional)
 ```
  
 **Caution:** Skipped lines are not saved back to the file. To keep those games, exit GameVault and fix the lines
@@ -227,9 +296,11 @@ and waits for your next command. Nothing is changed.
 Action | Format
 -------|-------
 Add | `add TITLE /min MIN /max MAX [/time MINUTES]`, e.g. `add Catan /min 3 /max 4 /time 60`
-Filter | `filter COUNT [/time MINUTES]`, e.g. `filter 4 /time 45`
+Filter | `filter COUNT [/time MINUTES]`, e.g. `filter 4 /time 45`<br>`filter /tag TAG`, e.g. `filter /tag party`
 Pick | `pick COUNT [/time MINUTES]`, e.g. `pick 4 /time 45`
 Edit | `edit INDEX [/title TITLE] [/min MIN] [/max MAX]`, e.g. `edit 1 /max 6`
+Tag | `tag INDEX TAG`, e.g. `tag 2 party`
+Untag | `untag INDEX TAG`, e.g. `untag 2 co-op`
 Help | `help`
 Exit | `exit`
  

@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 
 class GameTest {
@@ -61,5 +63,39 @@ class GameTest {
     void toFileString_withAndWithoutPlayTime_addsTimeFieldOnlyWhenRecorded() {
         assertEquals("Catan | 3 | 4 | 60", new Game("Catan", 3, 4, 60).toFileString());
         assertEquals("Chess | 2 | 2", new Game("Chess", 2, 2).toFileString());
+    }
+
+    //@@author KRAZYZECTRON
+    @Test
+    void addTagAndRemoveTag_changeTagsKeptInAlphabeticalOrder() {
+        Game game = new Game("Catan", 3, 4);
+        game.addTag("trading");
+        game.addTag("strategy");
+        assertTrue(game.hasTag("strategy"));
+        assertEquals(List.of("strategy", "trading"), List.copyOf(game.getTags()));
+
+        game.removeTag("trading");
+        assertFalse(game.hasTag("trading"));
+        assertEquals(List.of("strategy"), List.copyOf(game.getTags()));
+    }
+
+    @Test
+    void toString_withTags_listsTagsAfterDetails() {
+        Game game = new Game("Catan", 3, 4, 60);
+        game.addTag("strategy");
+        game.addTag("family");
+        assertEquals("Catan (3-4 players, 60 min) [family, strategy]", game.toString());
+    }
+
+    @Test
+    void toFileString_withTags_putsTagsInFifthFieldWithTimeBlankIfNotRecorded() {
+        Game timed = new Game("Catan", 3, 4, 60);
+        timed.addTag("strategy");
+        Game untimed = new Game("Codenames", 4, 8);
+        untimed.addTag("word");
+        untimed.addTag("party");
+
+        assertEquals("Catan | 3 | 4 | 60 | strategy", timed.toFileString());
+        assertEquals("Codenames | 4 | 8 |  | party,word", untimed.toFileString());
     }
 }

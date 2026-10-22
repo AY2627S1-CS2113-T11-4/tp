@@ -13,11 +13,15 @@ import seedu.gamevault.command.DeleteCommand;
 import seedu.gamevault.command.EditCommand;
 import seedu.gamevault.command.ExitCommand;
 import seedu.gamevault.command.FilterCommand;
+import seedu.gamevault.command.FilterTagCommand;
 import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.command.ListCommand;
 import seedu.gamevault.command.PickCommand;
+import seedu.gamevault.command.TagCommand;
+import seedu.gamevault.command.UntagCommand;
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Game;
+import seedu.gamevault.game.Tag;
 
 /**
  * Turns a line typed by the user into the matching {@link Command}.
@@ -29,6 +33,7 @@ public class Parser {
     private static final String MAX_PREFIX = "/max";
     private static final String TITLE_PREFIX = "/title";
     private static final String TIME_PREFIX = "/time";
+    private static final String TAG_PREFIX = "/tag";
     /** Key under which {@link #splitByPrefixes} stores the text that comes before the first prefix. */
     private static final String PREAMBLE = "";
 
@@ -72,6 +77,10 @@ public class Parser {
             return parseDelete(arguments);
         case EditCommand.COMMAND_WORD:
             return parseEdit(arguments);
+        case TagCommand.COMMAND_WORD:
+            return parseTag(arguments);
+        case UntagCommand.COMMAND_WORD:
+            return parseUntag(arguments);
         case PickCommand.COMMAND_WORD:
             return parsePick(arguments);
         default:
@@ -126,13 +135,17 @@ public class Parser {
 
     /**
      * Builds a {@link FilterCommand} from arguments in the form {@code COUNT [/time MINUTES]},
-     * e.g. {@code 4} or {@code 4 /time 45}.
+     * e.g. {@code 4} or {@code 4 /time 45}, or a {@link FilterTagCommand} from arguments in the form
+     * {@code /tag TAG}, e.g. {@code /tag party}.
      *
      * @throws GameVaultException If COUNT is missing, a number is not a whole number or is less than 1,
-     *     or /time is repeated.
+     *     /time is repeated, or the /tag form is invalid.
      */
     private static Command parseFilter(String arguments) throws GameVaultException {
-        Map<String, String> fields = splitByPrefixes(arguments, TIME_PREFIX);
+        Map<String, String> fields = splitByPrefixes(arguments, TIME_PREFIX, TAG_PREFIX);
+        if (fields.containsKey(TAG_PREFIX)) {
+            return parseFilterByTag(fields);
+        }
         int playerCount = parsePositiveNumber(fields.get(PREAMBLE), "COUNT", FilterCommand.USAGE);
         if (!fields.containsKey(TIME_PREFIX)) {
             return new FilterCommand(playerCount);
@@ -282,6 +295,83 @@ public class Parser {
         }
         return title;
     }
+
+    //@@author KRAZYZECTRON
+    /**
+     * Builds a {@link TagCommand} from arguments in the form {@code INDEX TAG}, e.g. {@code 2 party}.
+     *
+     * @throws GameVaultException If INDEX or TAG is missing or invalid.
+     */
+    private static Command parseTag(String arguments) throws GameVaultException {
+        String[] parts = splitIndexAndTag(arguments, TagCommand.USAGE, "tag 2 party");
+        return new TagCommand(parseIndex(parts[0]), parseTagText(parts[1], TagCommand.USAGE));
+    }
+
+    /**
+     * Builds an {@link UntagCommand} from arguments in the form {@code INDEX TAG}, e.g. {@code 2 party}.
+     *
+     * @throws GameVaultException If INDEX or TAG is missing or invalid.
+     */
+    private static Command parseUntag(String arguments) throws GameVaultException {
+        String[] parts = splitIndexAndTag(arguments, UntagCommand.USAGE, "untag 2 party");
+        return new UntagCommand(parseIndex(parts[0]), parseTagText(parts[1], UntagCommand.USAGE));
+    }
+
+    /**
+     * Splits arguments such as {@code 2 party} into the INDEX text and the TAG text.
+     * Everything after the INDEX is kept as the TAG text, so that a TAG of more than one word
+     * is reported as invalid by {@link #parseTagText} rather than having its extra words ignored.
+     *
+     * @param usage Format of the command being parsed, shown when a part is missing.
+     * @param example A correct use of the command, shown when a part is missing.
+     * @return A two-element array: the INDEX text, then the TAG text.
+     * @throws GameVaultException If INDEX or TAG is missing.
+     */
+    private static String[] splitIndexAndTag(String arguments, String usage, String example)
+            throws GameVaultException {
+        String[] parts = arguments.trim().split("\\s+", 2);
+        if (parts[0].isEmpty()) {
+            throw new GameVaultException("INDEX and TAG are missing. Format: " + usage + " (e.g. " + example + ")");
+        }
+        if (parts.length < 2) {
+            throw new GameVaultException("TAG is missing. Format: " + usage + " (e.g. " + example + ")");
+        }
+        return parts;
+    }
+
+    /**
+     * Builds a {@link FilterTagCommand} from the fields of a {@code filter} command that used /tag.
+     * Filtering by tag cannot be combined with COUNT or /time, to keep each form of {@code filter} simple.
+     *
+     * @param fields Fields returned by {@link #splitByPrefixes}, which include /tag.
+     * @throws GameVaultException If COUNT or /time was also given, or TAG is missing or invalid.
+     */
+    private static Command parseFilterByTag(Map<String, String> fields) throws GameVaultException {
+        if (!fields.get(PREAMBLE).isEmpty() || fields.containsKey(TIME_PREFIX)) {
+            throw new GameVaultException("/tag cannot be combined with COUNT or /time. Format: "
+                    + FilterTagCommand.USAGE + " (e.g. filter /tag party)");
+        }
+        return new FilterTagCommand(parseTagText(fields.get(TAG_PREFIX), FilterTagCommand.USAGE));
+    }
+
+    /**
+     * Returns the tag in {@code text}, normalised to lower case (see {@link Tag#normalise}).
+     *
+     * @param usage Format of the command being parsed, shown when the tag is missing.
+     * @throws GameVaultException If the tag is missing or does not follow {@link Tag#RULES}.
+     */
+    private static String parseTagText(String text, String usage) throws GameVaultException {
+        String tag = Tag.normalise(text);
+        if (tag.isEmpty()) {
+            throw new GameVaultException("TAG is missing. Format: " + usage);
+        }
+        if (!Tag.isValid(tag)) {
+            throw new GameVaultException("TAG should be " + Tag.RULES + ", but was '" + text.trim() + "'.");
+        }
+        return tag;
+    }
+
+    //@@author
 
     private static void checkNotRepeated(Object existingValue, String prefix) throws GameVaultException {
         if (existingValue != null) {

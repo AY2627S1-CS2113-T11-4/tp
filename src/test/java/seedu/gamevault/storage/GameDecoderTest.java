@@ -47,7 +47,7 @@ class GameDecoderTest {
         assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan"));
         assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan | 3"));
         assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan | 3 |"));
-        assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan | 3 | 4 | 60 | 5"));
+        assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan | 3 | 4 | 60 | party | 5"));
         assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan, 3, 4"));
     }
 
@@ -103,6 +103,37 @@ class GameDecoderTest {
     @Test
     void decodeLine_toFileStringWithPlayTime_decodesToSameGame() throws GameVaultException {
         Game original = new Game("Catan", 3, 4, 60);
+        assertEquals(original.toString(), GameDecoder.decodeLine(original.toFileString()).toString());
+    }
+
+    //@@author KRAZYZECTRON
+    @Test
+    void decodeLine_withTagsAndBlankTime_returnsTaggedGameWithoutPlayTime() throws GameVaultException {
+        Game game = GameDecoder.decodeLine("Codenames | 4 | 8 |  | Party, word ,");
+        assertFalse(game.hasPlayTime());
+        assertTrue(game.hasTag("party"));
+        assertTrue(game.hasTag("word"));
+        assertEquals(2, game.getTags().size());
+    }
+
+    @Test
+    void decodeLine_repeatedOrEmptyTags_ignored() throws GameVaultException {
+        assertEquals(1, GameDecoder.decodeLine("Catan | 3 | 4 | 60 | strategy,STRATEGY").getTags().size());
+        assertTrue(GameDecoder.decodeLine("Catan | 3 | 4 | 60 |  ").getTags().isEmpty());
+    }
+
+    @Test
+    void decodeLine_invalidTag_throwsExceptionNamingTag() {
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> GameDecoder.decodeLine("Catan | 3 | 4 | 60 | party game"));
+        assertTrue(e.getMessage().startsWith("TAGS contains 'party game'"));
+    }
+
+    @Test
+    void decodeLine_toFileStringWithTags_decodesToSameGame() throws GameVaultException {
+        Game original = new Game("Codenames", 4, 8);
+        original.addTag("party");
+        original.addTag("co-op");
         assertEquals(original.toString(), GameDecoder.decodeLine(original.toFileString()).toString());
     }
 }
