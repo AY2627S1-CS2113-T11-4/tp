@@ -174,13 +174,20 @@ public class Parser {
     }
 
     /**
-     * Builds a {@link PickCommand} from arguments in the form {@code COUNT}, e.g. {@code 4}.
+     * Builds a {@link PickCommand} from arguments in the form {@code COUNT [/time MINUTES]},
+     * e.g. {@code 4} or {@code 4 /time 45}.
      *
-     * @throws GameVaultException If COUNT is missing, not a whole number, or less than 1.
+     * @throws GameVaultException If COUNT is missing, a number is not a whole number or is less than 1,
+     *     or /time is repeated.
      */
     private static Command parsePick(String arguments) throws GameVaultException {
-        int playerCount = parsePositiveNumber(arguments, "COUNT", PickCommand.USAGE);
-        return new PickCommand(playerCount);
+        Map<String, String> fields = splitByPrefixes(arguments, TIME_PREFIX);
+        int playerCount = parsePositiveNumber(fields.get(PREAMBLE), "COUNT", PickCommand.USAGE);
+        if (!fields.containsKey(TIME_PREFIX)) {
+            return new PickCommand(playerCount);
+        }
+        int minutes = parsePositiveNumber(fields.get(TIME_PREFIX), "MINUTES", PickCommand.USAGE);
+        return new PickCommand(playerCount, minutes);
     }
 
     /**

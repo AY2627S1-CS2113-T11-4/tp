@@ -130,4 +130,21 @@ public class GameList {
         }
         return matches;
     }
+
+    /**
+     * Returns how many games fit the given number of players but have no play time recorded.
+     * These are the games that a time limit leaves out, so commands can tell the user about them.
+     *
+     * @param count Number of players to check; must be at least 1.
+     * @return Number of such games.
+     */
+    public int countWithoutPlayTime(int count) {
+        int untimedCount = 0;
+        for (Game game : filterByPlayers(count)) {
+            if (!game.hasPlayTime()) {
+                untimedCount++;
+            }
+        }
+        return untimedCount;
+    }
 }
