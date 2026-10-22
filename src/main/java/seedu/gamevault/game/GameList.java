@@ -89,6 +89,30 @@ public class GameList {
     }
 
     /**
+     * Returns the game at the given position.
+     * Callers must check the index first; the assertion here only catches programming errors.
+     *
+     * @param index Position of the game, counting from 0.
+     * @return The game at that position.
+     */
+    public Game get(int index) {
+        assert index >= 0 && index < games.size() : "Index to get should be within the list";
+        return games.get(index);
+    }
+
+    /**
+     * Replaces the game at the given position, keeping its place in the list.
+     *
+     * @param index Position of the game, counting from 0.
+     * @param game The game to put in its place.
+     */
+    public void set(int index, Game game) {
+        assert index >= 0 && index < games.size() : "Index to set should be within the list";
+        assert game != null : "Replacement game should not be null";
+        games.set(index, game);
+    }
+    
+    /**
      * Returns the games that can be played by the given number of players and are known to take
      * at most the given number of minutes, in their original order. Games with no play time recorded
      * are left out. The collection itself is not changed.

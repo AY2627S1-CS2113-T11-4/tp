@@ -14,6 +14,7 @@ import seedu.gamevault.command.ExitCommand;
 import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.command.ListCommand;
+import seedu.gamevault.command.EditCommand;
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Game;
 
@@ -25,6 +26,7 @@ public class Parser {
     private static final Logger logger = Logger.getLogger(Parser.class.getName());
     private static final String MIN_PREFIX = "/min";
     private static final String MAX_PREFIX = "/max";
+    private static final String TITLE_PREFIX = "/title";
     private static final String TIME_PREFIX = "/time";
     /** Key under which {@link #splitByPrefixes} stores the text that comes before the first prefix. */
     private static final String PREAMBLE = "";
@@ -67,6 +69,8 @@ public class Parser {
             return parseFilter(arguments);
         case DeleteCommand.COMMAND_WORD:
             return parseDelete(arguments);
+        case EditCommand.COMMAND_WORD:
+            return parseEdit(arguments);
         default:
             throw new GameVaultException("Unknown command '" + parts[0]
                     + "'. Type 'help' to see all commands.");
@@ -177,6 +181,16 @@ public class Parser {
             throw new GameVaultException("INDEX is missing. Format: " + DeleteCommand.USAGE
                     + " (e.g. delete 2)");
         }
+        return new DeleteCommand(parseIndex(indexText));
+    }
+
+    /**
+     * Returns the game number in {@code indexText}, which must be a whole number of at least 1.
+     * Shared by commands that pick a game by its number in {@code list}, e.g. delete and edit.
+     *
+     * @throws GameVaultException If the text is not a whole number, or is less than 1.
+     */
+    private static int parseIndex(String indexText) throws GameVaultException {
         int displayNumber;
         try {
             displayNumber = Integer.parseInt(indexText);
@@ -194,7 +208,65 @@ public class Parser {
         if (displayNumber < 1) {
             throw new GameVaultException(getIndexTooSmallMessage(indexText));
         }
-        return new DeleteCommand(displayNumber);
+        return displayNumber;
+    }
+
+    /**
+     * Builds an {@link EditCommand} from arguments in the form
+     * {@code INDEX [/title TITLE] [/min MIN] [/max MAX]}, e.g. {@code 2 /max 6 /title Catan}.
+     * At least one field must be given, and fields may be in any order.
+     *
+     * @throws GameVaultException If INDEX is missing or invalid, no field is given,
+     *         a field is repeated, or a field's value is invalid.
+     */
+    private static Command parseEdit(String arguments) throws GameVaultException {
+        Map<String, String> fields = splitByPrefixes(arguments, TITLE_PREFIX, MIN_PREFIX, MAX_PREFIX);
+
+        String indexText = fields.get(PREAMBLE);
+        if (indexText.isEmpty()) {
+            throw new GameVaultException("INDEX is missing. Format: " + EditCommand.USAGE
+                    + " (e.g. edit 2 /max 6)");
+        }
+        int displayNumber = parseIndex(indexText);
+
+        String title = fields.containsKey(TITLE_PREFIX)
+                ? parseTitle(fields.get(TITLE_PREFIX), EditCommand.USAGE)
+                : null;
+        Integer minPlayers = fields.containsKey(MIN_PREFIX)
+                ? parsePositiveNumber(fields.get(MIN_PREFIX), "MIN", EditCommand.USAGE)
+                : null;
+        Integer maxPlayers = fields.containsKey(MAX_PREFIX)
+                ? parsePositiveNumber(fields.get(MAX_PREFIX), "MAX", EditCommand.USAGE)
+                : null;
+
+        if (title == null && minPlayers == null && maxPlayers == null) {
+            throw new GameVaultException("Please give at least one field to change. Format: "
+                    + EditCommand.USAGE + " (e.g. edit 2 /max 6)");
+        }
+        return new EditCommand(displayNumber, title, minPlayers, maxPlayers);
+    }
+
+    /**
+     * Returns the trimmed title, which must not be empty or contain '|'.
+     *
+     * @param usage Format of the command being parsed, shown when the title is missing.
+     */
+    private static String parseTitle(String text, String usage) throws GameVaultException {
+        String title = text.trim();
+        if (title.isEmpty()) {
+            throw new GameVaultException("TITLE is missing. Format: " + usage);
+        }
+        // The data file uses '|' to separate fields, so a title containing it could not be loaded back.
+        if (title.contains("|")) {
+            throw new GameVaultException("TITLE cannot contain the '|' character.");
+        }
+        return title;
+    }
+
+    private static void checkNotRepeated(Object existingValue, String prefix) throws GameVaultException {
+        if (existingValue != null) {
+            throw new GameVaultException(prefix + " was given more than once.");
+        }
     }
 
     private static String getIndexTooSmallMessage(String indexText) {

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import seedu.gamevault.command.AddCommand;
 import seedu.gamevault.command.DeleteCommand;
+import seedu.gamevault.command.EditCommand;
 import seedu.gamevault.command.ExitCommand;
 import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.HelpCommand;
@@ -135,6 +136,46 @@ class ParserTest {
     void parse_deleteWithIndexTooBigForInt_reportsNoSuchGame() {
         GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("delete 99999999999"));
         assertEquals(DeleteCommand.getNoSuchGameMessage("99999999999"), e.getMessage());
+    }
+
+    @Test
+    void parse_editFieldsInAnyOrder_returnsEditCommand() throws GameVaultException {
+        assertInstanceOf(EditCommand.class, Parser.parse("edit 1 /max 6 /title Catan /min 2"));
+    }
+
+    @Test
+    void parse_editUpperCase_returnsEditCommand() throws GameVaultException {
+        assertInstanceOf(EditCommand.class, Parser.parse("EDIT 1 /min 2"));
+    }
+
+    @Test
+    void parse_editNoFields_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("edit 1"));
+    }
+
+    @Test
+    void parse_editNoIndex_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("edit /title Catan"));
+    }
+
+    @Test
+    void parse_editZeroIndex_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("edit 0 /min 2"));
+    }
+
+    @Test
+    void parse_editTitleWithPipe_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("edit 1 /title Cat|an"));
+    }
+
+    @Test
+    void parse_editRepeatedField_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("edit 1 /min 2 /min 3"));
+    }
+
+    @Test
+    void parse_editEmptyMin_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("edit 1 /min"));
     }
 
     @Test
