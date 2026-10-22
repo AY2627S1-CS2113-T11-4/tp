@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import seedu.gamevault.command.AddCommand;
 import seedu.gamevault.command.DeleteCommand;
+import seedu.gamevault.command.EditCommand;
 import seedu.gamevault.command.ExitCommand;
 import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.HelpCommand;
@@ -94,7 +95,7 @@ class ParserTest {
     @Test
     void parse_filterWithMissingCount_throwsExceptionShowingFormat() {
         GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("filter"));
-        assertEquals("COUNT is missing. Format: filter COUNT", e.getMessage());
+        assertEquals("COUNT is missing. Format: " + FilterCommand.USAGE, e.getMessage());
     }
 
     @Test
@@ -156,5 +157,86 @@ class ParserTest {
     void parse_deleteWithIndexTooBigForInt_reportsNoSuchGame() {
         GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("delete 99999999999"));
         assertEquals(DeleteCommand.getNoSuchGameMessage("99999999999"), e.getMessage());
+    }
+
+    @Test
+    void parse_editFieldsInAnyOrder_returnsEditCommand() throws GameVaultException {
+        assertInstanceOf(EditCommand.class, Parser.parse("edit 1 /max 6 /title Catan /min 2"));
+    }
+
+    @Test
+    void parse_editUpperCase_returnsEditCommand() throws GameVaultException {
+        assertInstanceOf(EditCommand.class, Parser.parse("EDIT 1 /min 2"));
+    }
+
+    @Test
+    void parse_editNoFields_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("edit 1"));
+    }
+
+    @Test
+    void parse_editNoIndex_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("edit /title Catan"));
+    }
+
+    @Test
+    void parse_editZeroIndex_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("edit 0 /min 2"));
+    }
+
+    @Test
+    void parse_editTitleWithPipe_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("edit 1 /title Cat|an"));
+    }
+
+    @Test
+    void parse_editRepeatedField_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("edit 1 /min 2 /min 3"));
+    }
+
+    @Test
+    void parse_editEmptyMin_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("edit 1 /min"));
+    }
+
+    @Test
+    void parse_addWithTime_returnsAddCommand() throws GameVaultException {
+        assertInstanceOf(AddCommand.class, Parser.parse("add Catan /min 3 /max 4 /time 60"));
+        // Prefixes may come in any order after the title.
+        assertInstanceOf(AddCommand.class, Parser.parse("add Catan /time 60 /max 4 /min 3"));
+    }
+
+    @Test
+    void parse_addWithInvalidTime_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("add Catan /min 3 /max 4 /time"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("add Catan /min 3 /max 4 /time 0"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("add Catan /min 3 /max 4 /time an hour"));
+    }
+
+    @Test
+    void parse_addWithRepeatedPrefix_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> Parser.parse("add Catan /min 3 /max 4 /min 5"));
+        assertEquals("/min can only be given once.", e.getMessage());
+    }
+
+    @Test
+    void parse_addWithPrefixInsideTitle_keepsWholeTitle() throws GameVaultException {
+        // "/minimal" is part of the title, not the /min prefix, because it is not a separate word.
+        assertInstanceOf(AddCommand.class, Parser.parse("add Foo/minimal /min 2 /max 3"));
+    }
+
+    @Test
+    void parse_filterWithTime_returnsFilterCommand() throws GameVaultException {
+        assertInstanceOf(FilterCommand.class, Parser.parse("filter 4 /time 45"));
+    }
+
+    @Test
+    void parse_filterWithInvalidTime_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 /time"));
+        assertEquals("MINUTES is missing. Format: " + FilterCommand.USAGE, e.getMessage());
+        assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 /time 0"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("filter /time 45"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 /time 45 /time 30"));
     }
 }

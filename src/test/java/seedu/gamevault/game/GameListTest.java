@@ -56,4 +56,21 @@ class GameListTest {
         assertEquals(1, games.size());
         assertEquals("Chess", games.getGames().get(0).getTitle());
     }
+
+    @Test
+    void filterByPlayersAndTime_mixOfTimes_returnsOnlyTimedGamesWithinLimit() {
+        GameList timedGames = new GameList();
+        timedGames.add(new Game("Catan", 3, 4, 60));
+        timedGames.add(new Game("Love Letter", 2, 4, 20));
+        timedGames.add(new Game("Codenames", 2, 8));
+        timedGames.add(new Game("Werewolf", 8, 18, 30));
+
+        ArrayList<Game> matches = timedGames.filterByPlayersAndTime(4, 60);
+        assertEquals(2, matches.size());
+        assertEquals("Catan", matches.get(0).getTitle());
+        assertEquals("Love Letter", matches.get(1).getTitle());
+
+        assertEquals(1, timedGames.filterByPlayersAndTime(4, 59).size());
+        assertTrue(timedGames.filterByPlayersAndTime(4, 10).isEmpty());
+    }
 }

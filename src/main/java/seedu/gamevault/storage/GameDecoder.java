@@ -6,15 +6,19 @@ import seedu.gamevault.game.Game;
 /**
  * Converts one line of the data file back into a {@link Game}, checking that the line is valid.
  *
- * <p>Each line has the format {@code TITLE | MIN | MAX}, e.g. {@code Catan | 3 | 4}.
+ * <p>Each line has the format {@code TITLE | MIN | MAX}, e.g. {@code Catan | 3 | 4}, optionally followed by
+ * {@code | TIME}, the play time in minutes, e.g. {@code Catan | 3 | 4 | 60}.
+ * Files saved before play time was added have no TIME field and still load.
  * Users may edit the data file by hand, so every part of the line is checked and a
  * specific reason is given when something is wrong.</p>
  */
 public class GameDecoder {
-    public static final String FORMAT = "TITLE | MIN | MAX";
+    public static final String FORMAT = "TITLE | MIN | MAX | TIME (TIME is optional)";
 
     private static final String FIELD_SEPARATOR_REGEX = "\\|";
-    private static final int FIELD_COUNT = 3;
+    private static final int FIELD_COUNT_WITHOUT_TIME = 3;
+    private static final int FIELD_COUNT_WITH_TIME = 4;
+    private static final int NO_PLAY_TIME = 0;
     /** Invisible marker some editors (e.g. Windows Notepad) put at the start of a file. */
     private static final String BYTE_ORDER_MARK = "﻿";
 
@@ -30,29 +34,41 @@ public class GameDecoder {
 
         // A limit of -1 keeps empty trailing fields, so "Catan | 3 |" is reported as a missing MAX.
         String[] fields = line.replace(BYTE_ORDER_MARK, "").split(FIELD_SEPARATOR_REGEX, -1);
-        if (fields.length != FIELD_COUNT) {
-            throw new GameVaultException("expected " + FIELD_COUNT + " parts in the format " + FORMAT
-                    + ", but found " + fields.length);
+        if (fields.length != FIELD_COUNT_WITHOUT_TIME && fields.length != FIELD_COUNT_WITH_TIME) {
+            throw new GameVaultException("expected " + FIELD_COUNT_WITHOUT_TIME + " or " + FIELD_COUNT_WITH_TIME
+                    + " parts in the format " + FORMAT + ", but found " + fields.length);
         }
 
         String title = fields[0].trim();
         if (title.isEmpty()) {
             throw new GameVaultException("TITLE is empty");
         }
-        int minPlayers = parsePlayerCount(fields[1], "MIN");
-        int maxPlayers = parsePlayerCount(fields[2], "MAX");
+        int minPlayers = parsePositiveNumber(fields[1], "MIN");
+        int maxPlayers = parsePositiveNumber(fields[2], "MAX");
         if (maxPlayers < minPlayers) {
             throw new GameVaultException("MAX (" + maxPlayers + ") is less than MIN (" + minPlayers + ")");
         }
-        return new Game(title, minPlayers, maxPlayers);
+        int playTime = decodePlayTime(fields);
+        return new Game(title, minPlayers, maxPlayers, playTime);
     }
 
     /**
-     * Returns the player count in {@code text}, which must be a whole number of at least 1.
+     * Returns the play time in the TIME field, or 0 if the line has no TIME field or it is left empty.
+     */
+    private static int decodePlayTime(String[] fields) throws GameVaultException {
+        if (fields.length < FIELD_COUNT_WITH_TIME || fields[FIELD_COUNT_WITH_TIME - 1].isBlank()) {
+            return NO_PLAY_TIME;
+        }
+        return parsePositiveNumber(fields[FIELD_COUNT_WITH_TIME - 1], "TIME");
+    }
+
+    /**
+     * Returns the number in {@code text}, such as a player count or play time, which must be a whole number
+     * of at least 1.
      *
      * @param fieldName Name of the field, used in the error message.
      */
-    private static int parsePlayerCount(String text, String fieldName) throws GameVaultException {
+    private static int parsePositiveNumber(String text, String fieldName) throws GameVaultException {
         String trimmedText = text.trim();
         int count;
         try {
