@@ -5,16 +5,27 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+
 import org.junit.jupiter.api.Test;
 
 import seedu.gamevault.command.AddCommand;
+import seedu.gamevault.command.Command;
 import seedu.gamevault.command.DeleteCommand;
 import seedu.gamevault.command.EditCommand;
 import seedu.gamevault.command.ExitCommand;
 import seedu.gamevault.command.FilterCommand;
+import seedu.gamevault.command.FilterTagCommand;
 import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.command.ListCommand;
+import seedu.gamevault.command.TagCommand;
+import seedu.gamevault.command.UntagCommand;
 import seedu.gamevault.exception.GameVaultException;
+import seedu.gamevault.game.Game;
+import seedu.gamevault.game.GameList;
+import seedu.gamevault.ui.Ui;
 
 class ParserTest {
 
@@ -217,5 +228,55 @@ class ParserTest {
         assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 /time 0"));
         assertThrows(GameVaultException.class, () -> Parser.parse("filter /time 45"));
         assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 /time 45 /time 30"));
+    }
+
+    //@@author KRAZYZECTRON
+    @Test
+    void parse_tagAndUntag_returnTagCommands() throws GameVaultException {
+        assertInstanceOf(TagCommand.class, Parser.parse("tag 2 party"));
+        assertInstanceOf(UntagCommand.class, Parser.parse("UNTAG 2 co-op"));
+    }
+
+    @Test
+    void parse_tagWithMissingParts_throwsExceptionSayingWhatIsMissing() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("tag"));
+        assertEquals("INDEX and TAG are missing. Format: " + TagCommand.USAGE + " (e.g. tag 2 party)",
+                e.getMessage());
+        e = assertThrows(GameVaultException.class, () -> Parser.parse("untag 2"));
+        assertEquals("TAG is missing. Format: " + UntagCommand.USAGE + " (e.g. untag 2 party)", e.getMessage());
+    }
+
+    @Test
+    void parse_tagWithInvalidIndexOrTag_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("tag 0 party"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("tag party 2"));
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("tag 2 party game"));
+        assertTrue(e.getMessage().startsWith("TAG should be one word"));
+        assertTrue(e.getMessage().endsWith("but was 'party game'."));
+    }
+
+    @Test
+    void parse_filterByTagInAnyCase_findsLowerCaseTag() throws GameVaultException {
+        GameList games = new GameList();
+        Game game = new Game("Codenames", 4, 8);
+        game.addTag("party");
+        games.add(game);
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        Ui ui = new Ui(new ByteArrayInputStream(new byte[0]), new PrintStream(output));
+
+        Command command = Parser.parse("filter /tag PARTY");
+
+        assertInstanceOf(FilterTagCommand.class, command);
+        command.execute(games, ui, null); // Filtering does not save, so no Storage is needed.
+        assertTrue(output.toString().contains("Codenames"));
+    }
+
+    @Test
+    void parse_filterByTagWithCountOrTimeOrNoTag_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 /tag party"));
+        assertTrue(e.getMessage().startsWith("/tag cannot be combined with COUNT or /time."));
+        assertThrows(GameVaultException.class, () -> Parser.parse("filter /tag party /time 30"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("filter /tag"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("filter /tag party /tag word"));
     }
 }

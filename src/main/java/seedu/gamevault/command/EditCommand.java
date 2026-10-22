@@ -58,10 +58,13 @@ public class EditCommand extends Command {
                     + "). The game is currently: " + oldGame);
         }
 
-        // Play time cannot be edited yet, so carry it over unchanged.
+        // Play time and tags cannot be changed with edit, so carry them over unchanged.
         Game editedGame = oldGame.hasPlayTime()
                 ? new Game(title, minPlayers, maxPlayers, oldGame.getPlayTime())
                 : new Game(title, minPlayers, maxPlayers);
+        for (String tag : oldGame.getTags()) {
+            editedGame.addTag(tag);
+        }
         games.set(index, editedGame);
         storage.save(games);
         ui.showMessage("Edited: " + oldGame + System.lineSeparator() + "Now: " + editedGame);

@@ -73,4 +73,18 @@ class GameListTest {
         assertEquals(1, timedGames.filterByPlayersAndTime(4, 59).size());
         assertTrue(timedGames.filterByPlayersAndTime(4, 10).isEmpty());
     }
+
+    //@@author KRAZYZECTRON
+    @Test
+    void filterByTag_someGamesHaveTag_returnsMatchesInOriginalOrder() {
+        games.get(2).addTag("party");
+        games.get(0).addTag("party");
+        games.get(1).addTag("abstract");
+
+        ArrayList<Game> matches = games.filterByTag("party");
+        assertEquals(2, matches.size());
+        assertEquals("Catan", matches.get(0).getTitle());
+        assertEquals("Codenames", matches.get(1).getTitle());
+        assertTrue(games.filterByTag("co-op").isEmpty());
+    }
 }

@@ -1,8 +1,12 @@
 package seedu.gamevault.game;
 
+import java.util.Collections;
+import java.util.Set;
+import java.util.TreeSet;
+
 /**
- * Represents a single game in the user's collection, with the range of player counts it supports
- * and, optionally, how many minutes one round usually takes.
+ * Represents a single game in the user's collection, with the range of player counts it supports,
+ * optionally how many minutes one round usually takes, and any tags the user has given it.
  */
 public class Game {
     /** Value of {@code playTime} for a game whose play time has not been recorded. */
@@ -12,6 +16,8 @@ public class Game {
     private final int minPlayers;
     private final int maxPlayers;
     private final int playTime;
+    /** Normalised tags (see {@link Tag}); a TreeSet keeps them unique and in alphabetical order. */
+    private final TreeSet<String> tags = new TreeSet<>();
 
     /**
      * Creates a game with no play time recorded.
@@ -74,6 +80,49 @@ public class Game {
         return playTime;
     }
 
+    //@@author KRAZYZECTRON
+    /**
+     * Returns whether this game has the given tag.
+     *
+     * @param tag A normalised tag (see {@link Tag#normalise}).
+     */
+    public boolean hasTag(String tag) {
+        return tags.contains(tag);
+    }
+
+    /**
+     * Adds a tag to this game.
+     * Callers must check {@link #hasTag} first so that the user can be told when the tag is already there;
+     * the assertions here only catch programming errors.
+     *
+     * @param tag A valid, normalised tag.
+     */
+    public void addTag(String tag) {
+        assert Tag.isValid(tag) : "Tag should be valid and normalised";
+        assert !hasTag(tag) : "Game should not already have this tag";
+        tags.add(tag);
+    }
+
+    /**
+     * Removes a tag from this game. Callers must check {@link #hasTag} first.
+     *
+     * @param tag A normalised tag that this game has.
+     */
+    public void removeTag(String tag) {
+        assert hasTag(tag) : "Game should have the tag being removed";
+        tags.remove(tag);
+    }
+
+    /**
+     * Returns this game's tags in alphabetical order.
+     * The returned set is read-only, so callers must use {@link #addTag} and {@link #removeTag} to change it.
+     */
+    public Set<String> getTags() {
+        return Collections.unmodifiableSet(tags);
+    }
+
+    //@@author
+
     /**
      * Returns whether this game can be played by the given number of players,
      * i.e. the count is within the game's minimum and maximum (both inclusive).
@@ -98,19 +147,25 @@ public class Game {
 
     /**
      * Returns this game as one line of the data file, in the format {@code TITLE | MIN | MAX},
-     * followed by {@code | TIME} when a play time is recorded.
+     * followed by {@code | TIME} when a play time is recorded, and by {@code | TAGS} when the game has tags.
+     * TAGS is a comma-separated list, e.g. {@code Codenames | 4 | 8 |  | party,word}; TIME is left blank
+     * when a game has tags but no play time, so that TAGS is always the fifth field.
      * {@link seedu.gamevault.storage.GameDecoder} reads this format back.
      *
      * @return Line to write to the data file.
      */
     public String toFileString() {
         String line = title + " | " + minPlayers + " | " + maxPlayers;
+        if (!tags.isEmpty()) {
+            String time = hasPlayTime() ? String.valueOf(playTime) : "";
+            return line + " | " + time + " | " + String.join(",", tags);
+        }
         return hasPlayTime() ? line + " | " + playTime : line;
     }
 
     /**
-     * Returns this game as it is shown to the user, e.g. {@code Catan (3-4 players, 60 min)},
-     * or {@code Chess (2 players)} when the minimum and maximum are the same and no play time is recorded.
+     * Returns this game as it is shown to the user, e.g. {@code Catan (3-4 players, 60 min) [strategy]},
+     * or {@code Chess (2 players)} when the minimum and maximum are the same and there is no play time or tag.
      */
     @Override
     public String toString() {
@@ -118,6 +173,7 @@ public class Game {
                 ? String.valueOf(minPlayers)
                 : minPlayers + "-" + maxPlayers;
         String time = hasPlayTime() ? ", " + playTime + " min" : "";
-        return title + " (" + players + " players" + time + ")";
+        String tagList = tags.isEmpty() ? "" : " [" + String.join(", ", tags) + "]";
+        return title + " (" + players + " players" + time + ")" + tagList;
     }
 }

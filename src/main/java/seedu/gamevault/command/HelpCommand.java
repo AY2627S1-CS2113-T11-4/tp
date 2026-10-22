@@ -19,8 +19,11 @@ public class HelpCommand extends Command {
               add     Adds a game: add TITLE /min MIN /max MAX [/time MINUTES]
               list    Lists all games in your collection.
               filter  Shows games that fit a player count: filter COUNT [/time MINUTES]
+                      or games with a tag: filter /tag TAG
               delete  Deletes a game: delete INDEX
               edit    Edits a game: edit INDEX [/title TITLE] [/min MIN] [/max MAX]
+              tag     Adds a tag to a game: tag INDEX TAG
+              untag   Removes a tag from a game: untag INDEX TAG
               help    Shows this list of commands.
               exit    Exits GameVault.""";
 

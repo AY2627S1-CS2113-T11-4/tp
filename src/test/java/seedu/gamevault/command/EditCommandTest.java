@@ -113,4 +113,14 @@ class EditCommandTest {
 
         assertEquals("Azul Summer (2-4 players, 45 min)", games.getGames().get(2).toString());
     }
+
+    //@@author KRAZYZECTRON
+    @Test
+    void execute_gameWithTags_keepsTags() throws GameVaultException {
+        games.get(0).addTag("strategy");
+
+        new EditCommand(1, null, null, 6).execute(games, ui, storage);
+
+        assertEquals("Catan (3-6 players) [strategy]", games.get(0).toString());
+    }
 }
