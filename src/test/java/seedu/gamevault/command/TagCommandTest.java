@@ -26,7 +26,7 @@ import seedu.gamevault.ui.Ui;
 
 //@@author KRAZYZECTRON
 /**
- * Tests for the tag, untag and filter-by-tag commands, which share the same setup.
+ * Tests for the tag, untag, tags and filter-by-tag commands, which share the same setup.
  */
 class TagCommandTest {
     @TempDir
@@ -50,21 +50,30 @@ class TagCommandTest {
     }
 
     @Test
-    void tag_newTag_addsTagAndSavesToDataFile() throws GameVaultException, IOException {
-        new TagCommand(2, "party").execute(games, ui, storage);
+    void tag_newTags_addsAllAndSavesToDataFile() throws GameVaultException, IOException {
+        new TagCommand(2, List.of("word", "party")).execute(games, ui, storage);
 
-        assertTrue(games.get(1).hasTag("party"));
-        assertTrue(output.toString().contains("Tagged: Codenames (4-8 players) [party]"));
-        assertEquals(List.of("Catan | 3 | 4 | 60", "Codenames | 4 | 8 |  | party"),
+        assertTrue(output.toString().contains("Tagged: Codenames (4-8 players) [party, word]"));
+        assertEquals(List.of("Catan | 3 | 4 | 60", "Codenames | 4 | 8 |  | party,word"),
                 Files.readAllLines(dataFile, StandardCharsets.UTF_8));
     }
 
     @Test
-    void tag_tagAlreadyThere_throwsExceptionAndDoesNotSave() throws GameVaultException {
+    void tag_someTagsAlreadyThere_addsOthersAndReportsSkipped() throws GameVaultException {
+        games.get(1).addTag("party");
+
+        new TagCommand(2, List.of("party", "word")).execute(games, ui, storage);
+
+        assertEquals("Codenames (4-8 players) [party, word]", games.get(1).toString());
+        assertTrue(output.toString().contains("(Already tagged 'party', so skipped.)"));
+    }
+
+    @Test
+    void tag_allTagsAlreadyThere_throwsExceptionAndDoesNotSave() {
         games.get(0).addTag("strategy");
 
         GameVaultException e = assertThrows(GameVaultException.class, () ->
-                new TagCommand(1, "strategy").execute(games, ui, storage));
+                new TagCommand(1, List.of("strategy")).execute(games, ui, storage));
 
         assertEquals("Catan is already tagged 'strategy'.", e.getMessage());
         assertFalse(Files.exists(dataFile));
@@ -73,30 +82,53 @@ class TagCommandTest {
     @Test
     void tagAndUntag_numberPastEndOfList_throwsException() {
         GameVaultException e = assertThrows(GameVaultException.class, () ->
-                new TagCommand(3, "party").execute(games, ui, storage));
+                new TagCommand(3, List.of("party")).execute(games, ui, storage));
         assertEquals(DeleteCommand.getNoSuchGameMessage("3"), e.getMessage());
 
-        assertThrows(GameVaultException.class, () -> new UntagCommand(3, "party").execute(games, ui, storage));
+        assertThrows(GameVaultException.class, () ->
+                new UntagCommand(3, List.of("party")).execute(games, ui, storage));
     }
 
     @Test
-    void untag_existingTag_removesTagAndSavesToDataFile() throws GameVaultException, IOException {
+    void untag_someTagsThere_removesThoseReportsOthersAndSaves() throws GameVaultException, IOException {
         games.get(0).addTag("strategy");
         games.get(0).addTag("trading");
 
-        new UntagCommand(1, "trading").execute(games, ui, storage);
+        new UntagCommand(1, List.of("trading", "party")).execute(games, ui, storage);
 
         assertEquals("Catan (3-4 players, 60 min) [strategy]", games.get(0).toString());
-        assertTrue(output.toString().contains("Removed tag 'trading'"));
+        String printed = output.toString();
+        assertTrue(printed.contains("Removed tag(s) 'trading'"));
+        assertTrue(printed.contains("(Did not have 'party', so skipped.)"));
         assertEquals("Catan | 3 | 4 | 60 | strategy", Files.readAllLines(dataFile, StandardCharsets.UTF_8).get(0));
     }
 
     @Test
-    void untag_tagNotThere_throwsException() {
+    void untag_noTagsThere_throwsException() {
         GameVaultException e = assertThrows(GameVaultException.class, () ->
-                new UntagCommand(2, "party").execute(games, ui, storage));
+                new UntagCommand(2, List.of("party", "word")).execute(games, ui, storage));
 
-        assertEquals("Codenames does not have the tag 'party'.", e.getMessage());
+        assertEquals("Codenames does not have the tag(s) 'party', 'word'.", e.getMessage());
+    }
+
+    @Test
+    void listTags_gamesWithTags_showsEachTagWithCountInAlphabeticalOrder() {
+        games.get(0).addTag("strategy");
+        games.get(0).addTag("family");
+        games.get(1).addTag("family");
+
+        new ListTagsCommand().execute(games, ui, storage);
+
+        String printed = output.toString();
+        assertTrue(printed.contains("Tags in your collection:"));
+        assertTrue(printed.indexOf("family (2 game(s))") < printed.indexOf("strategy (1 game(s))"));
+    }
+
+    @Test
+    void listTags_noTags_showsHowToAddOne() {
+        new ListTagsCommand().execute(games, ui, storage);
+
+        assertTrue(output.toString().contains(ListTagsCommand.NO_TAGS_MESSAGE));
     }
 
     @Test
@@ -112,16 +144,35 @@ class TagCommandTest {
     }
 
     @Test
-    void filterByTag_noGameHasTag_showsNoGamesMessage() {
-        new FilterTagCommand("co-op").execute(games, ui, storage);
+    void filterByTag_withPlayerCountAndTime_showsOnlyGamesFittingAll() {
+        games.add(new Game("Werewolf", 8, 18, 30));
+        games.add(new Game("Telestrations", 4, 8, 30));
+        for (int i = 1; i < 4; i++) {
+            games.get(i).addTag("party");
+        }
 
-        assertTrue(output.toString().contains("No games are tagged 'co-op'."));
+        new FilterTagCommand("party", 6, 45).execute(games, ui, storage);
+
+        // Codenames has no play time and Werewolf needs 8+ players, so only Telestrations fits.
+        String printed = output.toString();
+        assertTrue(printed.contains("Games tagged 'party' for 6 players in 45 minutes or less:"));
+        assertTrue(printed.contains("Telestrations"));
+        assertFalse(printed.contains("Codenames"));
+        assertFalse(printed.contains("Werewolf"));
+    }
+
+    @Test
+    void filterByTag_noGameMatches_showsNoGamesMessageWithConditions() {
+        new FilterTagCommand("co-op", 2, 0).execute(games, ui, storage);
+
+        assertTrue(output.toString().contains("No games tagged 'co-op' for 2 players."));
     }
 
     @Test
     void isExit_allTagCommands_returnFalse() {
-        assertFalse(new TagCommand(1, "party").isExit());
-        assertFalse(new UntagCommand(1, "party").isExit());
+        assertFalse(new TagCommand(1, List.of("party")).isExit());
+        assertFalse(new UntagCommand(1, List.of("party")).isExit());
+        assertFalse(new ListTagsCommand().isExit());
         assertFalse(new FilterTagCommand("party").isExit());
     }
 }

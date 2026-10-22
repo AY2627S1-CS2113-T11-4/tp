@@ -3,6 +3,7 @@ package seedu.gamevault.game;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.TreeMap;
 
 /**
  * Holds the user's collection of games.
@@ -148,5 +149,21 @@ public class GameList {
             }
         }
         return matches;
+    }
+
+    /**
+     * Returns every tag used in the collection, mapped to the number of games that have it.
+     * A TreeMap is used so that the tags come out in alphabetical order.
+     *
+     * @return A new map from tag to game count; empty if no game has a tag.
+     */
+    public TreeMap<String, Integer> countTags() {
+        TreeMap<String, Integer> tagCounts = new TreeMap<>();
+        for (Game game : games) {
+            for (String tag : game.getTags()) {
+                tagCounts.merge(tag, 1, Integer::sum);
+            }
+        }
+        return tagCounts;
     }
 }

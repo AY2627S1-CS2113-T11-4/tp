@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -86,5 +87,16 @@ class GameListTest {
         assertEquals("Catan", matches.get(0).getTitle());
         assertEquals("Codenames", matches.get(1).getTitle());
         assertTrue(games.filterByTag("co-op").isEmpty());
+    }
+
+    @Test
+    void countTags_gamesWithTags_countsEachTagInAlphabeticalOrder() {
+        assertTrue(games.countTags().isEmpty());
+        games.get(0).addTag("strategy");
+        games.get(0).addTag("family");
+        games.get(2).addTag("family");
+
+        assertEquals(Map.of("family", 2, "strategy", 1), games.countTags());
+        assertEquals("family", games.countTags().firstKey());
     }
 }

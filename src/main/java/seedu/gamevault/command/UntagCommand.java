@@ -1,5 +1,8 @@
 package seedu.gamevault.command;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
@@ -9,28 +12,30 @@ import seedu.gamevault.ui.Ui;
 
 //@@author KRAZYZECTRON
 /**
- * Removes a tag from a game, then saves the updated collection to the data file.
+ * Removes one or more tags from a game, then saves the updated collection to the data file.
  * The game is chosen by the number shown next to it in {@code list}, which starts from 1.
+ * Tags the game does not have are skipped and reported.
  */
 public class UntagCommand extends Command {
     public static final String COMMAND_WORD = "untag";
-    public static final String USAGE = "untag INDEX TAG";
+    public static final String USAGE = "untag INDEX TAG [MORE_TAGS]...";
 
     private final int displayNumber;
-    private final String tag;
+    private final List<String> tags;
 
     /**
-     * Creates a command that removes a tag from the game shown with the given number in {@code list}.
-     * Whether that game exists, and whether it has the tag, is only checked when the command runs.
+     * Creates a command that removes tags from the game shown with the given number in {@code list}.
+     * Whether that game exists, and which tags it has, is only checked when the command runs.
      *
      * @param displayNumber Number of the game as shown in {@code list} (at least 1).
-     * @param tag Tag to remove; already normalised and checked to be valid by the parser.
+     * @param tags Tags to remove (at least one, no repeats); already normalised and checked by the parser.
      */
-    public UntagCommand(int displayNumber, String tag) {
+    public UntagCommand(int displayNumber, List<String> tags) {
         assert displayNumber >= 1 : "Display number should be at least 1";
-        assert Tag.isValid(tag) : "Tag should be valid and normalised";
+        assert !tags.isEmpty() : "At least one tag should be given";
+        assert tags.stream().allMatch(Tag::isValid) : "Tags should be valid and normalised";
         this.displayNumber = displayNumber;
-        this.tag = tag;
+        this.tags = List.copyOf(tags);
     }
 
     @Override
@@ -40,11 +45,26 @@ public class UntagCommand extends Command {
         }
 
         Game game = games.get(displayNumber - 1); // The list shows games from 1, while GameList counts from 0.
-        if (!game.hasTag(tag)) {
-            throw new GameVaultException(game.getTitle() + " does not have the tag '" + tag + "'.");
+        List<String> removed = new ArrayList<>();
+        List<String> notThere = new ArrayList<>();
+        for (String tag : tags) {
+            if (game.hasTag(tag)) {
+                game.removeTag(tag);
+                removed.add(tag);
+            } else {
+                notThere.add(tag);
+            }
         }
-        game.removeTag(tag);
+        if (removed.isEmpty()) {
+            throw new GameVaultException(game.getTitle() + " does not have the tag(s) " + TagCommand.quote(tags)
+                    + ".");
+        }
+
         storage.save(games);
-        ui.showMessage("Removed tag '" + tag + "': " + game);
+        String message = "Removed tag(s) " + TagCommand.quote(removed) + ": " + game;
+        if (!notThere.isEmpty()) {
+            message += System.lineSeparator() + "(Did not have " + TagCommand.quote(notThere) + ", so skipped.)";
+        }
+        ui.showMessage(message);
     }
 }
