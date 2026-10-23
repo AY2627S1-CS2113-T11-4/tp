@@ -18,6 +18,7 @@ import seedu.gamevault.command.EditCommand;
 import seedu.gamevault.command.ExitCommand;
 import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.FilterTagCommand;
+import seedu.gamevault.command.FindCommand;
 import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.command.ListCommand;
 import seedu.gamevault.command.ListTagsCommand;
@@ -80,6 +81,8 @@ public class Parser {
             return parseFilter(arguments);
         case DeleteCommand.COMMAND_WORD:
             return parseDelete(arguments);
+        case FindCommand.COMMAND_WORD:
+            return parseFind(arguments);
         case EditCommand.COMMAND_WORD:
             return parseEdit(arguments);
         case TagCommand.COMMAND_WORD:
@@ -203,6 +206,23 @@ public class Parser {
         return fields;
     }
 
+    //@@author SwaggyDaddy67
+    /**
+     * Builds a {@link FindCommand} from arguments in the form {@code KEYWORD}, e.g. {@code mono}.
+     * The keyword may contain spaces, e.g. {@code ticket to}, and is matched as one piece of text.
+     *
+     * @throws GameVaultException If KEYWORD is missing.
+     */
+    private static Command parseFind(String arguments) throws GameVaultException {
+        String keyword = arguments.trim();
+        if (keyword.isEmpty()) {
+            throw new GameVaultException("KEYWORD is missing. Format: " + FindCommand.USAGE
+                    + " (e.g. find cat)");
+        }
+        return new FindCommand(keyword);
+    }
+
+    //@@author
     /**
      * Builds a {@link PickCommand} from arguments in the form {@code COUNT [/time MINUTES]},
      * e.g. {@code 4} or {@code 4 /time 45}.
