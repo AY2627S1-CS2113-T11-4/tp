@@ -72,6 +72,7 @@ class ParserTest {
         assertThrows(GameVaultException.class, () -> Parser.parse("help me"));
     }
 
+    //@@author SwaggyDaddy67
     @Test
     void parse_list_returnsListCommand() throws GameVaultException {
         assertInstanceOf(ListCommand.class, Parser.parse("list"));
@@ -84,6 +85,7 @@ class ParserTest {
         assertTrue(e.getMessage().contains("does not take any arguments"));
     }
 
+    //@@author
     @Test
     void parse_validAdd_returnsAddCommand() throws GameVaultException {
         assertInstanceOf(AddCommand.class, Parser.parse("add Catan /min 3 /max 4"));
@@ -159,6 +161,7 @@ class ParserTest {
         assertThrows(GameVaultException.class, () -> Parser.parse("pick /time 30"));
     }
 
+    //@@author SwaggyDaddy67
     @Test
     void parse_validDelete_returnsDeleteCommand() throws GameVaultException {
         assertInstanceOf(DeleteCommand.class, Parser.parse("delete 1"));
@@ -192,6 +195,7 @@ class ParserTest {
         assertEquals(DeleteCommand.getNoSuchGameMessage("99999999999"), e.getMessage());
     }
 
+    //@@author
     @Test
     void parse_editFieldsInAnyOrder_returnsEditCommand() throws GameVaultException {
         assertInstanceOf(EditCommand.class, Parser.parse("edit 1 /max 6 /title Catan /min 2"));

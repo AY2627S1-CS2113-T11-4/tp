@@ -42,6 +42,7 @@ public class GameList {
         games.add(game);
     }
 
+    //@@author SwaggyDaddy67
     /**
      * Removes the game at the given position and returns it. Games after it move up by one.
      * Callers must check the index first; the assertion here only catches programming errors.
@@ -54,6 +55,7 @@ public class GameList {
         return games.remove(index);
     }
 
+    //@@author
     /**
      * Returns the number of games in the list.
      *
