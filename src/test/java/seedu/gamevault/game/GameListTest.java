@@ -39,6 +39,7 @@ class GameListTest {
         assertEquals(3, games.size());
     }
 
+    //@@author SwaggyDaddy67
     @Test
     void delete_middleGame_returnsItAndShiftsLaterGamesUp() {
         Game deleted = games.delete(1);
@@ -58,6 +59,7 @@ class GameListTest {
         assertEquals("Chess", games.getGames().get(0).getTitle());
     }
 
+    //@@author
     @Test
     void filterByPlayersAndTime_mixOfTimes_returnsOnlyTimedGamesWithinLimit() {
         GameList timedGames = new GameList();

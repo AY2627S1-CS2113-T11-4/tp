@@ -220,6 +220,7 @@ public class Parser {
         return new PickCommand(playerCount, minutes);
     }
 
+    //@@author SwaggyDaddy67
     /**
      * Builds a {@link DeleteCommand} from arguments in the form {@code INDEX}, e.g. {@code 2}.
      *
@@ -234,6 +235,7 @@ public class Parser {
         return new DeleteCommand(parseIndex(indexText));
     }
 
+    //@@author
     /**
      * Returns the game number in {@code indexText}, which must be a whole number of at least 1.
      * Shared by commands that pick a game by its number in {@code list}, e.g. delete and edit.
@@ -421,10 +423,12 @@ public class Parser {
         }
     }
 
+    //@@author SwaggyDaddy67
     private static String getIndexTooSmallMessage(String indexText) {
         return "INDEX should be at least 1, but was " + indexText + ".";
     }
 
+    //@@author
     /**
      * Returns the number in {@code text}, such as a player count or a number of minutes,
      * which must be a whole number of at least 1.
