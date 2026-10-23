@@ -38,6 +38,7 @@ ____________________________________________________________
 Here are the commands you can use:
   add     Adds a game: add TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]
   list    Lists all games in your collection.
+  find    Finds games by title: find KEYWORD
   filter  Shows games that fit a player count: filter COUNT [/time MINUTES]
           or games with a tag: filter [COUNT] [/time MINUTES] /tag TAG
   pick    Picks a random game that fits a player count: pick COUNT [/time MINUTES]
@@ -155,6 +156,33 @@ ____________________________________________________________
 ```
 
 If no game matches, GameVault says so, e.g. `No games tagged 'party' for 3 players.`
+<!-- @@author -->
+
+<!-- @@author SwaggyDaddy67 -->
+### Finding games by title: `find`
+
+Shows the games whose title contains the given keyword, so you can locate a game without scrolling through `list`.
+
+Format: `find KEYWORD`
+
+* The search is case-insensitive, e.g. `mono` finds `Monopoly`.
+* Part of a title is enough, e.g. `cat` finds `Catan`.
+* `KEYWORD` may contain spaces, e.g. `find ticket to` finds `Ticket to Ride`.
+* Each game is shown with its number from `list`, so you can use it with `delete`, `edit` or `tag` straight away.
+* Your collection is not changed.
+
+Example of usage: `find mono`
+
+Expected output:
+
+```
+____________________________________________________________
+Games with 'mono' in the title:
+2. Monopoly (2-8 players)
+____________________________________________________________
+```
+
+If no title contains the keyword, GameVault shows `No games have 'mono' in the title.` instead.
 <!-- @@author -->
  
 ### Picking a random game: `pick`
@@ -371,6 +399,7 @@ Action | Format
 -------|-------
 Add | `add TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]`, e.g. `add Catan /min 3 /max 4 /time 60 /tag strategy`
 Filter | `filter COUNT [/time MINUTES]`, e.g. `filter 4 /time 45`<br>`filter [COUNT] [/time MINUTES] /tag TAG`, e.g. `filter 6 /tag party`
+Find | `find KEYWORD`, e.g. `find mono`
 Pick | `pick COUNT [/time MINUTES]`, e.g. `pick 4 /time 45`
 Edit | `edit INDEX [/title TITLE] [/min MIN] [/max MAX]`, e.g. `edit 1 /max 6`
 Tag | `tag INDEX TAG [MORE_TAGS]...`, e.g. `tag 2 party drawing`
