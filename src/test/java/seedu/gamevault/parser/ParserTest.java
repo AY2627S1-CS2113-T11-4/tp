@@ -21,6 +21,7 @@ import seedu.gamevault.command.EditCommand;
 import seedu.gamevault.command.ExitCommand;
 import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.FilterTagCommand;
+import seedu.gamevault.command.FindCommand;
 import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.command.ListCommand;
 import seedu.gamevault.command.ListTagsCommand;
@@ -369,5 +370,18 @@ class ParserTest {
         Ui ui = new Ui(new ByteArrayInputStream(new byte[0]), new PrintStream(output));
         Parser.parse(input).execute(games, ui, storage);
         return output.toString();
+    }
+
+    //@@author SwaggyDaddy67
+    @Test
+    void parse_validFind_returnsFindCommand() throws GameVaultException {
+        assertInstanceOf(FindCommand.class, Parser.parse("find mono"));
+        assertInstanceOf(FindCommand.class, Parser.parse("FIND   ticket to "));
+    }
+
+    @Test
+    void parse_findWithoutKeyword_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("find   "));
+        assertEquals("KEYWORD is missing. Format: " + FindCommand.USAGE + " (e.g. find cat)", e.getMessage());
     }
 }
