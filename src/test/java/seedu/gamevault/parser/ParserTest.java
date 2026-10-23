@@ -27,6 +27,7 @@ import seedu.gamevault.command.ListTagsCommand;
 import seedu.gamevault.command.TagCommand;
 import seedu.gamevault.command.UntagCommand;
 import seedu.gamevault.command.PickCommand;
+import seedu.gamevault.command.SortCommand;
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
@@ -269,6 +270,27 @@ class ParserTest {
         assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 /time 0"));
         assertThrows(GameVaultException.class, () -> Parser.parse("filter /time 45"));
         assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 /time 45 /time 30"));
+    }
+
+    //@@author SwaggyDaddy67
+    @Test
+    void parse_validSort_returnsSortCommand() throws GameVaultException {
+        assertInstanceOf(SortCommand.class, Parser.parse("sort title"));
+        assertInstanceOf(SortCommand.class, Parser.parse("SORT   Players "));
+        assertInstanceOf(SortCommand.class, Parser.parse("sort time"));
+    }
+
+    @Test
+    void parse_sortWithoutOrder_throwsExceptionListingOrders() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("sort"));
+        assertTrue(e.getMessage().contains("title, players or time"));
+    }
+
+    @Test
+    void parse_sortByUnknownOrder_throwsExceptionNamingIt() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("sort rating"));
+        assertTrue(e.getMessage().startsWith("Cannot sort by 'rating'."));
+        assertThrows(GameVaultException.class, () -> Parser.parse("sort title time"));
     }
 
     //@@author KRAZYZECTRON
