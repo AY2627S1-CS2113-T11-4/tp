@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -22,10 +23,12 @@ import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.command.ListCommand;
 import seedu.gamevault.command.ListTagsCommand;
 import seedu.gamevault.command.PickCommand;
+import seedu.gamevault.command.SortCommand;
 import seedu.gamevault.command.TagCommand;
 import seedu.gamevault.command.UntagCommand;
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Game;
+import seedu.gamevault.game.SortOrder;
 import seedu.gamevault.game.Tag;
 
 /**
@@ -91,6 +94,8 @@ public class Parser {
             return new ListTagsCommand();
         case PickCommand.COMMAND_WORD:
             return parsePick(arguments);
+        case SortCommand.COMMAND_WORD:
+            return parseSort(arguments);
         default:
             throw new GameVaultException("Unknown command '" + parts[0]
                     + "'. Type 'help' to see all commands.");
@@ -311,6 +316,26 @@ public class Parser {
             throw new GameVaultException("TITLE cannot contain the '|' character.");
         }
         return title;
+    }
+
+    //@@author SwaggyDaddy67
+    /**
+     * Builds a {@link SortCommand} from arguments in the form {@code ORDER}, e.g. {@code time}.
+     *
+     * @throws GameVaultException If ORDER is missing or is not one of the supported orders.
+     */
+    private static Command parseSort(String arguments) throws GameVaultException {
+        String orderText = arguments.trim();
+        if (orderText.isEmpty()) {
+            throw new GameVaultException("Please say what to sort by: " + SortOrder.describeKeywords()
+                    + ". Format: " + SortCommand.USAGE + " (e.g. sort time)");
+        }
+        Optional<SortOrder> order = SortOrder.fromKeyword(orderText);
+        if (order.isEmpty()) {
+            throw new GameVaultException("Cannot sort by '" + orderText + "'. Choose "
+                    + SortOrder.describeKeywords() + ". Format: " + SortCommand.USAGE);
+        }
+        return new SortCommand(order.get());
     }
 
     //@@author KRAZYZECTRON

@@ -26,6 +26,7 @@ public class HelpCommand extends Command {
               tag     Adds tags to a game: tag INDEX TAG [MORE_TAGS]...
               untag   Removes tags from a game: untag INDEX TAG [MORE_TAGS]...
               tags    Lists all tags in use and how many games have each.
+              sort    Sorts your collection: sort title|players|time
               help    Shows this list of commands.
               exit    Exits GameVault.""";
 
