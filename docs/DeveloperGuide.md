@@ -28,20 +28,62 @@ game's current maximum is 4). If the check passes, `GameList#set` replaces the g
 * *Replace in place vs. delete and re-add:* replacing keeps the game's number in `list` unchanged,
   which is less confusing for the user.
 
-### Loading the data file
+### Picking a random game (`pick`)
 
-When the app starts, `GameVault` calls `Storage#load`, which reads `data/games.txt` line by line. Each non-blank line
-is decoded by `GameDecoder#decodeLine`, which expects the format `TITLE | MIN | MAX | TIME`, where `TIME` is
-optional (e.g. `Catan | 3 | 4 | 60` or `Catan | 3 | 4`).
+The `pick` command helps a host who cannot decide what to play. It picks one random game that fits tonight's
+group, using the format `pick COUNT [/time MINUTES]`, e.g. `pick 4 /time 45`. It is implemented by
+`Parser#parsePick` and `PickCommand`, and reuses the filtering methods of `GameList`, so `pick` and `filter` always
+agree on which games fit.
 
-**Handling invalid lines.** If a line is invalid (e.g. a missing field, a non-numeric count, or `MAX < MIN`),
-`GameDecoder` throws a `GameVaultException` explaining why. `Storage#load` catches it, records the line number and
-reason, and moves on to the next line. After loading, `GameVault` shows these via `Ui#showSkippedLines`.
-A missing data file is not an error; the app simply starts with an empty collection.
+The sequence diagram below shows what happens when the user enters `pick 4 /time 45`.
 
-**Design considerations.**
-* *Skip the line vs. reject the whole file:* the data file is meant to be human-editable, so one typo should not
-  lose the user's entire collection. Skipping only the bad lines keeps every valid game.
+![Picking a random game](images/PickSequence.png)
+
+1. `Parser#parse(...)` sees the command word `pick` and calls `Parser#parsePick(...)`. This uses
+   `Parser#splitByPrefixes(...)` to separate `COUNT` (`4`) from the optional `/time` value (`45`), and checks both
+   with `Parser#parsePositiveNumber(...)`, so an invalid value such as `pick 0` or `pick 4 /time soon` is rejected
+   with a `GameVaultException` before any command is created.
+2. `parsePick` creates a `PickCommand(4, 45)`. If `/time` is not given, it uses `PickCommand(4)` instead, which
+   stores `0` to mean "no time limit".
+3. `GameVault` calls `PickCommand#execute(...)`. With a time limit, it asks the `GameList` for
+   `filterByPlayersAndTime(4, 45)`. Without one, it uses `filterByPlayers(4)`. Either way, the collection itself is
+   not changed, so `pick` never saves to the data file.
+4. If no game matches, the message says there is nothing to pick from. Otherwise, `PickCommand` asks its `Random`
+   object for `nextInt(matches.size())` and picks the game at that position.
+5. With a time limit, `PickCommand` also calls `GameList#countWithoutPlayTime(4)`. Games with no play time
+   recorded cannot be known to fit in 45 minutes, so they are left out, and the message says how many were left
+   out. This matches what `filter` does.
+6. `PickCommand` shows the result through `Ui#showMessage(...)`, e.g.
+   `How about: Love Letter (2-4 players, 20 min)`.
+
+#### Design considerations
+
+**Aspect: How to make a random result testable**
+
+* **Alternative 1 (current choice):** `PickCommand` takes a `Random` object. The public constructors create a
+  normal `new Random()`, while a package-private constructor lets tests pass in their own.
+  * Pros: Tests can pass a `Random` that always returns a chosen value, so they can check exactly which game is
+    picked, e.g. that position 2 of the matches is chosen and that a game that does not fit is never chosen.
+  * Cons: One extra constructor that only tests use.
+* **Alternative 2:** Call `Math.random()` (or create a `new Random()`) inside `execute(...)`.
+  * Pros: Slightly less code.
+  * Cons: Tests could only check that *some* matching game was picked, not which one, so bugs such as an
+    off-by-one in choosing the position could go unnoticed.
+
+**Aspect: Where the filtering logic lives**
+
+* **Alternative 1 (current choice):** Reuse `GameList#filterByPlayers(...)` and
+  `GameList#filterByPlayersAndTime(...)`, which `filter` also uses.
+  * Pros: `pick` and `filter` cannot disagree. A game shown by `filter 4 /time 45` is exactly a game that
+    `pick 4 /time 45` can choose, and a fix to the filtering rules applies to both commands.
+  * Cons: `pick` depends on how `filter` defines "fits", so the two cannot easily use different rules later.
+* **Alternative 2:** Let `PickCommand` check each game itself.
+  * Pros: `pick` could later use its own rules without affecting `filter`.
+  * Cons: The same checks would exist in two places, which is duplicate code and makes the commands more likely
+    to drift apart.
+
+**Possible future improvement:** once play sessions are logged, `pick` could avoid games the group played
+recently, so the same favourite is not suggested every time.
 
 ### Saving and loading games (Storage)
 
