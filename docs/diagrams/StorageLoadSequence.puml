@@ -1,0 +1,40 @@
+@startuml
+' Loading saved games when GameVault starts
+hide footbox
+skinparam sequenceReferenceBackgroundColor #FFFFFF
+
+participant ":GameVault" as GV
+participant ":Storage" as S
+participant "GameDecoder" as D <<class>>
+participant ":Ui" as UI
+
+activate GV
+GV -> S : createFileIfMissing()
+activate S
+S --> GV
+deactivate S
+
+GV -> S : load()
+activate S
+S -> S : read all lines of data file
+loop each non-blank line
+  S -> D : decodeLine(line)
+  activate D
+  alt line is valid
+    D --> S : game
+  else line is invalid
+    D --> S : GameVaultException
+    S -> S : record line in skippedLines
+  end
+  deactivate D
+end
+S --> GV : games
+deactivate S
+
+opt skippedLines is not empty
+  GV -> UI : showSkippedLines(skippedLines, FORMAT)
+  activate UI
+  UI --> GV
+  deactivate UI
+end
+@enduml

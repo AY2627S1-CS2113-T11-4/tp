@@ -2,6 +2,7 @@ package seedu.gamevault.game;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.TreeMap;
 
@@ -41,6 +42,7 @@ public class GameList {
         games.add(game);
     }
 
+    //@@author SwaggyDaddy67
     /**
      * Removes the game at the given position and returns it. Games after it move up by one.
      * Callers must check the index first; the assertion here only catches programming errors.
@@ -53,6 +55,7 @@ public class GameList {
         return games.remove(index);
     }
 
+    //@@author
     /**
      * Returns the number of games in the list.
      *
@@ -71,6 +74,20 @@ public class GameList {
     public List<Game> getGames() {
         return Collections.unmodifiableList(games);
     }
+
+    //@@author SwaggyDaddy67
+    /**
+     * Reorders the games using the given comparator, e.g. one from {@link SortOrder}.
+     * The sort is stable, so games the comparator considers equal keep their current order.
+     *
+     * @param comparator Decides which of two games comes first.
+     */
+    public void sort(Comparator<Game> comparator) {
+        assert comparator != null : "Comparator to sort by should not be null";
+        games.sort(comparator);
+    }
+
+    //@@author
 
     /**
      * Returns the games that can be played by the given number of players, in their original order.

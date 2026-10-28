@@ -38,6 +38,7 @@ ____________________________________________________________
 Here are the commands you can use:
   add     Adds a game: add TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]
   list    Lists all games in your collection.
+  find    Finds games by title: find KEYWORD
   filter  Shows games that fit a player count: filter COUNT [/time MINUTES]
           or games with a tag: filter [COUNT] [/time MINUTES] /tag TAG
   pick    Picks a random game that fits a player count: pick COUNT [/time MINUTES]
@@ -46,6 +47,7 @@ Here are the commands you can use:
   tag     Adds tags to a game: tag INDEX TAG [MORE_TAGS]...
   untag   Removes tags from a game: untag INDEX TAG [MORE_TAGS]...
   tags    Lists all tags in use and how many games have each.
+  sort    Sorts your collection: sort title|players|time
   help    Shows this list of commands.
   exit    Exits GameVault.
 ____________________________________________________________
@@ -179,6 +181,33 @@ ____________________________________________________________
 ```
 
 If no game matches, GameVault says so, e.g. `No games tagged 'party' for 3 players.`
+<!-- @@author -->
+
+<!-- @@author SwaggyDaddy67 -->
+### Finding games by title: `find`
+
+Shows the games whose title contains the given keyword, so you can locate a game without scrolling through `list`.
+
+Format: `find KEYWORD`
+
+* The search is case-insensitive, e.g. `mono` finds `Monopoly`.
+* Part of a title is enough, e.g. `cat` finds `Catan`.
+* `KEYWORD` may contain spaces, e.g. `find ticket to` finds `Ticket to Ride`.
+* Each game is shown with its number from `list`, so you can use it with `delete`, `edit` or `tag` straight away.
+* Your collection is not changed.
+
+Example of usage: `find mono`
+
+Expected output:
+
+```
+____________________________________________________________
+Games with 'mono' in the title:
+2. Monopoly (2-8 players)
+____________________________________________________________
+```
+
+If no title contains the keyword, GameVault shows `No games have 'mono' in the title.` instead.
 <!-- @@author -->
  
 ### Picking a random game: `pick`
@@ -330,6 +359,37 @@ ____________________________________________________________
 
 If none of your games have tags, GameVault tells you how to add one instead.
 <!-- @@author -->
+
+<!-- @@author SwaggyDaddy67 -->
+### Sorting your collection: `sort`
+
+Reorders your whole collection by title, player count or play time, so it is easier to scan.
+
+Format: `sort title`, `sort players` or `sort time`
+
+* `sort title` puts games in alphabetical order, ignoring upper and lower case.
+* `sort players` puts games that need the fewest players first (by minimum, then maximum players).
+* `sort time` puts the shortest games first. Games with no play time recorded go last.
+* Games that tie are put in alphabetical order.
+* The new order is saved, so `list` shows it from now on. **The numbers next to each game change to match**,
+  so check the new numbers before using `delete`, `edit` or `tag`.
+* Games added later go to the end of the list. Run `sort` again to put them in place.
+
+Example of usage: `sort time`
+
+Expected output:
+
+```
+____________________________________________________________
+Sorted your collection by play time (shortest first, games with no play time last):
+1. Love Letter (2-4 players, 20 min)
+2. Catan (3-4 players, 60 min)
+3. Codenames (4-8 players)
+____________________________________________________________
+```
+
+If your collection is empty, GameVault shows `No games in your collection to sort yet.` instead.
+<!-- @@author -->
  
 ### Exiting the program: `exit`
  
@@ -390,12 +450,14 @@ Action | Format
 Add | `add TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]`, e.g. `add Catan /min 3 /max 4 /time 60 /tag strategy`
 List | `list`
 Filter | `filter COUNT [/time MINUTES]`, e.g. `filter 4 /time 45`<br>`filter [COUNT] [/time MINUTES] /tag TAG`, e.g. `filter 6 /tag party`
+Find | `find KEYWORD`, e.g. `find mono`
 Pick | `pick COUNT [/time MINUTES]`, e.g. `pick 4 /time 45`
 Delete | `delete INDEX`, e.g. `delete 2`
 Edit | `edit INDEX [/title TITLE] [/min MIN] [/max MAX]`, e.g. `edit 1 /max 6`
 Tag | `tag INDEX TAG [MORE_TAGS]...`, e.g. `tag 2 party drawing`
 Untag | `untag INDEX TAG [MORE_TAGS]...`, e.g. `untag 2 co-op`
 List tags | `tags`
+Sort | `sort title`, `sort players` or `sort time`, e.g. `sort time`
 Help | `help`
 Exit | `exit`
  

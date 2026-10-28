@@ -6,6 +6,7 @@ import seedu.gamevault.game.GameList;
 import seedu.gamevault.storage.Storage;
 import seedu.gamevault.ui.Ui;
 
+//@@author SwaggyDaddy67
 /**
  * Deletes a game from the collection and saves the updated collection to the data file.
  * The game is chosen by the number shown next to it in {@code list}, which starts from 1.

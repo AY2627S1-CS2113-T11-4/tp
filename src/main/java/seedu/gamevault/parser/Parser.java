@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -18,14 +19,17 @@ import seedu.gamevault.command.EditCommand;
 import seedu.gamevault.command.ExitCommand;
 import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.FilterTagCommand;
+import seedu.gamevault.command.FindCommand;
 import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.command.ListCommand;
 import seedu.gamevault.command.ListTagsCommand;
 import seedu.gamevault.command.PickCommand;
+import seedu.gamevault.command.SortCommand;
 import seedu.gamevault.command.TagCommand;
 import seedu.gamevault.command.UntagCommand;
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Game;
+import seedu.gamevault.game.SortOrder;
 import seedu.gamevault.game.Tag;
 
 /**
@@ -80,6 +84,8 @@ public class Parser {
             return parseFilter(arguments);
         case DeleteCommand.COMMAND_WORD:
             return parseDelete(arguments);
+        case FindCommand.COMMAND_WORD:
+            return parseFind(arguments);
         case EditCommand.COMMAND_WORD:
             return parseEdit(arguments);
         case TagCommand.COMMAND_WORD:
@@ -91,6 +97,8 @@ public class Parser {
             return new ListTagsCommand();
         case PickCommand.COMMAND_WORD:
             return parsePick(arguments);
+        case SortCommand.COMMAND_WORD:
+            return parseSort(arguments);
         default:
             throw new GameVaultException("Unknown command '" + parts[0]
                     + "'. Type 'help' to see all commands.");
@@ -203,6 +211,23 @@ public class Parser {
         return fields;
     }
 
+    //@@author SwaggyDaddy67
+    /**
+     * Builds a {@link FindCommand} from arguments in the form {@code KEYWORD}, e.g. {@code mono}.
+     * The keyword may contain spaces, e.g. {@code ticket to}, and is matched as one piece of text.
+     *
+     * @throws GameVaultException If KEYWORD is missing.
+     */
+    private static Command parseFind(String arguments) throws GameVaultException {
+        String keyword = arguments.trim();
+        if (keyword.isEmpty()) {
+            throw new GameVaultException("KEYWORD is missing. Format: " + FindCommand.USAGE
+                    + " (e.g. find cat)");
+        }
+        return new FindCommand(keyword);
+    }
+
+    //@@author
     /**
      * Builds a {@link PickCommand} from arguments in the form {@code COUNT [/time MINUTES]},
      * e.g. {@code 4} or {@code 4 /time 45}.
@@ -220,6 +245,7 @@ public class Parser {
         return new PickCommand(playerCount, minutes);
     }
 
+    //@@author SwaggyDaddy67
     /**
      * Builds a {@link DeleteCommand} from arguments in the form {@code INDEX}, e.g. {@code 2}.
      *
@@ -234,6 +260,7 @@ public class Parser {
         return new DeleteCommand(parseIndex(indexText));
     }
 
+    //@@author
     /**
      * Returns the game number in {@code indexText}, which must be a whole number of at least 1.
      * Shared by commands that pick a game by its number in {@code list}, e.g. delete and edit.
@@ -311,6 +338,26 @@ public class Parser {
             throw new GameVaultException("TITLE cannot contain the '|' character.");
         }
         return title;
+    }
+
+    //@@author SwaggyDaddy67
+    /**
+     * Builds a {@link SortCommand} from arguments in the form {@code ORDER}, e.g. {@code time}.
+     *
+     * @throws GameVaultException If ORDER is missing or is not one of the supported orders.
+     */
+    private static Command parseSort(String arguments) throws GameVaultException {
+        String orderText = arguments.trim();
+        if (orderText.isEmpty()) {
+            throw new GameVaultException("Please say what to sort by: " + SortOrder.describeKeywords()
+                    + ". Format: " + SortCommand.USAGE + " (e.g. sort time)");
+        }
+        Optional<SortOrder> order = SortOrder.fromKeyword(orderText);
+        if (order.isEmpty()) {
+            throw new GameVaultException("Cannot sort by '" + orderText + "'. Choose "
+                    + SortOrder.describeKeywords() + ". Format: " + SortCommand.USAGE);
+        }
+        return new SortCommand(order.get());
     }
 
     //@@author KRAZYZECTRON
@@ -421,10 +468,12 @@ public class Parser {
         }
     }
 
+    //@@author SwaggyDaddy67
     private static String getIndexTooSmallMessage(String indexText) {
         return "INDEX should be at least 1, but was " + indexText + ".";
     }
 
+    //@@author
     /**
      * Returns the number in {@code text}, such as a player count or a number of minutes,
      * which must be a whole number of at least 1.

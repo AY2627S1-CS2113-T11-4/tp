@@ -1,0 +1,34 @@
+@startuml
+' Classes involved in saving and loading games
+hide circle
+skinparam classAttributeIconSize 0
+
+class GameVault
+class "{abstract}\nCommand" as Command
+
+class Storage {
+  - filePath : Path
+  - skippedLines : List<String>
+  + load() : ArrayList<Game>
+  + save(games : GameList) : void
+  + createFileIfMissing() : void
+  + getSkippedLines() : List<String>
+}
+
+class GameDecoder {
+  + {static} FORMAT : String
+  + {static} decodeLine(line : String) : Game
+}
+
+class GameList
+class Game {
+  + toFileString() : String
+}
+
+GameVault --> "1" Storage
+GameVault --> "1" GameList
+Command ..> Storage : saves with >
+Storage ..> GameDecoder : decodes lines with >
+Storage ..> Game : creates >
+GameList --> "*" Game
+@enduml

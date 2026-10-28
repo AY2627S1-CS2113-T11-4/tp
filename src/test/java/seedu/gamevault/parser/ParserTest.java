@@ -21,12 +21,14 @@ import seedu.gamevault.command.EditCommand;
 import seedu.gamevault.command.ExitCommand;
 import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.FilterTagCommand;
+import seedu.gamevault.command.FindCommand;
 import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.command.ListCommand;
 import seedu.gamevault.command.ListTagsCommand;
 import seedu.gamevault.command.TagCommand;
 import seedu.gamevault.command.UntagCommand;
 import seedu.gamevault.command.PickCommand;
+import seedu.gamevault.command.SortCommand;
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
@@ -70,6 +72,7 @@ class ParserTest {
         assertThrows(GameVaultException.class, () -> Parser.parse("help me"));
     }
 
+    //@@author SwaggyDaddy67
     @Test
     void parse_list_returnsListCommand() throws GameVaultException {
         assertInstanceOf(ListCommand.class, Parser.parse("list"));
@@ -82,6 +85,7 @@ class ParserTest {
         assertTrue(e.getMessage().contains("does not take any arguments"));
     }
 
+    //@@author
     @Test
     void parse_validAdd_returnsAddCommand() throws GameVaultException {
         assertInstanceOf(AddCommand.class, Parser.parse("add Catan /min 3 /max 4"));
@@ -157,6 +161,7 @@ class ParserTest {
         assertThrows(GameVaultException.class, () -> Parser.parse("pick /time 30"));
     }
 
+    //@@author SwaggyDaddy67
     @Test
     void parse_validDelete_returnsDeleteCommand() throws GameVaultException {
         assertInstanceOf(DeleteCommand.class, Parser.parse("delete 1"));
@@ -190,6 +195,7 @@ class ParserTest {
         assertEquals(DeleteCommand.getNoSuchGameMessage("99999999999"), e.getMessage());
     }
 
+    //@@author
     @Test
     void parse_editFieldsInAnyOrder_returnsEditCommand() throws GameVaultException {
         assertInstanceOf(EditCommand.class, Parser.parse("edit 1 /max 6 /title Catan /min 2"));
@@ -269,6 +275,27 @@ class ParserTest {
         assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 /time 0"));
         assertThrows(GameVaultException.class, () -> Parser.parse("filter /time 45"));
         assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 /time 45 /time 30"));
+    }
+
+    //@@author SwaggyDaddy67
+    @Test
+    void parse_validSort_returnsSortCommand() throws GameVaultException {
+        assertInstanceOf(SortCommand.class, Parser.parse("sort title"));
+        assertInstanceOf(SortCommand.class, Parser.parse("SORT   Players "));
+        assertInstanceOf(SortCommand.class, Parser.parse("sort time"));
+    }
+
+    @Test
+    void parse_sortWithoutOrder_throwsExceptionListingOrders() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("sort"));
+        assertTrue(e.getMessage().contains("title, players or time"));
+    }
+
+    @Test
+    void parse_sortByUnknownOrder_throwsExceptionNamingIt() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("sort rating"));
+        assertTrue(e.getMessage().startsWith("Cannot sort by 'rating'."));
+        assertThrows(GameVaultException.class, () -> Parser.parse("sort title time"));
     }
 
     //@@author KRAZYZECTRON
@@ -369,5 +396,18 @@ class ParserTest {
         Ui ui = new Ui(new ByteArrayInputStream(new byte[0]), new PrintStream(output));
         Parser.parse(input).execute(games, ui, storage);
         return output.toString();
+    }
+
+    //@@author SwaggyDaddy67
+    @Test
+    void parse_validFind_returnsFindCommand() throws GameVaultException {
+        assertInstanceOf(FindCommand.class, Parser.parse("find mono"));
+        assertInstanceOf(FindCommand.class, Parser.parse("FIND   ticket to "));
+    }
+
+    @Test
+    void parse_findWithoutKeyword_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("find   "));
+        assertEquals("KEYWORD is missing. Format: " + FindCommand.USAGE + " (e.g. find cat)", e.getMessage());
     }
 }
