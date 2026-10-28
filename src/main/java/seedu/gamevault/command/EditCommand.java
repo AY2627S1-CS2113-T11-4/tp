@@ -8,7 +8,7 @@ import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
 import seedu.gamevault.storage.Storage;
 import seedu.gamevault.ui.Ui;
-
+//@@author Xandurs
 /**
  * Changes the title, player range and/or play time of a game, then saves the updated collection to the data file.
  * Fields that are not given keep the game's existing values, and the game's tags are always kept.
@@ -90,6 +90,9 @@ public class EditCommand extends Command {
             throw new GameVaultException("MAX (" + maxPlayers + ") cannot be less than MIN (" + minPlayers
                     + "). The game is currently: " + oldGame);
         }
+        if (isClearingMissingPlayTime(oldGame)) {
+            throw new GameVaultException("This game has no play time to remove. The game is currently: " + oldGame);
+        }
 
         int playTime = choosePlayTime(oldGame);
         Game editedGame = playTime == CLEAR_PLAY_TIME
@@ -114,5 +117,13 @@ public class EditCommand extends Command {
             return newPlayTime;
         }
         return oldGame.hasPlayTime() ? oldGame.getPlayTime() : CLEAR_PLAY_TIME;
+    }
+
+    /**
+     * Returns whether the user asked to remove the play time of a game that has none,
+     * which is most likely a mistake (e.g. the wrong INDEX), so it is reported rather than ignored.
+     */
+    private boolean isClearingMissingPlayTime(Game oldGame) {
+        return newPlayTime != null && newPlayTime == CLEAR_PLAY_TIME && !oldGame.hasPlayTime();
     }
 }
