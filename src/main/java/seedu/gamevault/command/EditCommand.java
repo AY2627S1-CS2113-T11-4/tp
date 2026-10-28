@@ -1,11 +1,14 @@
 package seedu.gamevault.command;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
 import seedu.gamevault.storage.Storage;
 import seedu.gamevault.ui.Ui;
 
+//@@author Xandurs
 /**
  * Changes the title and/or player range of a game, then saves the updated collection to the data file.
  * Fields that are not given keep the game's existing values, and the game's play time (if any) is kept.
@@ -14,6 +17,7 @@ import seedu.gamevault.ui.Ui;
 public class EditCommand extends Command {
     public static final String COMMAND_WORD = "edit";
     public static final String USAGE = "edit INDEX [/title TITLE] [/min MIN] [/max MAX]";
+    private static final Logger logger = Logger.getLogger(EditCommand.class.getName());
 
     private final int displayNumber;
     private final String newTitle;
@@ -44,6 +48,7 @@ public class EditCommand extends Command {
     @Override
     public void execute(GameList games, Ui ui, Storage storage) throws GameVaultException {
         if (displayNumber > games.size()) {
+            logger.log(Level.FINE, "Edit rejected: no game numbered " + displayNumber);
             throw new GameVaultException(DeleteCommand.getNoSuchGameMessage(String.valueOf(displayNumber)));
         }
 
@@ -54,6 +59,7 @@ public class EditCommand extends Command {
         int maxPlayers = newMaxPlayers != null ? newMaxPlayers : oldGame.getMaxPlayers();
 
         if (maxPlayers < minPlayers) {
+            logger.log(Level.FINE, "Edit rejected: MAX " + maxPlayers + " is less than MIN " + minPlayers);
             throw new GameVaultException("MAX (" + maxPlayers + ") cannot be less than MIN (" + minPlayers
                     + "). The game is currently: " + oldGame);
         }
@@ -67,6 +73,7 @@ public class EditCommand extends Command {
         }
         games.set(index, editedGame);
         storage.save(games);
+        logger.log(Level.FINE, "Edited game " + displayNumber + ": " + oldGame + " -> " + editedGame);
         ui.showMessage("Edited: " + oldGame + System.lineSeparator() + "Now: " + editedGame);
     }
 }
