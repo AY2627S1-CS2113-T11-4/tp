@@ -51,6 +51,7 @@ class CommandTest {
         assertTrue(output.toString().contains(ExitCommand.GOODBYE_MESSAGE));
     }
 
+    //@@author yy261
     @Test
     void filterCommand_someGamesFit_showsOnlyMatchingGames() {
         GameList games = new GameList();
@@ -75,11 +76,13 @@ class CommandTest {
         assertTrue(output.toString().contains("No games fit 5 players."));
     }
 
+    //@@author
     @Test
     void exitCommand_isExit_returnsTrue() {
         assertTrue(new ExitCommand().isExit());
     }
 
+    //@@author yy261
     @Test
     void filterCommand_withTimeLimit_showsOnlyGamesThatFitInTime() {
         GameList games = new GameList();
