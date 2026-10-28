@@ -102,6 +102,13 @@ public class EditCommand extends Command {
         for (String tag : oldGame.getTags()) {
             editedGame.addTag(tag);
         }
+
+        if (editedGame.toFileString().equals(oldGame.toFileString())) {
+            // Nothing would change, so tell the user instead of rewriting the data file.
+            ui.showMessage("No changes made: the game is already " + oldGame);
+            return;
+        }
+
         games.set(index, editedGame);
         storage.save(games);
         logger.log(Level.FINE, "Edited game " + displayNumber + ": " + oldGame + " -> " + editedGame);
