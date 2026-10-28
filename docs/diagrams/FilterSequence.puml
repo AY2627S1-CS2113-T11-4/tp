@@ -1,0 +1,58 @@
+@startuml
+' Running "filter 4 /time 45": finding games for 4 players that take 45 minutes or less
+hide footbox
+
+participant ":GameVault" as GV
+participant "<<class>>\nParser" as P
+participant ":FilterCommand" as FC
+participant ":GameList" as GL
+participant ":Game" as G
+participant ":Ui" as UI
+
+activate GV
+GV -> P : parse("filter 4 /time 45")
+activate P
+P -> P : splitByPrefixes(...)
+note right of P
+  count = "4"
+  /time = "45"
+end note
+create FC
+P -> FC : new FilterCommand(4, 45)
+activate FC
+FC --> P
+deactivate FC
+P --> GV
+deactivate P
+
+GV -> FC : execute(games, ui, storage)
+activate FC
+FC -> GL : filterByPlayersAndTime(4, 45)
+activate GL
+loop each game in the list
+  GL -> G : fitsPlayerCount(4)
+  activate G
+  G --> GL
+  deactivate G
+  opt fits 4 players
+    GL -> G : fitsTime(45)
+    activate G
+    G --> GL
+    deactivate G
+  end
+end
+GL --> FC : matches
+deactivate GL
+
+FC -> GL : countWithoutPlayTime(4)
+activate GL
+GL --> FC : untimedCount
+deactivate GL
+
+FC -> UI : showMessage(matches and note)
+activate UI
+UI --> FC
+deactivate UI
+FC --> GV
+deactivate FC
+@enduml
