@@ -325,7 +325,14 @@ public class Parser {
             throw new GameVaultException("Please give at least one field to change. Format: "
                     + EditCommand.USAGE + " (e.g. edit 2 /max 6)");
         }
+        // MAX vs MIN can be checked here when both are given; otherwise EditCommand checks it
+        // against the game's current values.
+        if (minPlayers != null && maxPlayers != null && maxPlayers < minPlayers) {
+            throw new GameVaultException("MAX (" + maxPlayers + ") cannot be less than MIN (" + minPlayers + ").");
+        }
+        logger.log(Level.FINE, "Parsed edit of game " + displayNumber);
         return new EditCommand(displayNumber, title, minPlayers, maxPlayers, playTime);
+    
     }
     //@@author Xandurs
     /**
