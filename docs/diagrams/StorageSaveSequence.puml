@@ -18,7 +18,7 @@ activate S
 loop each game in games
   S -> G : toFileString()
   activate G
-  G --> S : "TITLE | MIN | MAX | TIME"
+  G --> S : "TITLE | MIN | MAX | TIME | TAGS"
   deactivate G
 end
 S -> S : create data folder if missing

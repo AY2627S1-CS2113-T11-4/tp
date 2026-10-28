@@ -51,13 +51,20 @@ This is handled by the `Storage` component in the `seedu.gamevault.storage` pack
 * `Storage` reads the data file when the app starts and rewrites it whenever the collection changes.
 * `GameDecoder` turns one line of the file back into a `Game`, checking that the line is valid.
 
-Each game is stored on its own line in the format `TITLE | MIN | MAX | TIME`, where `MIN` and `MAX` are the
-minimum and maximum player counts and `TIME` is the play time in minutes. `TIME` is left out when the user has not
-recorded a play time. For example:
+Each game is stored on its own line in the format `TITLE | MIN | MAX | TIME | TAGS`, where `MIN` and `MAX` are the
+minimum and maximum player counts, `TIME` is the play time in minutes and `TAGS` is the game's tags, separated by
+commas. `TIME` and `TAGS` are optional:
+
+* A game with no tags has no `TAGS` field, and `TIME` is left out too if no play time is recorded.
+* A game with tags always has `TAGS` as the fifth field, so `TIME` is left blank if there is no play time.
+
+For example:
 
 ```
 Catan | 3 | 4 | 60
-Codenames | 4 | 8
+Love Letter | 2 | 4
+Azul | 2 | 4 | 45 | family,strategy
+Codenames | 4 | 8 |  | party,word
 ```
 
 The class diagram below shows how these classes relate to the rest of the app.
@@ -65,8 +72,9 @@ The class diagram below shows how these classes relate to the rest of the app.
 ![Storage class diagram](images/StorageClassDiagram.png)
 
 `GameVault` owns a single `Storage` object, created with the path of the data file. Commands that change the
-collection (currently `add`, `delete` and `edit`) receive the same `Storage` object in `Command#execute(...)` and
+collection (currently `add`, `delete`, `edit`, `tag`, `untag` and `sort`) receive the same `Storage` object in `Command#execute(...)` and
 use it to save. `Storage` depends on `GameDecoder` only for loading; saving uses `Game#toFileString()` directly.
+`GameDecoder` uses `Tag` to check each tag in the file with the same rules as tags typed by the user.
 
 #### Loading games at startup
 
@@ -81,12 +89,15 @@ The sequence diagram below shows what happens.
    `load()` returns an empty list, since a new user simply has no games yet.
 3. Otherwise, `load()` reads every line of the file. Blank lines are ignored. Each other line is passed to
    `GameDecoder#decodeLine(...)`, which splits it on `|`, trims each part and checks that:
-   * there are three or four parts,
+   * there are three to five parts,
    * `TITLE` is not empty,
    * `MIN` and `MAX` are whole numbers of at least 1,
-   * `MAX` is not less than `MIN`, and
+   * `MAX` is not less than `MIN`,
    * `TIME`, if present and not blank, is a whole number of at least 1. A missing or blank `TIME` means no play
-     time is recorded.
+     time is recorded, and
+   * each tag in `TAGS`, if present, follows the tag rules once `Tag#normalise(...)` has trimmed it and put it in
+     lower case, as checked by `Tag#isValid(...)`. Blank entries (e.g. from a trailing comma) and repeated tags
+     are ignored.
 4. A valid line becomes a `Game`. An invalid line causes `GameDecoder` to throw a `GameVaultException` whose
    message says exactly what is wrong (e.g. `MAX (2) is less than MIN (3)`). `Storage` catches it, records the
    line number, the line and the reason in its `skippedLines` list, and moves on to the next line.
@@ -122,13 +133,15 @@ unexpectedly. The sequence diagram below shows this for the `add` command.
   * Pros: Easy to implement with no extra libraries. Users can read and edit the file in any text editor.
   * Cons: The `|` character cannot be used in a game title without adding an escaping scheme.
 * **Alternative 2:** JSON, using a library such as Jackson or Gson.
-  * Pros: Handles special characters and nested data (e.g. tags for each game) easily.
+  * Pros: Handles special characters and lists of values (such as a game's tags) without extra rules.
   * Cons: Adds a third-party dependency, and the file is harder for users to edit by hand.
 
 We chose plain text because each game has only a few simple fields, so the extra power of JSON is not needed yet.
-New fields are added as optional fields at the end of the line: when play time was added, `TIME` became an optional
-fourth field, so data files saved by older versions still load. If games gain many more fields later, switching to
-JSON would only require changes inside the `Storage` component.
+New fields are added as optional fields at the end of the line, so data files saved by older versions still load:
+when play time was added, `TIME` became an optional fourth field, and when tags were added, `TAGS` became an
+optional fifth field. Tags may only contain letters, digits and hyphens, so a tag can never contain the `|` or `,`
+that separate fields and tags, and no escaping is needed. If games gain many more fields later, switching to JSON
+would only require changes inside the `Storage` component.
 
 **Aspect: What to do with invalid lines when loading**
 
