@@ -1,0 +1,28 @@
+@startuml
+' Saving games after a command changes the collection (add shown here)
+hide footbox
+
+participant ":AddCommand" as C
+participant ":GameList" as GL
+participant ":Storage" as S
+participant ":Game" as G
+
+activate C
+C -> GL : add(game)
+activate GL
+GL --> C
+deactivate GL
+
+C -> S : save(games)
+activate S
+loop each game in games
+  S -> G : toFileString()
+  activate G
+  G --> S : "TITLE | MIN | MAX | TIME"
+  deactivate G
+end
+S -> S : create data folder if missing
+S -> S : overwrite data file with all lines
+S --> C
+deactivate S
+@enduml
