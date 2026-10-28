@@ -115,7 +115,7 @@ public class Parser {
             throw new GameVaultException("The '" + commandWord + "' command does not take any arguments.");
         }
     }
-
+    //@@author Xandurs
     /**
      * Builds an {@link AddCommand} from arguments in the form
      * {@code TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]},
@@ -158,7 +158,7 @@ public class Parser {
         }
         return new AddCommand(game);
     }
-
+    //@@author
     /**
      * Builds a {@link FilterCommand} from arguments in the form {@code COUNT [/time MINUTES]},
      * e.g. {@code 4} or {@code 4 /time 45}, or a {@link FilterTagCommand} from arguments in the form
@@ -493,7 +493,7 @@ public class Parser {
         return "INDEX should be at least 1, but was " + indexText + ".";
     }
 
-    //@@author
+    //@@author Xandurs
     /**
      * Returns the number in {@code text}, such as a player count or a number of minutes,
      * which must be a whole number of at least 1.

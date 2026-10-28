@@ -5,7 +5,7 @@ import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
 import seedu.gamevault.storage.Storage;
 import seedu.gamevault.ui.Ui;
-
+//@@author Xandurs
 /**
  * Adds a game to the collection and saves the updated collection to the data file.
  * The game is built and validated by {@link seedu.gamevault.parser.Parser} before this command is created.

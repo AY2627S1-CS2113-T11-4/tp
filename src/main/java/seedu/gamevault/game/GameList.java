@@ -31,7 +31,7 @@ public class GameList {
         assert games != null : "Initial game list should not be null";
         this.games = games;
     }
-
+    //@@author Xandurs
     /**
      * Adds a game to the end of the list.
      *
@@ -105,7 +105,7 @@ public class GameList {
         }
         return matches;
     }
-
+    //@@author Xandurs
     /**
      * Returns the game at the given position.
      * Callers must check the index first; the assertion here only catches programming errors.
@@ -129,7 +129,7 @@ public class GameList {
         assert game != null : "Replacement game should not be null";
         games.set(index, game);
     }
-    
+    //@@author
     /**
      * Returns the games that can be played by the given number of players and are known to take
      * at most the given number of minutes, in their original order. Games with no play time recorded
