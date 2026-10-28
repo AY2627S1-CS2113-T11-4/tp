@@ -1,0 +1,49 @@
+@startuml
+' Sequence diagram for "find mono" -- GameVault find feature
+hide footbox
+skinparam sequenceMessageAlign center
+
+participant ":GameVault" as GV
+participant "<<class>>\nParser" as P
+participant "f:FindCommand" as F
+participant ":GameList" as GL
+participant ":Ui" as UI
+
+GV -> P : parse("find mono")
+activate P
+P -> P : parseFind("mono")
+activate P
+create F
+P -> F : new FindCommand("mono")
+activate F
+F --> P
+deactivate F
+deactivate P
+P --> GV : f
+deactivate P
+
+GV -> F : execute(games, ui, storage)
+activate F
+F -> GL : getGames()
+activate GL
+GL --> F : allGames
+deactivate GL
+
+loop for each game at position i in allGames
+    opt title contains "mono" (ignoring case)
+        F -> F : append "(i + 1). game"
+    end
+end
+
+alt at least one match
+    F -> UI : showMessage(header + matches)
+else no match
+    F -> UI : showMessage(no-match message)
+end
+activate UI
+UI --> F
+deactivate UI
+F --> GV
+deactivate F
+destroy F
+@enduml
