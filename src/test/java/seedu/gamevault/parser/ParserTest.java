@@ -106,6 +106,7 @@ class ParserTest {
         assertThrows(GameVaultException.class, () -> Parser.parse("add Catan /min three /max 4"));
     }
 
+    //@@author yy261
     @Test
     void parse_validFilter_returnsFilterCommand() throws GameVaultException {
         assertInstanceOf(FilterCommand.class, Parser.parse("filter 4"));
@@ -126,6 +127,7 @@ class ParserTest {
         assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 5"));
     }
 
+    //@@author
     @Test
     void parse_validPick_returnsPickCommand() throws GameVaultException {
         assertInstanceOf(PickCommand.class, Parser.parse("pick 4"));
@@ -236,6 +238,7 @@ class ParserTest {
         assertThrows(GameVaultException.class, () -> Parser.parse("edit 1 /min"));
     }
 
+    //@@author yy261
     @Test
     void parse_addWithTime_returnsAddCommand() throws GameVaultException {
         assertInstanceOf(AddCommand.class, Parser.parse("add Catan /min 3 /max 4 /time 60"));

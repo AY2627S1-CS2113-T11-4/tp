@@ -299,6 +299,102 @@ without creating any files.
 * Write to a temporary file first and then rename it over `games.txt`, so that a crash in the middle of saving
   cannot leave a half-written file.
 
+<!-- @@author yy261 -->
+### Filtering games by player count and play time
+
+The `filter` command answers the question a host asks on game night: *which of my games can this many people play
+in the time we have?* For example, `filter 4 /time 45` shows the games for 4 players that take 45 minutes or less.
+
+The feature involves these classes:
+
+* `Parser` turns the user's input into a `FilterCommand`.
+* `FilterCommand` holds the player count and the optional time limit, and shows the results.
+* `GameList` picks out the matching games, asking each `Game` whether it fits.
+* `Game` stores an optional play time and knows whether it fits a player count (`fitsPlayerCount`) and a time
+  limit (`fitsTime`).
+
+The sequence diagram below shows what happens when the user enters `filter 4 /time 45`.
+
+![Sequence diagram for filter 4 /time 45](images/FilterSequence.png)
+
+1. `GameVault` passes the input to `Parser#parse(...)`, which sees the command word `filter` and calls
+   `Parser#parseFilter(...)`.
+2. `parseFilter` uses `Parser#splitByPrefixes(...)` to split the arguments into the text before the first prefix
+   (the player count, `4`) and the text after each prefix (`/time` → `45`). Both are checked to be whole numbers of
+   at least 1. If `/time` is not given, `FilterCommand(4)` is created, which means "no time limit".
+   (If `/tag` is given instead, a `FilterTagCommand` is created; see the tagging feature.)
+3. `GameVault` calls `FilterCommand#execute(...)`, which asks `GameList#filterByPlayersAndTime(4, 45)` for the
+   matching games. A game matches if `Game#fitsPlayerCount(4)` and `Game#fitsTime(45)` are both true.
+   The order of the collection is kept, and the collection itself is not changed.
+4. `FilterCommand` then calls `GameList#countWithoutPlayTime(4)` to count the games that fit 4 players but were
+   left out only because they have no play time recorded.
+5. `FilterCommand` passes the matches and, if that count is above 0, a short note to `Ui#showMessage(...)`:
+
+```
+Games that fit 4 players in 45 minutes or less:
+  Love Letter (2-4 players, 20 min)
+(1 game(s) for 4 players were left out because they have no play time recorded.)
+```
+
+**How play time is stored.** `Game` keeps the play time in an `int` field, where `0` means "not recorded".
+`Game#hasPlayTime()` hides this detail from other classes, and `Game#fitsTime(...)` returns false for a game with
+no play time. In the data file, the time is an optional fourth field (see [Storage](#saving-and-loading-games-storage)),
+so files saved before play time was added still load.
+
+**How prefixes are found.** `Parser#splitByPrefixes(...)` treats a prefix such as `/time` as a prefix only when it is
+a separate word, i.e. it has a space (or the start or end of the input) on both sides. This means:
+
+* the prefixes can be given in any order, e.g. `add Catan /time 60 /max 4 /min 3`,
+* a title such as `Foo/minimal` is not split at `/min`, and
+* giving the same prefix twice (e.g. `filter 4 /time 30 /time 60`) is rejected with a clear error,
+  instead of one of the values being silently ignored.
+
+The same method is used by `add`, `edit`, `pick` and the `/tag` form of `filter`, so all commands follow the same
+rules.
+
+#### Design considerations
+
+**Aspect: Games with no play time recorded, when a time limit is given**
+
+* **Alternative 1 (current choice):** Leave them out, and tell the user how many were left out.
+  * Pros: Every game shown is known to fit, so the host can trust the list.
+    The note explains why a game the user expected is missing.
+  * Cons: A short game is hidden until its play time is recorded.
+* **Alternative 2:** Include them, since they *might* fit.
+  * Pros: No game is hidden.
+  * Cons: The host may pick a 3-hour game for a 45-minute slot, which is exactly what the feature is meant to prevent.
+
+We chose Alternative 1 because a time filter that shows games that might not fit would not be useful.
+The note keeps it from feeling like games have disappeared.
+
+**Aspect: How to represent "no play time" in `Game`**
+
+* **Alternative 1 (current choice):** An `int` field where `0` means "not recorded", hidden behind `hasPlayTime()`.
+  * Pros: Simple. A real play time is always at least 1 minute, so `0` can never be mistaken for a real value.
+  * Cons: Code inside `Game` must remember to check for `0`.
+* **Alternative 2:** An `Integer` field that is `null` when not recorded, or an `OptionalInt`.
+  * Pros: "Not recorded" is stated explicitly in the type.
+  * Cons: Every use has to handle `null` or unwrap the optional, which adds clutter for little benefit.
+
+Because only `Game` reads the field directly, Alternative 1 keeps the rest of the code simple. The `0` value never
+leaves the class except through the data file, where a missing field is used instead.
+
+**Aspect: Separate commands for each kind of filter vs. one `filter` command**
+
+* **Alternative 1 (current choice):** One `filter` command with optional `/time` and `/tag` parts.
+  * Pros: Users only need to learn one command, and can combine conditions, e.g. `filter 4 /time 45 /tag party`.
+  * Cons: `parseFilter` has to decide which form was used.
+* **Alternative 2:** Separate commands such as `filtertime` and `filtertag`.
+  * Pros: Each command is simpler to parse.
+  * Cons: Conditions cannot be combined, and there are more command words to remember.
+
+#### Possible future improvements
+
+* Let `edit` change a game's play time (e.g. `edit 2 /time 30`). At the moment, a play time can only be set when the
+  game is added.
+* Accept a range such as `/time 30-60` for games whose length varies a lot.
+<!-- @@author -->
+
 
 ## Product scope
 ### Target user profile
