@@ -43,7 +43,7 @@ Here are the commands you can use:
           or games with a tag: filter [COUNT] [/time MINUTES] /tag TAG
   pick    Picks a random game that fits a player count: pick COUNT [/time MINUTES]
   delete  Deletes a game: delete INDEX
-  edit    Edits a game: edit INDEX [/title TITLE] [/min MIN] [/max MAX]
+  edit    Edits a game: edit INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES|none]
   tag     Adds tags to a game: tag INDEX TAG [MORE_TAGS]...
   untag   Removes tags from a game: untag INDEX TAG [MORE_TAGS]...
   tags    Lists all tags in use and how many games have each.
@@ -274,22 +274,26 @@ If there is no game with that number, GameVault shows an error such as
 
 ### Editing a game: `edit`
  
-Changes the title and/or player range of a game in your collection.
+Changes the title, player range and/or play time of a game in your collection.
  
-Format: `edit INDEX [/title TITLE] [/min MIN] [/max MAX]`
+Format: `edit INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES|none]`
  
 * `INDEX` is the number shown next to the game in `list`, and must be a whole number of at least 1.
-* At least one of `/title`, `/min` or `/max` must be given. Fields can be in any order.
+* At least one of `/title`, `/min`, `/max` or `/time` must be given. Fields can be in any order.
 * Fields you leave out keep their current values.
 * The same rules as `add` apply: `MIN` must be at least 1, `MAX` must not be less than `MIN`,
-  and `TITLE` cannot contain `|`. These are checked against the game's current values
-  for any field you leave out.
-* The game keeps its position in the list, its play time (if any) and its tags, and the change is saved to the
-  data file.
+  `MINUTES` must be at least 1, and `TITLE` cannot contain `|`. These are checked against the game's current
+  values for any field you leave out.
+* `/time MINUTES` sets or changes the play time. `/time none` removes it, and shows an error if the game has
+  no play time recorded.
+* If the new details are the same as the current ones, GameVault tells you that no changes were made.
+* The game keeps its position in the list and its tags, and the change is saved to the data file.
 
 Examples:
 * `edit 1 /max 6` changes the 1st game's maximum to 6 players.
 * `edit 2 /title Catan Deluxe /min 2` changes the 2nd game's title and minimum.
+* `edit 1 /time 45` sets the 1st game's play time to 45 minutes.
+* `edit 1 /time none` removes the 1st game's play time.
 
 Expected output for `edit 1 /max 6`:
  
@@ -453,7 +457,7 @@ Filter | `filter COUNT [/time MINUTES]`, e.g. `filter 4 /time 45`<br>`filter [CO
 Find | `find KEYWORD`, e.g. `find mono`
 Pick | `pick COUNT [/time MINUTES]`, e.g. `pick 4 /time 45`
 Delete | `delete INDEX`, e.g. `delete 2`
-Edit | `edit INDEX [/title TITLE] [/min MIN] [/max MAX]`, e.g. `edit 1 /max 6`
+Edit | `edit INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES\|none]`, e.g. `edit 1 /max 6`, `edit 1 /time none`
 Tag | `tag INDEX TAG [MORE_TAGS]...`, e.g. `tag 2 party drawing`
 Untag | `untag INDEX TAG [MORE_TAGS]...`, e.g. `untag 2 co-op`
 List tags | `tags`
