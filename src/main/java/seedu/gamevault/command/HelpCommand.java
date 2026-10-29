@@ -23,7 +23,7 @@ public class HelpCommand extends Command {
                       or games with a tag: filter [COUNT] [/time MINUTES] /tag TAG
               pick    Picks a random game that fits a player count: pick COUNT [/time MINUTES]
               delete  Deletes a game: delete INDEX
-              edit    Edits a game: edit INDEX [/title TITLE] [/min MIN] [/max MAX]
+              edit    Edits a game: edit INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES|none]
               tag     Adds tags to a game: tag INDEX TAG [MORE_TAGS]...
               untag   Removes tags from a game: untag INDEX TAG [MORE_TAGS]...
               tags    Lists all tags in use and how many games have each.

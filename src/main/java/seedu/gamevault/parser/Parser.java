@@ -43,6 +43,7 @@ public class Parser {
     private static final String TITLE_PREFIX = "/title";
     private static final String TIME_PREFIX = "/time";
     private static final String TAG_PREFIX = "/tag";
+    private static final String NO_TIME_VALUE = "none";
     /** Key under which {@link #splitByPrefixes} stores the text that comes before the first prefix. */
     private static final String PREAMBLE = "";
 
@@ -114,7 +115,7 @@ public class Parser {
             throw new GameVaultException("The '" + commandWord + "' command does not take any arguments.");
         }
     }
-
+    //@@author Xandurs
     /**
      * Builds an {@link AddCommand} from arguments in the form
      * {@code TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]},
@@ -288,17 +289,18 @@ public class Parser {
         }
         return displayNumber;
     }
-
+    //@@author Xandurs
     /**
      * Builds an {@link EditCommand} from arguments in the form
-     * {@code INDEX [/title TITLE] [/min MIN] [/max MAX]}, e.g. {@code 2 /max 6 /title Catan}.
+     * {@code INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES|none]},
+     * e.g. {@code 2 /max 6 /title Catan} or {@code 3 /time none}.
      * At least one field must be given, and fields may be in any order.
      *
      * @throws GameVaultException If INDEX is missing or invalid, no field is given,
      *         a field is repeated, or a field's value is invalid.
      */
     private static Command parseEdit(String arguments) throws GameVaultException {
-        Map<String, String> fields = splitByPrefixes(arguments, TITLE_PREFIX, MIN_PREFIX, MAX_PREFIX);
+        Map<String, String> fields = splitByPrefixes(arguments, TITLE_PREFIX, MIN_PREFIX, MAX_PREFIX, TIME_PREFIX);
 
         String indexText = fields.get(PREAMBLE);
         if (indexText.isEmpty()) {
@@ -316,29 +318,35 @@ public class Parser {
         Integer maxPlayers = fields.containsKey(MAX_PREFIX)
                 ? parsePositiveNumber(fields.get(MAX_PREFIX), "MAX", EditCommand.USAGE)
                 : null;
+        Integer playTime = fields.containsKey(TIME_PREFIX)
+                ? parseEditPlayTime(fields.get(TIME_PREFIX))
+                : null;
 
-        if (title == null && minPlayers == null && maxPlayers == null) {
+        if (title == null && minPlayers == null && maxPlayers == null && playTime == null) {
             throw new GameVaultException("Please give at least one field to change. Format: "
                     + EditCommand.USAGE + " (e.g. edit 2 /max 6)");
         }
-        return new EditCommand(displayNumber, title, minPlayers, maxPlayers);
+        // MAX vs MIN can be checked here when both are given; otherwise EditCommand checks it
+        // against the game's current values.
+        if (minPlayers != null && maxPlayers != null && maxPlayers < minPlayers) {
+            throw new GameVaultException("MAX (" + maxPlayers + ") cannot be less than MIN (" + minPlayers + ").");
+        }
+        logger.log(Level.FINE, "Parsed edit of game " + displayNumber);
+        return new EditCommand(displayNumber, title, minPlayers, maxPlayers, playTime);
+    
     }
-
+    //@@author Xandurs
     /**
-     * Returns the trimmed title, which must not be empty or contain '|'.
+     * Returns the play time given to {@code /time} in an edit: a number of minutes (at least 1),
+     * or {@link EditCommand#CLEAR_PLAY_TIME} when the user typed {@code none} (in any case).
      *
-     * @param usage Format of the command being parsed, shown when the title is missing.
+     * @throws GameVaultException If the value is missing, or is neither {@code none} nor a whole number of at least 1.
      */
-    private static String parseTitle(String text, String usage) throws GameVaultException {
-        String title = text.trim();
-        if (title.isEmpty()) {
-            throw new GameVaultException("TITLE is missing. Format: " + usage);
+    private static int parseEditPlayTime(String text) throws GameVaultException {
+        if (text.trim().equalsIgnoreCase(NO_TIME_VALUE)) {
+            return EditCommand.CLEAR_PLAY_TIME;
         }
-        // The data file uses '|' to separate fields, so a title containing it could not be loaded back.
-        if (title.contains("|")) {
-            throw new GameVaultException("TITLE cannot contain the '|' character.");
-        }
-        return title;
+        return parsePositiveNumber(text, "MINUTES", EditCommand.USAGE);
     }
 
     //@@author SwaggyDaddy67
@@ -461,6 +469,18 @@ public class Parser {
         return tag;
     }
 
+    private static String parseTitle(String text, String usage) throws GameVaultException {
+        String title = text.trim();
+        if (title.isEmpty()) {
+            throw new GameVaultException("TITLE is missing. Format: " + usage);
+        }
+        // The data file uses '|' to separate fields, so a title containing it could not be loaded back.
+        if (title.contains("|")) {
+            throw new GameVaultException("TITLE cannot contain the '|' character.");
+        }
+        return title;
+    }
+
     //@@author
 
     private static void checkNotRepeated(Object existingValue, String prefix) throws GameVaultException {
@@ -474,7 +494,7 @@ public class Parser {
         return "INDEX should be at least 1, but was " + indexText + ".";
     }
 
-    //@@author
+    //@@author Xandurs
     /**
      * Returns the number in {@code text}, such as a player count or a number of minutes,
      * which must be a whole number of at least 1.

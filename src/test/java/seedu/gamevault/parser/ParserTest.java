@@ -85,7 +85,7 @@ class ParserTest {
         assertTrue(e.getMessage().contains("does not take any arguments"));
     }
 
-    //@@author
+    //@@author Xandurs
     @Test
     void parse_validAdd_returnsAddCommand() throws GameVaultException {
         assertInstanceOf(AddCommand.class, Parser.parse("add Catan /min 3 /max 4"));
@@ -197,7 +197,7 @@ class ParserTest {
         assertEquals(DeleteCommand.getNoSuchGameMessage("99999999999"), e.getMessage());
     }
 
-    //@@author
+    //@@author Xandurs
     @Test
     void parse_editFieldsInAnyOrder_returnsEditCommand() throws GameVaultException {
         assertInstanceOf(EditCommand.class, Parser.parse("edit 1 /max 6 /title Catan /min 2"));

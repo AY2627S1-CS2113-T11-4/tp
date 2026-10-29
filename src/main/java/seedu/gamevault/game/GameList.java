@@ -31,7 +31,7 @@ public class GameList {
         assert games != null : "Initial game list should not be null";
         this.games = games;
     }
-
+    //@@author Xandurs
     /**
      * Adds a game to the end of the list.
      *
@@ -104,8 +104,7 @@ public class GameList {
         }
         return matches;
     }
-
-    //@@author
+    //@@author Xandurs
     /**
      * Returns the game at the given position.
      * Callers must check the index first; the assertion here only catches programming errors.
