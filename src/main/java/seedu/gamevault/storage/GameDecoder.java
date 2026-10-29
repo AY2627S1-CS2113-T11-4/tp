@@ -84,8 +84,7 @@ public class GameDecoder {
         }
     }
 
-    //@@author
-
+    //@@author yy261
     /**
      * Returns the play time in the TIME field, or 0 if the line has no TIME field or it is left empty.
      */
@@ -96,6 +95,7 @@ public class GameDecoder {
         return parsePositiveNumber(fields[FIELD_COUNT_WITH_TIME - 1], "TIME");
     }
 
+    //@@author
     /**
      * Returns the number in {@code text}, such as a player count or play time, which must be a whole number
      * of at least 1.

@@ -64,6 +64,7 @@ public class Game {
         return maxPlayers;
     }
 
+    //@@author yy261
     /**
      * Returns whether the user recorded how long this game takes.
      */
@@ -121,8 +122,7 @@ public class Game {
         return Collections.unmodifiableSet(tags);
     }
 
-    //@@author
-
+    //@@author yy261
     /**
      * Returns whether this game can be played by the given number of players,
      * i.e. the count is within the game's minimum and maximum (both inclusive).
@@ -145,6 +145,7 @@ public class Game {
         return hasPlayTime() && playTime <= minutes;
     }
 
+    //@@author
     /**
      * Returns this game as one line of the data file, in the format {@code TITLE | MIN | MAX},
      * followed by {@code | TIME} when a play time is recorded, and by {@code | TAGS} when the game has tags.

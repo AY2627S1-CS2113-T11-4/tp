@@ -20,8 +20,14 @@ class GameDecoder {
   + {static} decodeLine(line : String) : Game
 }
 
+class Tag {
+  + {static} normalise(text : String) : String
+  + {static} isValid(tag : String) : boolean
+}
+
 class GameList
 class Game {
+  - tags : TreeSet<String>
   + toFileString() : String
 }
 
@@ -30,5 +36,6 @@ GameVault --> "1" GameList
 Command ..> Storage : saves with >
 Storage ..> GameDecoder : decodes lines with >
 Storage ..> Game : creates >
+GameDecoder ..> Tag : checks tags with >
 GameList --> "*" Game
 @enduml

@@ -87,8 +87,7 @@ public class GameList {
         games.sort(comparator);
     }
 
-    //@@author
-
+    //@@author yy261
     /**
      * Returns the games that can be played by the given number of players, in their original order.
      * The collection itself is not changed.
@@ -129,7 +128,8 @@ public class GameList {
         assert game != null : "Replacement game should not be null";
         games.set(index, game);
     }
-    //@@author
+    
+    //@@author yy261
     /**
      * Returns the games that can be played by the given number of players and are known to take
      * at most the given number of minutes, in their original order. Games with no play time recorded
@@ -149,6 +149,7 @@ public class GameList {
         return matches;
     }
 
+    //@@author
     /**
      * Returns how many games fit the given number of players but have no play time recorded.
      * These are the games that a time limit leaves out, so commands can tell the user about them.

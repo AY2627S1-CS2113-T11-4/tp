@@ -9,6 +9,7 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+//@@author yy261
 class GameListTest {
     private GameList games;
 
@@ -59,7 +60,7 @@ class GameListTest {
         assertEquals("Chess", games.getGames().get(0).getTitle());
     }
 
-    //@@author
+    //@@author yy261
     @Test
     void filterByPlayersAndTime_mixOfTimes_returnsOnlyTimedGamesWithinLimit() {
         GameList timedGames = new GameList();
@@ -77,6 +78,7 @@ class GameListTest {
         assertTrue(timedGames.filterByPlayersAndTime(4, 10).isEmpty());
     }
 
+    //@@author
     @Test
     void countWithoutPlayTime_mixOfTimes_countsOnlyUntimedGamesThatFit() {
         GameList timedGames = new GameList();
