@@ -1,0 +1,59 @@
+@startuml
+' Class diagram for the sort feature -- GameVault
+!pragma layout smetana
+hide circle
+skinparam classAttributeIconSize 0
+skinparam nodesep 70
+skinparam ranksep 70
+
+class "Command {abstract}" as Command {
+  + execute(games : GameList, ui : Ui, storage : Storage) : void {abstract}
+}
+
+class SortCommand {
+  + {static} COMMAND_WORD : String
+  + SortCommand(order : SortOrder)
+  + execute(games : GameList, ui : Ui, storage : Storage) : void
+}
+
+enum SortOrder <<enumeration>> {
+  TITLE
+  PLAYERS
+  TIME
+  --
+  - keyword : String
+  - description : String
+  - comparator : Comparator<Game>
+  + getComparator() : Comparator<Game>
+  + {static} fromKeyword(text : String) : Optional<SortOrder>
+}
+
+class GameList {
+  + sort(comparator : Comparator<Game>) : void
+  + getGames() : List<Game>
+}
+
+class Game {
+  - title : String
+  - minPlayers : int
+  - maxPlayers : int
+  - playTime : int
+}
+
+class Parser {
+  + {static} parse(input : String) : Command
+}
+
+class Storage {
+  + save(games : GameList) : void
+}
+
+Command <|-- SortCommand
+SortCommand --> "-order\n1" SortOrder
+GameList *--> "-games\n*" Game
+SortCommand ..> GameList : sorts >
+SortCommand ..> Storage : saves with >
+SortOrder ..> Game : compares >
+Parser ..> SortOrder : looks up >
+Parser ..> SortCommand : creates >
+@enduml

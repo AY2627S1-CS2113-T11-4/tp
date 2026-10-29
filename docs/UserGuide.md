@@ -82,6 +82,31 @@ You now have 1 game(s) in your collection.
 ____________________________________________________________
 ```
  
+<!-- @@author SwaggyDaddy67 -->
+### Listing all games: `list`
+
+Shows every game in your collection, numbered from 1 in the order they are stored.
+
+Format: `list`
+
+* The numbers shown are the `INDEX` values used by `delete`, `edit` and `tag`.
+* The order is the order you added the games in, unless you have used `sort`.
+* `list` does not take any parameters, so e.g. `list all` shows an error.
+
+Expected output:
+
+```
+____________________________________________________________
+Here are the games in your collection:
+1. Catan (3-4 players, 60 min)
+2. Codenames (4-8 players) [party]
+3. Chess (2 players)
+____________________________________________________________
+```
+
+If your collection is empty, GameVault shows `No games in your collection yet.` instead.
+<!-- @@author -->
+
 ### Finding games for your group: `filter`
  
 Shows the games that can be played by the given number of players, optionally only those that fit in the time
@@ -221,6 +246,31 @@ ____________________________________________________________
 ```
 
 If no game fits, GameVault shows e.g. `No games fit 4 players, so there is nothing to pick from.` instead.
+
+<!-- @@author SwaggyDaddy67 -->
+### Deleting a game: `delete`
+
+Removes a game from your collection and saves the change to the data file.
+
+Format: `delete INDEX`
+
+* `INDEX` is the number shown next to the game in `list`, and must be a whole number of at least 1.
+* Games after the deleted one move up by one, so their numbers change. Use `list` to see the new numbers.
+* There is no undo, so check the number with `list` (or `find`) first.
+
+Example of usage: `delete 2`
+
+Expected output:
+
+```
+____________________________________________________________
+Deleted: Codenames (4-8 players) [party]
+____________________________________________________________
+```
+
+If there is no game with that number, GameVault shows an error such as
+`There is no game numbered 5. Use 'list' to see the current numbering.` and nothing is deleted.
+<!-- @@author -->
 
 ### Editing a game: `edit`
  
@@ -398,9 +448,11 @@ and waits for your next command. Nothing is changed.
 Action | Format
 -------|-------
 Add | `add TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]`, e.g. `add Catan /min 3 /max 4 /time 60 /tag strategy`
+List | `list`
 Filter | `filter COUNT [/time MINUTES]`, e.g. `filter 4 /time 45`<br>`filter [COUNT] [/time MINUTES] /tag TAG`, e.g. `filter 6 /tag party`
 Find | `find KEYWORD`, e.g. `find mono`
 Pick | `pick COUNT [/time MINUTES]`, e.g. `pick 4 /time 45`
+Delete | `delete INDEX`, e.g. `delete 2`
 Edit | `edit INDEX [/title TITLE] [/min MIN] [/max MAX]`, e.g. `edit 1 /max 6`
 Tag | `tag INDEX TAG [MORE_TAGS]...`, e.g. `tag 2 party drawing`
 Untag | `untag INDEX TAG [MORE_TAGS]...`, e.g. `untag 2 co-op`

@@ -28,6 +28,123 @@ game's current maximum is 4). If the check passes, `GameList#set` replaces the g
 * *Replace in place vs. delete and re-add:* replacing keeps the game's number in `list` unchanged,
   which is less confusing for the user.
 
+<!-- @@author SwaggyDaddy67 -->
+### Find feature
+
+The find feature lets the user locate games by part of their title, e.g. `find mono` shows "Monopoly", without
+scrolling through the whole collection. Each result is shown with its number from `list`, so the user can pass it
+straight to `delete`, `edit` or `tag`.
+
+**Parsing.** `Parser#parse` recognises the `find` command word and calls `Parser#parseFind`, which trims the rest of
+the input and uses it as the keyword. The whole remaining text is one keyword, so `find ticket to` looks for the
+phrase "ticket to" rather than two separate words. An empty keyword is rejected with a `GameVaultException` that shows
+the correct format. Otherwise, a `FindCommand` holding the keyword is returned.
+
+**Execution.** The sequence diagram below shows what happens when the user enters `find mono`.
+
+![Sequence diagram for find mono](images/FindSequenceDiagram.png)
+
+1. `FindCommand#execute` gets a read-only view of the collection from `GameList#getGames()`.
+2. It lower-cases the keyword once, then goes through the games **by position**. For each game whose lower-cased title
+   contains the keyword, it adds a line made of the game's position plus one (the number `list` shows) and the game.
+3. If at least one game matched, the header and the matching lines are passed to `Ui#showMessage`. Otherwise,
+   a "no games have ... in the title" message is shown instead.
+
+`find` does not change the collection, so it does not call `Storage`.
+
+**Design considerations.**
+
+**Aspect: How results are numbered**
+
+* **Alternative 1 (current choice):** Show each match with its number from `list`.
+  * Pros: The number can be used directly with `delete`, `edit` or `tag`, which is the main reason to search.
+  * Cons: Results are not numbered 1, 2, 3, which may look odd at first (e.g. `2.` followed by `5.`).
+* **Alternative 2:** Number the results from 1, like a new list.
+  * Pros: Looks tidier.
+  * Cons: The numbers would not match `list`, so `delete 1` after a search could delete the wrong game.
+    This is the reason `filter` and `pick` do not number their results at all.
+
+**Aspect: Where the search happens**
+
+* **Alternative 1 (current choice):** `FindCommand` loops over `GameList#getGames()` itself.
+  * Pros: Keeps each game's position available while searching, and needs no change to `GameList`.
+* **Alternative 2:** Add a `GameList#findByTitle(keyword)` method that returns the matching games, like
+  `GameList#filterByPlayers`.
+  * Cons: It would return only the games, losing their positions, so `FindCommand` would have to look each one up
+    again to number it.
+
+**Aspect: Matching rule**
+
+We use a case-insensitive "contains" match because users usually remember part of a title but not its exact
+spelling or capitalisation. Matching whole words only (e.g. `cat` not finding "Catan") was rejected because it
+would make short keywords much less useful.
+
+### Sort feature
+
+The sort feature reorders the whole collection by title, player count or play time, e.g. `sort time`, then saves it
+and shows the new numbered list.
+
+The class diagram below shows the classes involved.
+
+![Class diagram for the sort feature](images/SortClassDiagram.png)
+
+* `SortOrder` is an enumeration of the supported orders: `TITLE`, `PLAYERS` and `TIME`. Each value holds the keyword
+  the user types (e.g. `time`), a description shown after sorting, and the `Comparator<Game>` that defines the order.
+* `SortCommand` holds one `SortOrder` and does the sorting when executed.
+* `GameList#sort(Comparator<Game>)` reorders the games in place.
+
+**The three orders.**
+* `TITLE`: alphabetical, ignoring case.
+* `PLAYERS`: by minimum players, then by maximum players.
+* `TIME`: shortest play time first. A game with no play time recorded is treated as taking `Integer.MAX_VALUE`
+  minutes, so it always comes after every game whose play time is known.
+
+Games that tie in `PLAYERS` or `TIME` are ordered by title. This makes the result depend only on the games
+themselves, not on the order they were in before, so sorting twice gives the same result.
+
+**Parsing and execution.** The sequence diagram below shows what happens when the user enters `sort time`.
+
+![Sequence diagram for sort time](images/SortSequenceDiagram.png)
+
+1. `Parser#parseSort` looks up the keyword with `SortOrder#fromKeyword`, which ignores case and surrounding spaces
+   and returns an empty `Optional` for an unknown keyword. A missing or unknown keyword is rejected with an error that
+   lists the valid choices. The list comes from `SortOrder#describeKeywords`, so it stays correct if an order is added.
+2. `SortCommand#execute` passes the order's comparator to `GameList#sort`, which uses the stable `List#sort`.
+3. The new order is saved with `Storage#save`, so `list` keeps showing it after the app restarts.
+4. The sorted games are shown numbered from 1, using `ListCommand#formatNumberedList`, which `list` also uses.
+   An empty collection is not sorted or saved; a message is shown instead.
+
+**Adding a new order** only needs a new `SortOrder` value with its keyword, description and comparator.
+`Parser`, `SortCommand` and the error messages do not need to change.
+
+**Design considerations.**
+
+**Aspect: Reorder the collection vs. show a sorted view**
+
+* **Alternative 1 (current choice):** Reorder the collection itself and save it.
+  * Pros: The order lasts, and the numbers shown after sorting are the real `list` numbers, so they can be used
+    with `delete`, `edit` or `tag` straight away.
+  * Cons: The user's original order (the order games were added) is lost, and every game's number may change.
+    The UG warns about this.
+* **Alternative 2:** Show a sorted copy without changing the collection.
+  * Pros: Keeps the original order.
+  * Cons: The numbers shown would not match `list`, which is the problem the find feature also avoids.
+
+**Aspect: How orders are represented**
+
+* **Alternative 1 (current choice):** An enumeration that pairs each keyword with its comparator.
+  * Pros: Only valid orders can exist, and each order's details are kept in one place.
+* **Alternative 2:** A `switch` on the keyword inside `SortCommand`.
+  * Cons: The keyword list, the descriptions and the comparators would be spread across several places, and adding
+    an order would mean changing each of them.
+
+#### Possible future improvements
+
+* Allow a descending order, e.g. `sort time /desc` for the longest games first.
+* Keep games in order automatically, so a newly added game goes to its sorted position instead of the end of the list.
+* Sort by more than one key, e.g. by player count, then by play time.
+<!-- @@author -->
+
 ### Loading the data file
 
 When the app starts, `GameVault` calls `Storage#load`, which reads `data/games.txt` line by line. Each non-blank line
@@ -197,7 +314,8 @@ without creating any files.
 |Version| As a ... | I want to ... | So that I can ...|
 |--------|----------|---------------|------------------|
 |v1.0|new user|see usage instructions|refer to them when I forget how to use the application|
-|v2.0|user|find a to-do item by name|locate a to-do without having to go through the entire list|
+|v2.0|host with a large collection|find a game by part of its title|locate it without going through the entire list|
+|v2.0|host with many games|sort my collection by title, player count or play time|scan it more easily|
 
 ## Non-Functional Requirements
 
