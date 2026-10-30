@@ -23,11 +23,14 @@ import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.FilterTagCommand;
 import seedu.gamevault.command.FindCommand;
 import seedu.gamevault.command.HelpCommand;
+import seedu.gamevault.command.LendCommand;
+import seedu.gamevault.command.LentCommand;
 import seedu.gamevault.command.ListCommand;
 import seedu.gamevault.command.ListTagsCommand;
 import seedu.gamevault.command.TagCommand;
 import seedu.gamevault.command.UntagCommand;
 import seedu.gamevault.command.PickCommand;
+import seedu.gamevault.command.ReturnCommand;
 import seedu.gamevault.command.SortCommand;
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Game;
@@ -412,5 +415,54 @@ class ParserTest {
     void parse_findWithoutKeyword_throwsException() {
         GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("find   "));
         assertEquals("KEYWORD is missing. Format: " + FindCommand.USAGE + " (e.g. find cat)", e.getMessage());
+    }
+
+    //@@author yy261
+    @Test
+    void parse_validLend_returnsLendCommand() throws GameVaultException {
+        assertInstanceOf(LendCommand.class, Parser.parse("lend 2 /to Alice"));
+        assertInstanceOf(LendCommand.class, Parser.parse("LEND 1 /to   Mary   Tan  "));
+    }
+
+    @Test
+    void parse_lendWithMissingParts_throwsExceptionShowingFormat() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("lend 2"));
+        assertTrue(e.getMessage().startsWith("NAME is missing. Format: " + LendCommand.USAGE));
+        e = assertThrows(GameVaultException.class, () -> Parser.parse("lend 2 /to"));
+        assertTrue(e.getMessage().startsWith("NAME is missing."));
+        e = assertThrows(GameVaultException.class, () -> Parser.parse("lend /to Alice"));
+        assertTrue(e.getMessage().startsWith("INDEX is missing. Format: " + LendCommand.USAGE));
+    }
+
+    @Test
+    void parse_lendWithInvalidParts_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("lend 0 /to Alice"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("lend two /to Alice"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("lend 2 /to Alice /to Ben"));
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> Parser.parse("lend 2 /to Alice | Ben"));
+        assertTrue(e.getMessage().startsWith("NAME should be"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("lend 2 /to " + "a".repeat(31)));
+    }
+
+    @Test
+    void parse_validReturn_returnsReturnCommand() throws GameVaultException {
+        assertInstanceOf(ReturnCommand.class, Parser.parse("return 3"));
+        assertInstanceOf(ReturnCommand.class, Parser.parse("RETURN   1 "));
+    }
+
+    @Test
+    void parse_returnWithInvalidIndex_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("return"));
+        assertTrue(e.getMessage().startsWith("INDEX is missing. Format: " + ReturnCommand.USAGE));
+        assertThrows(GameVaultException.class, () -> Parser.parse("return 0"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("return 1 2"));
+    }
+
+    @Test
+    void parse_lent_returnsLentCommandAndRejectsArguments() throws GameVaultException {
+        assertInstanceOf(LentCommand.class, Parser.parse("lent"));
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("lent 2"));
+        assertTrue(e.getMessage().contains("does not take any arguments"));
     }
 }

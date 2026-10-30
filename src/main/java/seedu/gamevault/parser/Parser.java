@@ -21,13 +21,17 @@ import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.FilterTagCommand;
 import seedu.gamevault.command.FindCommand;
 import seedu.gamevault.command.HelpCommand;
+import seedu.gamevault.command.LendCommand;
+import seedu.gamevault.command.LentCommand;
 import seedu.gamevault.command.ListCommand;
 import seedu.gamevault.command.ListTagsCommand;
 import seedu.gamevault.command.PickCommand;
+import seedu.gamevault.command.ReturnCommand;
 import seedu.gamevault.command.SortCommand;
 import seedu.gamevault.command.TagCommand;
 import seedu.gamevault.command.UntagCommand;
 import seedu.gamevault.exception.GameVaultException;
+import seedu.gamevault.game.Borrower;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.SortOrder;
 import seedu.gamevault.game.Tag;
@@ -43,6 +47,7 @@ public class Parser {
     private static final String TITLE_PREFIX = "/title";
     private static final String TIME_PREFIX = "/time";
     private static final String TAG_PREFIX = "/tag";
+    private static final String TO_PREFIX = "/to";
     private static final String NO_TIME_VALUE = "none";
     /** Key under which {@link #splitByPrefixes} stores the text that comes before the first prefix. */
     private static final String PREAMBLE = "";
@@ -100,6 +105,13 @@ public class Parser {
             return parsePick(arguments);
         case SortCommand.COMMAND_WORD:
             return parseSort(arguments);
+        case LendCommand.COMMAND_WORD:
+            return parseLend(arguments);
+        case ReturnCommand.COMMAND_WORD:
+            return parseReturn(arguments);
+        case LentCommand.COMMAND_WORD:
+            checkNoArguments(commandWord, arguments);
+            return new LentCommand();
         default:
             throw new GameVaultException("Unknown command '" + parts[0]
                     + "'. Type 'help' to see all commands.");
@@ -211,6 +223,45 @@ public class Parser {
         }
         fields.put(currentKey, arguments.substring(valueStart).trim());
         return fields;
+    }
+
+    /**
+     * Builds a {@link LendCommand} from arguments in the form {@code INDEX /to NAME}, e.g. {@code 2 /to Alice}.
+     *
+     * @throws GameVaultException If INDEX or NAME is missing, INDEX is not a whole number of at least 1,
+     *     /to is repeated, or NAME breaks {@link Borrower#RULES}.
+     */
+    private static Command parseLend(String arguments) throws GameVaultException {
+        Map<String, String> fields = splitByPrefixes(arguments, TO_PREFIX);
+        String indexText = fields.get(PREAMBLE);
+        if (indexText.isEmpty()) {
+            throw new GameVaultException("INDEX is missing. Format: " + LendCommand.USAGE
+                    + " (e.g. lend 2 /to Alice)");
+        }
+        int displayNumber = parseIndex(indexText);
+        if (!fields.containsKey(TO_PREFIX) || fields.get(TO_PREFIX).isEmpty()) {
+            throw new GameVaultException("NAME is missing. Format: " + LendCommand.USAGE
+                    + " (e.g. lend 2 /to Alice)");
+        }
+        String borrower = Borrower.normalise(fields.get(TO_PREFIX));
+        if (!Borrower.isValid(borrower)) {
+            throw new GameVaultException("NAME should be " + Borrower.RULES);
+        }
+        return new LendCommand(displayNumber, borrower);
+    }
+
+    /**
+     * Builds a {@link ReturnCommand} from arguments in the form {@code INDEX}, e.g. {@code 2}.
+     *
+     * @throws GameVaultException If INDEX is missing, is not a whole number, or is less than 1.
+     */
+    private static Command parseReturn(String arguments) throws GameVaultException {
+        String indexText = arguments.trim();
+        if (indexText.isEmpty()) {
+            throw new GameVaultException("INDEX is missing. Format: " + ReturnCommand.USAGE
+                    + " (e.g. return 2)");
+        }
+        return new ReturnCommand(parseIndex(indexText));
     }
 
     //@@author SwaggyDaddy67
