@@ -48,6 +48,9 @@ Here are the commands you can use:
   untag   Removes tags from a game: untag INDEX TAG [MORE_TAGS]...
   tags    Lists all tags in use and how many games have each.
   sort    Sorts your collection: sort title|players|time
+  lend    Records that a game is lent out: lend INDEX /to NAME
+  return  Records that a lent game is back: return INDEX
+  lent    Lists the games that are lent out and who has them.
   help    Shows this list of commands.
   exit    Exits GameVault.
 ____________________________________________________________
@@ -394,6 +397,92 @@ ____________________________________________________________
 
 If your collection is empty, GameVault shows `No games in your collection to sort yet.` instead.
 <!-- @@author -->
+
+<!-- @@author yy261 -->
+### Lending a game to a friend: `lend`
+
+Records that a game has been lent to someone. While a game is lent out, `filter` and `pick` leave it out,
+so you are never offered a game that is not on your shelf.
+
+Format: `lend INDEX /to NAME`
+
+* `INDEX` is the number shown next to the game in `list`.
+* `NAME` is the person borrowing the game, e.g. `Alice` or `Mary Tan`. It must be 1 to 30 characters long and
+  cannot contain `|`. Extra spaces are removed, so `/to   Mary   Tan` is saved as `Mary Tan`.
+* A game can only be lent to one person at a time. To lend it to someone else, `return` it first.
+* The game stays in your collection: `list` and `find` still show it, with `(lent to NAME)` after it.
+
+Example of usage: `lend 2 /to Alice`
+
+Expected output:
+
+```
+____________________________________________________________
+Lent to Alice: Codenames
+It will be left out of 'filter' and 'pick' until you 'return 2'.
+____________________________________________________________
+```
+
+If the game is already lent out, GameVault tells you who has it and changes nothing, e.g.
+`Codenames is already lent to Alice. Use 'return 2' first if it has come back.`
+
+**How lent games affect other commands:** `filter` and `pick` leave out lent games, and say which games were
+left out and who has them, so you know why a game you expected is missing:
+
+```
+____________________________________________________________
+Games that fit 4 players:
+  Love Letter (2-4 players, 20 min)
+(Not shown because they are lent out: Catan (to Mary Tan), Codenames (to Alice))
+____________________________________________________________
+```
+
+A lent game is only mentioned if it would otherwise have been shown, e.g. a 60-minute game is not mentioned
+for `filter 4 /time 30`. `edit`, `tag`, `untag`, `sort` and `delete` work on lent games as usual,
+and an edited game stays lent to the same person.
+
+### Getting a game back: `return`
+
+Records that a lent game is back on your shelf, so `filter` and `pick` can suggest it again.
+
+Format: `return INDEX`
+
+* `INDEX` is the number shown next to the game in `list` or `lent`.
+
+Example of usage: `return 2`
+
+Expected output:
+
+```
+____________________________________________________________
+Returned by Alice: Codenames
+It is back on your shelf and can be suggested by 'filter' and 'pick' again.
+____________________________________________________________
+```
+
+If the game is not lent out, GameVault shows
+`Love Letter is not lent to anyone. Use 'lent' to see which games are lent out.` and changes nothing.
+
+### Seeing which games are lent out: `lent`
+
+Shows every game that is lent out and who has it, so you know which games to ask for back.
+
+Format: `lent`
+
+* The numbers are the same as in `list`, so you can use them with `return` straight away.
+
+Expected output:
+
+```
+____________________________________________________________
+2 game(s) are lent out:
+1. Catan - lent to Mary Tan
+2. Codenames - lent to Alice
+____________________________________________________________
+```
+
+If no game is lent out, GameVault shows `None of your games are lent out. Everything is on your shelf.` instead.
+<!-- @@author -->
  
 ### Exiting the program: `exit`
  
@@ -413,19 +502,24 @@ ____________________________________________________________
  
 GameVault stores your games in `data/games.txt` (relative to the folder you run GameVault from).
 Advanced users can edit this file directly. Each line describes one game in the format `TITLE | MIN | MAX`,
-optionally followed by `| TIME`, the play time in minutes, and `| TAGS`, the game's tags separated by commas:
+optionally followed by `| TIME`, the play time in minutes, `| TAGS`, the game's tags separated by commas,
+and `| BORROWER`, the person the game is lent to:
  
 ```
 Catan | 3 | 4 | 60
 Codenames | 2 | 8
 Azul | 2 | 4 | 45 | family,strategy
 Werewolf | 8 | 18 |  | party
+Hive | 2 | 2 |  |  | Alice
 ```
  
 * `MIN` and `MAX` must be whole numbers of at least 1, and `MAX` must not be less than `MIN`.
 * `TIME`, if given, must be a whole number of at least 1. A line with no `TIME` means no play time is recorded.
 * `TAGS`, if given, must be the fifth field. For a game with tags but no play time, leave `TIME` blank,
   as in the `Werewolf` line above. Each tag must follow the rules in [Tagging a game](#tagging-a-game-tag-untag).
+* `BORROWER`, if given, must be the sixth field, so leave `TIME` and `TAGS` blank if the game has neither,
+  as in the `Hive` line above. It follows the same rules as `NAME` in [`lend`](#lending-a-game-to-a-friend-lend).
+  A blank `BORROWER` means the game is on your shelf.
 * Blank lines are ignored.
 
 If a line is not in this format, GameVault skips that line, loads the rest of your games, and tells you which
@@ -434,7 +528,7 @@ lines were skipped and why, for example:
 ```
 Warning: 1 line(s) in your data file could not be read and were skipped:
   Line 2: "Codenames | two | 8" (MIN should be a whole number, but was 'two')
-Each line should be in the format: TITLE | MIN | MAX | TIME | TAGS (TIME and TAGS are optional)
+Each line should be in the format: TITLE | MIN | MAX | TIME | TAGS | BORROWER (TIME, TAGS and BORROWER are optional)
 ```
  
 **Caution:** Skipped lines are not saved back to the file. To keep those games, exit GameVault and fix the lines
@@ -462,6 +556,9 @@ Tag | `tag INDEX TAG [MORE_TAGS]...`, e.g. `tag 2 party drawing`
 Untag | `untag INDEX TAG [MORE_TAGS]...`, e.g. `untag 2 co-op`
 List tags | `tags`
 Sort | `sort title`, `sort players` or `sort time`, e.g. `sort time`
+Lend | `lend INDEX /to NAME`, e.g. `lend 2 /to Alice`
+Return | `return INDEX`, e.g. `return 2`
+List lent games | `lent`
 Help | `help`
 Exit | `exit`
  

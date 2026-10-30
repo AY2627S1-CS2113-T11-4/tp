@@ -1,0 +1,28 @@
+@startuml
+' The two states a game can be in, and the commands that move it between them
+hide empty description
+
+[*] --> OnShelf : add
+
+state "On the shelf" as OnShelf
+state "Lent out" as Lent
+
+OnShelf --> Lent : lend INDEX /to NAME
+Lent --> OnShelf : return INDEX
+
+OnShelf --> OnShelf : edit / tag / untag / sort
+Lent --> Lent : edit / tag / untag / sort
+
+OnShelf --> [*] : delete
+Lent --> [*] : delete
+
+note left of OnShelf
+  Can be suggested by
+  filter and pick
+end note
+
+note left of Lent
+  Left out of filter and pick,
+  which name it and its borrower
+end note
+@enduml
