@@ -1,6 +1,7 @@
 package seedu.gamevault.storage;
 
 import seedu.gamevault.exception.GameVaultException;
+import seedu.gamevault.game.Borrower;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.Tag;
 
@@ -12,16 +13,19 @@ import seedu.gamevault.game.Tag;
  * Files saved before play time was added have no TIME field and still load.
  * A game with tags has a fifth field, TAGS, holding comma-separated tags, e.g. {@code Catan | 3 | 4 | 60 | strategy}
  * or {@code Codenames | 4 | 8 |  | party,word} (TIME is left blank when there is no play time).
+ * A game that is lent out has a sixth field, BORROWER, e.g. {@code Hive | 2 | 2 |  |  | Alice}.
  * Users may edit the data file by hand, so every part of the line is checked and a
  * specific reason is given when something is wrong.</p>
  */
 public class GameDecoder {
-    public static final String FORMAT = "TITLE | MIN | MAX | TIME | TAGS (TIME and TAGS are optional)";
+    public static final String FORMAT = "TITLE | MIN | MAX | TIME | TAGS | BORROWER"
+            + " (TIME, TAGS and BORROWER are optional)";
 
     private static final String FIELD_SEPARATOR_REGEX = "\\|";
     private static final int FIELD_COUNT_WITHOUT_TIME = 3;
     private static final int FIELD_COUNT_WITH_TIME = 4;
     private static final int FIELD_COUNT_WITH_TAGS = 5;
+    private static final int FIELD_COUNT_WITH_BORROWER = 6;
     private static final String TAG_SEPARATOR = ",";
     private static final int NO_PLAY_TIME = 0;
     /** Invisible marker some editors (e.g. Windows Notepad) put at the start of a file. */
@@ -39,8 +43,8 @@ public class GameDecoder {
 
         // A limit of -1 keeps empty trailing fields, so "Catan | 3 |" is reported as a missing MAX.
         String[] fields = line.replace(BYTE_ORDER_MARK, "").split(FIELD_SEPARATOR_REGEX, -1);
-        if (fields.length < FIELD_COUNT_WITHOUT_TIME || fields.length > FIELD_COUNT_WITH_TAGS) {
-            throw new GameVaultException("expected " + FIELD_COUNT_WITHOUT_TIME + " to " + FIELD_COUNT_WITH_TAGS
+        if (fields.length < FIELD_COUNT_WITHOUT_TIME || fields.length > FIELD_COUNT_WITH_BORROWER) {
+            throw new GameVaultException("expected " + FIELD_COUNT_WITHOUT_TIME + " to " + FIELD_COUNT_WITH_BORROWER
                     + " parts in the format " + FORMAT + ", but found " + fields.length);
         }
 
@@ -56,7 +60,28 @@ public class GameDecoder {
         int playTime = decodePlayTime(fields);
         Game game = new Game(title, minPlayers, maxPlayers, playTime);
         decodeTags(fields, game);
+        decodeBorrower(fields, game);
         return game;
+    }
+
+    //@@author yy261
+    /**
+     * Marks the game as lent to the person in the BORROWER field, if the line has one and it is not blank.
+     *
+     * @throws GameVaultException If the name does not follow {@link Borrower#RULES}.
+     */
+    private static void decodeBorrower(String[] fields, Game game) throws GameVaultException {
+        if (fields.length < FIELD_COUNT_WITH_BORROWER) {
+            return;
+        }
+        String name = Borrower.normalise(fields[FIELD_COUNT_WITH_BORROWER - 1]);
+        if (name.isEmpty()) {
+            return;
+        }
+        if (!Borrower.isValid(name)) {
+            throw new GameVaultException("BORROWER is '" + name + "', but a name should be " + Borrower.RULES);
+        }
+        game.lendTo(name);
     }
 
     //@@author KRAZYZECTRON

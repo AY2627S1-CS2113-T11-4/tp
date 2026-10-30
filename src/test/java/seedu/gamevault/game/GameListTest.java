@@ -116,4 +116,36 @@ class GameListTest {
         assertEquals(Map.of("family", 2, "strategy", 1), games.countTags());
         assertEquals("family", games.countTags().firstKey());
     }
+
+    //@@author yy261
+    @Test
+    void filterByPlayersAndFindLentFitting_lentGames_splitBetweenTheTwo() {
+        GameList shelf = new GameList();
+        shelf.add(new Game("Catan", 3, 4, 60));
+        shelf.add(new Game("Love Letter", 2, 4, 20));
+        shelf.add(new Game("Codenames", 2, 8));
+        shelf.get(0).lendTo("Alice");
+        shelf.get(1).lendTo("Ben");
+
+        ArrayList<Game> available = shelf.filterByPlayers(4);
+        assertEquals(1, available.size());
+        assertEquals("Codenames", available.get(0).getTitle());
+
+        assertEquals(2, shelf.findLentFitting(4).size());
+        // Only Love Letter is short enough; Catan takes 60 minutes.
+        ArrayList<Game> lentInTime = shelf.findLentFitting(4, 30);
+        assertEquals(1, lentInTime.size());
+        assertEquals("Love Letter", lentInTime.get(0).getTitle());
+        assertTrue(shelf.findLentFitting(9).isEmpty());
+    }
+
+    @Test
+    void countWithoutPlayTime_lentUntimedGame_notCounted() {
+        GameList shelf = new GameList();
+        shelf.add(new Game("Codenames", 2, 8));
+        shelf.add(new Game("Werewolf", 4, 18));
+        shelf.get(1).lendTo("Alice");
+
+        assertEquals(1, shelf.countWithoutPlayTime(4));
+    }
 }

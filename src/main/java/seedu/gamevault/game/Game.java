@@ -1,16 +1,21 @@
 package seedu.gamevault.game;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
 /**
  * Represents a single game in the user's collection, with the range of player counts it supports,
- * optionally how many minutes one round usually takes, and any tags the user has given it.
+ * optionally how many minutes one round usually takes, any tags the user has given it,
+ * and who it is lent to, if anyone.
  */
 public class Game {
     /** Value of {@code playTime} for a game whose play time has not been recorded. */
     private static final int NO_PLAY_TIME = 0;
+    /** Number of fields every line of the data file has: TITLE, MIN and MAX. */
+    private static final int REQUIRED_FIELD_COUNT = 3;
 
     private final String title;
     private final int minPlayers;
@@ -18,6 +23,8 @@ public class Game {
     private final int playTime;
     /** Normalised tags (see {@link Tag}); a TreeSet keeps them unique and in alphabetical order. */
     private final TreeSet<String> tags = new TreeSet<>();
+    /** Normalised name of the person this game is lent to (see {@link Borrower}), or null if it is on the shelf. */
+    private String borrower;
 
     /**
      * Creates a game with no play time recorded.
@@ -145,28 +152,71 @@ public class Game {
         return hasPlayTime() && playTime <= minutes;
     }
 
+    /**
+     * Returns whether this game is lent to someone, i.e. it is not on the shelf.
+     */
+    public boolean isLent() {
+        return borrower != null;
+    }
+
+    /**
+     * Returns the name of the person this game is lent to.
+     * Only meaningful when {@link #isLent()} is true.
+     */
+    public String getBorrower() {
+        assert isLent() : "Check isLent() before asking for the borrower";
+        return borrower;
+    }
+
+    /**
+     * Records that this game has been lent to the given person.
+     * Callers must check {@link #isLent()} first so that the user can be told who already has the game;
+     * the assertions here only catch programming errors.
+     *
+     * @param name A valid, normalised name (see {@link Borrower}).
+     */
+    public void lendTo(String name) {
+        assert Borrower.isValid(name) : "Borrower name should be valid and normalised";
+        assert !isLent() : "Game should not already be lent";
+        borrower = name;
+    }
+
+    /**
+     * Records that this game is back on the shelf. Callers must check {@link #isLent()} first.
+     */
+    public void markReturned() {
+        assert isLent() : "Only a lent game can be returned";
+        borrower = null;
+    }
+
     //@@author
     /**
      * Returns this game as one line of the data file, in the format {@code TITLE | MIN | MAX},
-     * followed by {@code | TIME} when a play time is recorded, and by {@code | TAGS} when the game has tags.
-     * TAGS is a comma-separated list, e.g. {@code Codenames | 4 | 8 |  | party,word}; TIME is left blank
-     * when a game has tags but no play time, so that TAGS is always the fifth field.
+     * followed by {@code | TIME} when a play time is recorded, by {@code | TAGS} when the game has tags,
+     * and by {@code | BORROWER} when the game is lent to someone.
+     * TAGS is a comma-separated list, e.g. {@code Codenames | 4 | 8 |  | party,word}. A field that is not set is
+     * left blank when a later field is set, so that each field is always in the same position,
+     * e.g. {@code Hive | 2 | 2 |  |  | Alice} for a lent game with no play time or tags.
      * {@link seedu.gamevault.storage.GameDecoder} reads this format back.
      *
      * @return Line to write to the data file.
      */
     public String toFileString() {
-        String line = title + " | " + minPlayers + " | " + maxPlayers;
-        if (!tags.isEmpty()) {
-            String time = hasPlayTime() ? String.valueOf(playTime) : "";
-            return line + " | " + time + " | " + String.join(",", tags);
+        List<String> fields = new ArrayList<>(List.of(title, String.valueOf(minPlayers), String.valueOf(maxPlayers),
+                hasPlayTime() ? String.valueOf(playTime) : "",
+                String.join(",", tags),
+                isLent() ? borrower : ""));
+        // Drop unset optional fields from the end, so older versions of GameVault can still read most lines.
+        while (fields.size() > REQUIRED_FIELD_COUNT && fields.get(fields.size() - 1).isEmpty()) {
+            fields.remove(fields.size() - 1);
         }
-        return hasPlayTime() ? line + " | " + playTime : line;
+        return String.join(" | ", fields);
     }
 
     /**
-     * Returns this game as it is shown to the user, e.g. {@code Catan (3-4 players, 60 min) [strategy]},
-     * or {@code Chess (2 players)} when the minimum and maximum are the same and there is no play time or tag.
+     * Returns this game as it is shown to the user, e.g.
+     * {@code Catan (3-4 players, 60 min) [strategy] (lent to Alice)},
+     * or {@code Chess (2 players)} when the minimum and maximum are the same and nothing else is set.
      */
     @Override
     public String toString() {
@@ -175,6 +225,7 @@ public class Game {
                 : minPlayers + "-" + maxPlayers;
         String time = hasPlayTime() ? ", " + playTime + " min" : "";
         String tagList = tags.isEmpty() ? "" : " [" + String.join(", ", tags) + "]";
-        return title + " (" + players + " players" + time + ")" + tagList;
+        String lent = isLent() ? " (lent to " + borrower + ")" : "";
+        return title + " (" + players + " players" + time + ")" + tagList + lent;
     }
 }

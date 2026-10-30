@@ -103,6 +103,12 @@ public class EditCommand extends Command {
         for (String tag : oldGame.getTags()) {
             editedGame.addTag(tag);
         }
+        //@@author yy261
+        // Lending cannot be changed with edit either (use lend/return), so keep the game lent if it was.
+        if (oldGame.isLent()) {
+            editedGame.lendTo(oldGame.getBorrower());
+        }
+        //@@author Xandurs
 
         if (editedGame.toFileString().equals(oldGame.toFileString())) {
             // Nothing would change, so tell the user instead of rewriting the data file.
