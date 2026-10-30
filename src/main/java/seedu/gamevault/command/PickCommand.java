@@ -86,6 +86,12 @@ public class PickCommand extends Command {
                     .append("(").append(untimedCount).append(" game(s) for ").append(playerCount)
                     .append(" players were not considered because they have no play time recorded.)");
         }
+        //@@author yy261
+        ArrayList<Game> lentGames = hasTimeLimit
+                ? games.findLentFitting(playerCount, minutes)
+                : games.findLentFitting(playerCount);
+        message.append(LentCommand.describeLeftOut(lentGames, "considered"));
+        //@@author
         ui.showMessage(message.toString());
     }
 

@@ -52,15 +52,25 @@ public class FilterTagCommand extends Command {
     @Override
     public void execute(GameList games, Ui ui, Storage storage) {
         ArrayList<Game> matches = new ArrayList<>();
+        ArrayList<Game> lentGames = new ArrayList<>();
         for (Game game : games.filterByTag(tag)) {
-            if (fitsConditions(game)) {
+            if (!fitsConditions(game)) {
+                continue;
+            }
+            //@@author yy261
+            // As in FilterCommand, a game that is lent out is not on the shelf, so it is listed separately.
+            if (game.isLent()) {
+                lentGames.add(game);
+            } else {
                 matches.add(game);
             }
+            //@@author KRAZYZECTRON
         }
 
         String criteria = describeCriteria();
+        String lentNote = LentCommand.describeLeftOut(lentGames, "shown");
         if (matches.isEmpty()) {
-            ui.showMessage("No games " + criteria + ".");
+            ui.showMessage("No games " + criteria + "." + lentNote);
             return;
         }
 
@@ -69,7 +79,7 @@ public class FilterTagCommand extends Command {
         for (Game game : matches) {
             message.append(System.lineSeparator()).append("  ").append(game);
         }
-        ui.showMessage(message.toString());
+        ui.showMessage(message.toString() + lentNote);
     }
 
     /**
