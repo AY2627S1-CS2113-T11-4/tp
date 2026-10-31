@@ -99,4 +99,53 @@ class GameTest {
         assertEquals("Catan | 3 | 4 | 60 | strategy", timed.toFileString());
         assertEquals("Codenames | 4 | 8 |  | party,word", untimed.toFileString());
     }
+
+    //@@author MohamedFarsat
+    @Test
+    void newGame_notRated_hasWeightOneAndNoRatingShown() {
+        Game game = new Game("Catan", 3, 4);
+        assertFalse(game.isRated());
+        assertEquals(1.0, game.getPickWeight());
+        assertEquals("Catan (3-4 players)", game.toString());
+        assertEquals("Catan | 3 | 4", game.toFileString());
+    }
+
+    @Test
+    void addThumbsUpAndDown_countsAddUpAndAreShown() {
+        Game game = new Game("Catan", 3, 4, 60);
+        game.addThumbsUp();
+        game.addThumbsUp();
+        game.addThumbsDown();
+        assertTrue(game.isRated());
+        assertEquals("+2/-1", game.describeRatings());
+        assertEquals("Catan (3-4 players, 60 min) +2/-1", game.toString());
+    }
+
+    @Test
+    void getPickWeight_variousRatings_isUpPlusOneOverDownPlusOne() {
+        Game game = new Game("Catan", 3, 4);
+        game.setRatings(3, 0);
+        assertEquals(4.0, game.getPickWeight());
+        game.setRatings(0, 3);
+        assertEquals(0.25, game.getPickWeight());
+        game.setRatings(2, 2);
+        assertEquals(1.0, game.getPickWeight());
+    }
+
+    @Test
+    void toFileString_ratedGame_writesRatingsField() {
+        Game game = new Game("Catan", 3, 4, 60);
+        game.addTag("strategy");
+        game.setRatings(5, 1);
+        assertEquals("Catan | 3 | 4 | 60 | strategy | ratings=5/1", game.toFileString());
+    }
+
+    @Test
+    void toString_ratedAndLentGame_showsRatingBeforeBorrower() {
+        Game game = new Game("Catan", 3, 4);
+        game.addTag("strategy");
+        game.setRatings(1, 0);
+        game.lendTo("Alice");
+        assertEquals("Catan (3-4 players) [strategy] +1/-0 (lent to Alice)", game.toString());
+    }
 }

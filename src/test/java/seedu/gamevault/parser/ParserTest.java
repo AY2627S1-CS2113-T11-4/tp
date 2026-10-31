@@ -33,6 +33,7 @@ import seedu.gamevault.command.LogCommand;
 import seedu.gamevault.command.TagCommand;
 import seedu.gamevault.command.UntagCommand;
 import seedu.gamevault.command.PickCommand;
+import seedu.gamevault.command.RateCommand;
 import seedu.gamevault.command.ReturnCommand;
 import seedu.gamevault.command.SortCommand;
 import seedu.gamevault.exception.GameVaultException;
@@ -537,5 +538,45 @@ class ParserTest {
         assertTrue(e.getMessage().startsWith("DATE should be a real date in the form YYYY-MM-DD"));
         e = assertThrows(GameVaultException.class, () -> Parser.parseLog("1 /players 4 /date", TODAY));
         assertTrue(e.getMessage().startsWith("DATE is missing."));
+    }
+
+    //@@author MohamedFarsat
+    @Test
+    void parse_validRate_ratesTheRightGameUpOrDown(@TempDir Path tempDir) throws GameVaultException {
+        GameList games = new GameList();
+        games.add(new Game("Catan", 3, 4));
+        games.add(new Game("Chess", 2, 2));
+        Storage storage = new Storage(tempDir.resolve("games.txt").toString());
+
+        assertInstanceOf(RateCommand.class, Parser.parse("rate 1 up"));
+        run("rate 1 up", games, storage);
+        run("RATE   2   DOWN ", games, storage);
+        run("rate 2 Down", games, storage);
+
+        assertEquals("+1/-0", games.get(0).describeRatings());
+        assertEquals("+0/-2", games.get(1).describeRatings());
+    }
+
+    @Test
+    void parse_rateWithMissingParts_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("rate"));
+        assertTrue(e.getMessage().startsWith("INDEX and up/down are missing."));
+        e = assertThrows(GameVaultException.class, () -> Parser.parse("rate 2"));
+        assertTrue(e.getMessage().startsWith("Please say 'up' or 'down' after INDEX."));
+        e = assertThrows(GameVaultException.class, () -> Parser.parse("rate up"));
+        assertTrue(e.getMessage().startsWith("Please say 'up' or 'down' after INDEX."));
+    }
+
+    @Test
+    void parse_rateWithInvalidParts_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("rate 2 great"));
+        assertTrue(e.getMessage().startsWith("The rating should be 'up' or 'down', but was 'great'."));
+        e = assertThrows(GameVaultException.class, () -> Parser.parse("rate 2 up down"));
+        assertTrue(e.getMessage().startsWith("Too many words after 'rate'."));
+        e = assertThrows(GameVaultException.class, () -> Parser.parse("rate up 2"));
+        assertEquals("INDEX should be a whole number, but was 'up'.", e.getMessage());
+        assertThrows(GameVaultException.class, () -> Parser.parse("rate 0 up"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("rate -1 down"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("rate 2 +1"));
     }
 }

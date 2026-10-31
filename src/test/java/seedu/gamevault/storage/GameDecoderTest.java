@@ -175,4 +175,45 @@ class GameDecoderTest {
         original.lendTo("Alice");
         assertEquals(original.toString(), GameDecoder.decodeLine(original.toFileString()).toString());
     }
+
+    //@@author MohamedFarsat
+    @Test
+    void decodeLine_withRatings_returnsRatedGame() throws GameVaultException {
+        Game game = GameDecoder.decodeLine("Catan | 3 | 4 |  |  | ratings=5/1");
+        assertEquals(5, game.getThumbsUp());
+        assertEquals(1, game.getThumbsDown());
+        assertEquals("+0/-2", GameDecoder.decodeLine("Hive | 2 | 2 |  |  | RATINGS = 0 / 2").describeRatings());
+    }
+
+    @Test
+    void decodeLine_noRatingsField_returnsUnratedGame() throws GameVaultException {
+        assertFalse(GameDecoder.decodeLine("Catan | 3 | 4 | 60 | strategy").isRated());
+    }
+
+    @Test
+    void decodeLine_invalidRatings_throwsException() {
+        String[] invalidValues = {"", "5", "5/1/2", "/1", "five/1", "5/-1", "-1/0", "1.5/0", "99999999999/0"};
+        for (String value : invalidValues) {
+            assertThrows(GameVaultException.class,
+                    () -> GameDecoder.decodeLine("Catan | 3 | 4 |  |  | ratings=" + value), value);
+        }
+    }
+
+    @Test
+    void decodeLine_negativeRating_throwsExceptionNamingField() {
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> GameDecoder.decodeLine("Catan | 3 | 4 |  |  | ratings=2/-1"));
+        assertEquals("DOWN in ratings should not be negative, but was -1", e.getMessage());
+    }
+
+    @Test
+    void decodeLine_toFileStringOfRatedGameWithEverything_decodesToSameGame() throws GameVaultException {
+        Game original = new Game("Catan", 3, 4, 60);
+        original.addTag("strategy");
+        original.lendTo("Alice");
+        original.setRatings(3, 2);
+        Game decoded = GameDecoder.decodeLine(original.toFileString());
+        assertEquals(original.toString(), decoded.toString());
+        assertEquals(original.toFileString(), decoded.toFileString());
+    }
 }
