@@ -3,6 +3,11 @@ package seedu.gamevault.game;
 import java.util.Collections;
 import java.util.Set;
 import java.util.TreeSet;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
 
 /**
  * Represents a single game in the user's collection, with the range of player counts it supports,
@@ -11,6 +16,8 @@ import java.util.TreeSet;
 public class Game {
     /** Value of {@code playTime} for a game whose play time has not been recorded. */
     private static final int NO_PLAY_TIME = 0;
+    /** Play sessions logged for this game, kept oldest first. */
+    private final ArrayList<PlaySession> sessions = new ArrayList<>();
 
     private final String title;
     private final int minPlayers;
@@ -176,5 +183,32 @@ public class Game {
         String time = hasPlayTime() ? ", " + playTime + " min" : "";
         String tagList = tags.isEmpty() ? "" : " [" + String.join(", ", tags) + "]";
         return title + " (" + players + " players" + time + ")" + tagList;
+    }
+
+    //@@author Xandurs
+    /** Records a session, keeping sessions sorted by date (same-day sessions stay in logged order). */
+    public void addSession(PlaySession session) {
+        assert session != null : "Session to add should not be null";
+        int position = sessions.size();
+        while (position > 0 && sessions.get(position - 1).getDate().isAfter(session.getDate())) {
+            position--;
+        }
+        sessions.add(position, session);
+    }
+
+    public List<PlaySession> getSessions() {
+        return Collections.unmodifiableList(sessions);
+    }
+
+    public int getPlayCount() {
+        return sessions.size();
+    }
+
+    /** Returns the date this game was last played, or empty if never played. */
+    public Optional<LocalDate> getLastPlayed() {
+        if (sessions.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(sessions.get(sessions.size() - 1).getDate());
     }
 }
