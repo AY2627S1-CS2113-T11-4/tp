@@ -1,0 +1,60 @@
+@startuml
+' Running "lend 2 /to Alice": recording that the second game is lent to Alice
+hide footbox
+
+participant ":GameVault" as GV
+participant "<<class>>\nParser" as P
+participant ":LendCommand" as LC
+participant ":GameList" as GL
+participant "game:Game" as G
+participant ":Storage" as S
+participant ":Ui" as UI
+
+activate GV
+GV -> P : parse("lend 2 /to Alice")
+activate P
+P -> P : splitByPrefixes(...)
+P -> P : parseIndex("2")
+note right of P
+  NAME is normalised and
+  checked against Borrower rules
+end note
+create LC
+P -> LC : new LendCommand(2, "Alice")
+activate LC
+LC --> P
+deactivate LC
+P --> GV
+deactivate P
+
+GV -> LC : execute(games, ui, storage)
+activate LC
+LC -> GL : get(1)
+activate GL
+GL --> LC : game
+deactivate GL
+
+LC -> G : isLent()
+activate G
+G --> LC : lent?
+deactivate G
+
+alt game is already lent
+  LC --> GV : GameVaultException naming the borrower
+else game is on the shelf
+  LC -> G : lendTo("Alice")
+  activate G
+  G --> LC
+  deactivate G
+  LC -> S : save(games)
+  activate S
+  S --> LC
+  deactivate S
+  LC -> UI : showMessage("Lent to Alice: ...")
+  activate UI
+  UI --> LC
+  deactivate UI
+  LC --> GV
+end
+deactivate LC
+@enduml

@@ -175,7 +175,8 @@ commas. `TIME` and `TAGS` are optional:
 * A game with no tags has no `TAGS` field, and `TIME` is left out too if no play time is recorded.
 * A game with tags always has `TAGS` as the fifth field, so `TIME` is left blank if there is no play time.
 * Any further data comes after `TAGS` as named `KEY=VALUE` fields, in any order. A game with a named field
-  always has `TIME` and `TAGS` (possibly blank) first. Currently the only named field is `sessions` (see
+  always has `TIME` and `TAGS` (possibly blank) first. The current named fields are `lent` (see
+  [Lending games to friends](#lending-games-to-friends)) and `sessions` (see
   [Logging a play session](#logging-a-play-session)).
 
 For example:
@@ -185,6 +186,7 @@ Catan | 3 | 4 | 60
 Love Letter | 2 | 4
 Azul | 2 | 4 | 45 | family,strategy
 Codenames | 4 | 8 |  | party,word
+Hive | 2 | 2 |  |  | lent=Alice
 Carcassonne | 2 | 5 | 35 |  | sessions=2026-10-25@3;2026-10-30@4
 ```
 
@@ -193,8 +195,9 @@ The class diagram below shows how these classes relate to the rest of the app.
 ![Storage class diagram](images/StorageClassDiagram.png)
 
 `GameVault` owns a single `Storage` object, created with the path of the data file. Commands that change the
-collection (currently `add`, `delete`, `edit`, `tag`, `untag`, `sort` and `log`) receive the same `Storage` object
-in `Command#execute(...)` and use it to save. `Storage` depends on `GameDecoder` only for loading; saving uses `Game#toFileString()` directly.
+collection (currently `add`, `delete`, `edit`, `tag`, `untag`, `sort`, `lend`, `return` and `log`) receive the
+same `Storage` object in `Command#execute(...)` and use it to save. `Storage` depends on `GameDecoder` only for
+loading; saving uses `Game#toFileString()` directly.
 `GameDecoder` uses `Tag` to check each tag in the file with the same rules as tags typed by the user.
 
 #### Loading games at startup
@@ -462,9 +465,83 @@ leaves the class except through the data file, where a missing field is used ins
 
 #### Possible future improvements
 
-* Let `edit` change a game's play time (e.g. `edit 2 /time 30`). At the moment, a play time can only be set when the
-  game is added.
 * Accept a range such as `/time 30-60` for games whose length varies a lot.
+
+### Lending games to friends
+
+Hosts often lend games to friends, and a game that is lent out cannot be played tonight. The `lend`, `return` and
+`lent` commands record who has which game, and `filter` and `pick` leave lent games out of their suggestions.
+
+The state diagram below shows the two states a game can be in, and which commands move it between them.
+
+![State diagram of a game being lent and returned](images/LendState.png)
+
+**How lending is stored.** `Game` has a `borrower` field holding the borrower's name, or `null` when the game is on
+the shelf. Like tags, lending is changed in place through `Game#lendTo(...)` and `Game#markReturned()`, and read
+through `Game#isLent()` and `Game#getBorrower()`. The rules for a name (1 to 30 characters, no `|`) are kept in the
+small `Borrower` class, so that `Parser` and `GameDecoder` accept exactly the same names, in the same way that `Tag`
+holds the rules for tags. In the data file, the borrower is an optional sixth field, e.g.
+`Hive | 2 | 2 |  |  | Alice`. `Game#toFileString()` leaves earlier optional fields blank so each field keeps its
+position, and drops unset fields from the end, so a game that is not lent is saved exactly as before.
+
+**Lending a game.** The sequence diagram below shows what happens when the user enters `lend 2 /to Alice`.
+
+![Sequence diagram for lend 2 /to Alice](images/LendSequence.png)
+
+1. `Parser#parseLend(...)` uses `splitByPrefixes(...)` to split the input into the index (`2`) and the name after
+   `/to` (`Alice`). The index is checked by `parseIndex(...)`, shared with `delete` and `edit`.
+   The name is normalised with `Borrower#normalise(...)` (extra spaces removed) and checked with
+   `Borrower#isValid(...)`.
+2. `LendCommand#execute(...)` checks that a game with that number exists, then gets it from the `GameList`.
+3. If the game is already lent, a `GameVaultException` names the current borrower and tells the user to `return` it
+   first. The earlier borrower is kept, because lending a game that is already out is most likely a mistake,
+   e.g. the wrong index.
+4. Otherwise, `Game#lendTo(...)` records the borrower, `Storage#save(...)` writes the collection to the data file,
+   and `Ui` confirms the change.
+
+`ReturnCommand` works the same way in reverse: it checks that the game is lent, calls `Game#markReturned()` and saves.
+`LentCommand` goes through the list and shows each lent game with its number from `list`, so the user can use that
+number with `return` straight away.
+
+**Leaving lent games out of suggestions.** `GameList#filterByPlayers(...)` skips lent games, so `filter`, `pick` and
+`GameList#countWithoutPlayTime(...)` all ignore them in one place. `FilterTagCommand` skips them in its own loop.
+To explain why a game is missing, these commands also ask `GameList#findLentFitting(...)` for the lent games that
+*would* have matched, and append a note built by `LentCommand#describeLeftOut(...)`, e.g.
+`(Not shown because they are lent out: Catan (to Alice))`. A lent game that would not have matched anyway
+(e.g. one that takes too long) is not mentioned. `EditCommand` builds a new `Game`, so it copies the borrower to the
+edited game, just as it copies the tags.
+
+#### Design considerations
+
+**Aspect: How to record that a game is lent**
+
+* **Alternative 1 (current choice):** A nullable `borrower` name in `Game`.
+  * Pros: One field answers both "is it lent?" and "who has it?", and the borrower is shown wherever the game is.
+  * Cons: Code that uses the name must check `isLent()` first.
+* **Alternative 2:** A boolean `isLent` flag, with no name.
+  * Pros: Slightly simpler.
+  * Cons: The host still has to remember who has the game, which is the main reason to record it.
+
+**Aspect: What `filter` and `pick` do with lent games**
+
+* **Alternative 1 (current choice):** Leave them out, and name them with their borrowers in a note.
+  * Pros: Suggestions only include games the host can play tonight, and the note explains a missing game.
+  * Cons: Commands need an extra call to find the lent games for the note.
+* **Alternative 2:** Show them, marked as lent.
+  * Pros: Simpler, since the filtering does not change.
+  * Cons: `pick` could choose a game that is not on the shelf, which defeats the purpose of picking.
+
+**Aspect: Where lent games are skipped**
+
+Skipping lent games inside `GameList#filterByPlayers(...)`, instead of in each command, means `filter`, `pick` and the
+count of untimed games cannot disagree about which games are available. `list`, `find` and `sort` use the whole
+list, so they still show lent games, with `(lent to NAME)` after each one.
+
+#### Possible future improvements
+
+* Record when a game was lent, and a due date, so `lent` can show overdue games first.
+* Let the user mark a game as unavailable for other reasons, such as missing pieces, with the same effect on
+  `filter` and `pick`.
 <!-- @@author -->
 
 

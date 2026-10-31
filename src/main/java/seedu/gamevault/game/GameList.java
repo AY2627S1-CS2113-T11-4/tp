@@ -89,7 +89,8 @@ public class GameList {
 
     //@@author yy261
     /**
-     * Returns the games that can be played by the given number of players, in their original order.
+     * Returns the games on the shelf that can be played by the given number of players, in their original order.
+     * Games that are lent out are left out, since they cannot be played tonight (see {@link #findLentFitting}).
      * The collection itself is not changed.
      *
      * @param count Number of players to check; must be at least 1.
@@ -98,7 +99,42 @@ public class GameList {
     public ArrayList<Game> filterByPlayers(int count) {
         ArrayList<Game> matches = new ArrayList<>();
         for (Game game : games) {
-            if (game.fitsPlayerCount(count)) {
+            if (!game.isLent() && game.fitsPlayerCount(count)) {
+                matches.add(game);
+            }
+        }
+        return matches;
+    }
+
+    /**
+     * Returns the games that are lent out but would otherwise fit the given number of players,
+     * in their original order, so commands can tell the user why those games were left out.
+     *
+     * @param count Number of players to check; must be at least 1.
+     * @return A new list of such games; empty if there are none.
+     */
+    public ArrayList<Game> findLentFitting(int count) {
+        ArrayList<Game> matches = new ArrayList<>();
+        for (Game game : games) {
+            if (game.isLent() && game.fitsPlayerCount(count)) {
+                matches.add(game);
+            }
+        }
+        return matches;
+    }
+
+    /**
+     * Returns the games that are lent out but would otherwise fit the given number of players
+     * and the given time limit, in their original order.
+     *
+     * @param count Number of players to check; must be at least 1.
+     * @param minutes Time available; must be at least 1.
+     * @return A new list of such games; empty if there are none.
+     */
+    public ArrayList<Game> findLentFitting(int count, int minutes) {
+        ArrayList<Game> matches = new ArrayList<>();
+        for (Game game : findLentFitting(count)) {
+            if (game.fitsTime(minutes)) {
                 matches.add(game);
             }
         }
@@ -151,7 +187,7 @@ public class GameList {
 
     //@@author
     /**
-     * Returns how many games fit the given number of players but have no play time recorded.
+     * Returns how many games on the shelf fit the given number of players but have no play time recorded.
      * These are the games that a time limit leaves out, so commands can tell the user about them.
      *
      * @param count Number of players to check; must be at least 1.
