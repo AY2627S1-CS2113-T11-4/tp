@@ -1,0 +1,50 @@
+@startuml
+' Sequence diagram for "sort time" -- GameVault sort feature
+hide footbox
+skinparam sequenceMessageAlign center
+
+participant ":GameVault" as GV
+participant "<<class>>\nParser" as P
+participant "<<class>>\nSortOrder" as SO
+participant "s:SortCommand" as S
+participant ":GameList" as GL
+participant ":Storage" as ST
+participant ":Ui" as UI
+
+GV -> P : parse("sort time")
+activate P
+P -> SO : fromKeyword("time")
+activate SO
+SO --> P : Optional(TIME)
+deactivate SO
+create S
+P -> S : new SortCommand(TIME)
+activate S
+S --> P
+deactivate S
+P --> GV : s
+deactivate P
+
+GV -> S : execute(games, ui, storage)
+activate S
+S -> GL : sort(TIME.getComparator())
+activate GL
+GL --> S
+deactivate GL
+S -> ST : save(games)
+activate ST
+ST --> S
+deactivate ST
+S -> S : format numbered list
+note right
+  uses the same formatting
+  as the list command
+end note
+S -> UI : showMessage(header + numbered list)
+activate UI
+UI --> S
+deactivate UI
+S --> GV
+deactivate S
+destroy S
+@enduml
