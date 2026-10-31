@@ -73,7 +73,7 @@ class LendCommandTest {
         assertTrue(games.get(0).isLent());
         assertEquals("Alice", games.get(0).getBorrower());
         assertTrue(output.toString().contains("Lent to Alice: Catan"));
-        assertEquals(List.of("Catan | 3 | 4 | 60 |  | Alice", "Codenames | 2 | 8", "Love Letter | 2 | 4 | 20"),
+        assertEquals(List.of("Catan | 3 | 4 | 60 |  | lent=Alice", "Codenames | 2 | 8", "Love Letter | 2 | 4 | 20"),
                 Files.readAllLines(dataFile, StandardCharsets.UTF_8));
     }
 

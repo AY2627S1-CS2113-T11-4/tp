@@ -1,10 +1,13 @@
 package seedu.gamevault.game;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
+
 
 /**
  * Represents a single game in the user's collection, with the range of player counts it supports,
@@ -12,11 +15,17 @@ import java.util.TreeSet;
  * and who it is lent to, if anyone.
  */
 public class Game {
+    /** Name of the data-file field that holds the play sessions, e.g. {@code sessions=2026-10-30@4}. */
+    public static final String SESSIONS_FILE_KEY = "sessions";
+    /** Separates the sessions within the sessions field, e.g. {@code 2026-06-01@3;2026-10-30@4}. */
+    public static final String SESSION_FILE_SEPARATOR = ";";
+    /** Name of the data-file field that holds who the game is lent to, e.g. {@code lent=Alice}. */
+    public static final String LENT_FILE_KEY = "lent";
     /** Value of {@code playTime} for a game whose play time has not been recorded. */
     private static final int NO_PLAY_TIME = 0;
-    /** Number of fields every line of the data file has: TITLE, MIN and MAX. */
-    private static final int REQUIRED_FIELD_COUNT = 3;
 
+    /** Play sessions logged for this game, kept oldest first. */
+    private final ArrayList<PlaySession> sessions = new ArrayList<>();
     private final String title;
     private final int minPlayers;
     private final int maxPlayers;
@@ -151,7 +160,6 @@ public class Game {
         assert minutes >= 1 : "Time available should be at least 1 minute";
         return hasPlayTime() && playTime <= minutes;
     }
-
     /**
      * Returns whether this game is lent to someone, i.e. it is not on the shelf.
      */
@@ -188,8 +196,7 @@ public class Game {
         assert isLent() : "Only a lent game can be returned";
         borrower = null;
     }
-
-    //@@author
+    //@@author Xandurs
     /**
      * Returns this game as one line of the data file, in the format {@code TITLE | MIN | MAX},
      * followed by {@code | TIME} when a play time is recorded, by {@code | TAGS} when the game has tags,
@@ -202,17 +209,39 @@ public class Game {
      * @return Line to write to the data file.
      */
     public String toFileString() {
-        List<String> fields = new ArrayList<>(List.of(title, String.valueOf(minPlayers), String.valueOf(maxPlayers),
-                hasPlayTime() ? String.valueOf(playTime) : "",
-                String.join(",", tags),
-                isLent() ? borrower : ""));
-        // Drop unset optional fields from the end, so older versions of GameVault can still read most lines.
-        while (fields.size() > REQUIRED_FIELD_COUNT && fields.get(fields.size() - 1).isEmpty()) {
-            fields.remove(fields.size() - 1);
+        String line = title + " | " + minPlayers + " | " + maxPlayers;
+        List<String> namedFields = getNamedFileFields();
+        if (tags.isEmpty() && namedFields.isEmpty()) {
+            return hasPlayTime() ? line + " | " + playTime : line;
         }
-        return String.join(" | ", fields);
+        // TIME and TAGS are found by position, so write both (maybe blank) before named fields.
+        String time = hasPlayTime() ? String.valueOf(playTime) : "";
+        line += " | " + time + " | " + String.join(",", tags);
+        for (String field : namedFields) {
+            line += " | " + field;
+        }
+        return line;
     }
 
+    //@@author Xandurs
+    /** Named KEY=VALUE fields after TAGS. Teammates: add your new field here. */
+    private List<String> getNamedFileFields() {
+        List<String> fields = new ArrayList<>();
+        if (!sessions.isEmpty()) {
+            List<String> encoded = new ArrayList<>();
+            for (PlaySession session : sessions) {
+                encoded.add(session.toFileString());
+            }
+            fields.add(SESSIONS_FILE_KEY + "=" + String.join(SESSION_FILE_SEPARATOR, encoded));
+        }
+        //@@author yy261
+        if (isLent()) {
+            fields.add(LENT_FILE_KEY + "=" + borrower);
+        }
+        //@@ author Xandurs
+        return fields;
+    }
+    //@@ author
     /**
      * Returns this game as it is shown to the user, e.g.
      * {@code Catan (3-4 players, 60 min) [strategy] (lent to Alice)},
@@ -227,5 +256,32 @@ public class Game {
         String tagList = tags.isEmpty() ? "" : " [" + String.join(", ", tags) + "]";
         String lent = isLent() ? " (lent to " + borrower + ")" : "";
         return title + " (" + players + " players" + time + ")" + tagList + lent;
+    }
+
+    //@@author Xandurs
+    /** Records a session, keeping sessions sorted by date (same-day sessions stay in logged order). */
+    public void addSession(PlaySession session) {
+        assert session != null : "Session to add should not be null";
+        int position = sessions.size();
+        while (position > 0 && sessions.get(position - 1).getDate().isAfter(session.getDate())) {
+            position--;
+        }
+        sessions.add(position, session);
+    }
+
+    public List<PlaySession> getSessions() {
+        return Collections.unmodifiableList(sessions);
+    }
+
+    public int getPlayCount() {
+        return sessions.size();
+    }
+
+    /** Returns the date this game was last played, or empty if never played. */
+    public Optional<LocalDate> getLastPlayed() {
+        if (sessions.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(sessions.get(sessions.size() - 1).getDate());
     }
 }

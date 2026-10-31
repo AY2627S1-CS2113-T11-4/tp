@@ -174,8 +174,10 @@ commas. `TIME` and `TAGS` are optional:
 
 * A game with no tags has no `TAGS` field, and `TIME` is left out too if no play time is recorded.
 * A game with tags always has `TAGS` as the fifth field, so `TIME` is left blank if there is no play time.
-* A game that is lent out has a sixth field, `BORROWER`, with `TIME` and `TAGS` left blank if they are not set,
-  e.g. `Hive | 2 | 2 |  |  | Alice` (see [Lending games to friends](#lending-games-to-friends)).
+* Any further data comes after `TAGS` as named `KEY=VALUE` fields, in any order. A game with a named field
+  always has `TIME` and `TAGS` (possibly blank) first. The current named fields are `lent` (see
+  [Lending games to friends](#lending-games-to-friends)) and `sessions` (see
+  [Logging a play session](#logging-a-play-session)).
 
 For example:
 
@@ -184,6 +186,8 @@ Catan | 3 | 4 | 60
 Love Letter | 2 | 4
 Azul | 2 | 4 | 45 | family,strategy
 Codenames | 4 | 8 |  | party,word
+Hive | 2 | 2 |  |  | lent=Alice
+Carcassonne | 2 | 5 | 35 |  | sessions=2026-10-25@3;2026-10-30@4
 ```
 
 The class diagram below shows how these classes relate to the rest of the app.
@@ -191,8 +195,9 @@ The class diagram below shows how these classes relate to the rest of the app.
 ![Storage class diagram](images/StorageClassDiagram.png)
 
 `GameVault` owns a single `Storage` object, created with the path of the data file. Commands that change the
-collection (currently `add`, `delete`, `edit`, `tag`, `untag`, `sort`, `lend` and `return`) receive the same `Storage` object in `Command#execute(...)` and
-use it to save. `Storage` depends on `GameDecoder` only for loading; saving uses `Game#toFileString()` directly.
+collection (currently `add`, `delete`, `edit`, `tag`, `untag`, `sort`, `lend`, `return` and `log`) receive the
+same `Storage` object in `Command#execute(...)` and use it to save. `Storage` depends on `GameDecoder` only for
+loading; saving uses `Game#toFileString()` directly.
 `GameDecoder` uses `Tag` to check each tag in the file with the same rules as tags typed by the user.
 
 #### Loading games at startup
@@ -208,7 +213,7 @@ The sequence diagram below shows what happens.
    `load()` returns an empty list, since a new user simply has no games yet.
 3. Otherwise, `load()` reads every line of the file. Blank lines are ignored. Each other line is passed to
    `GameDecoder#decodeLine(...)`, which splits it on `|`, trims each part and checks that:
-   * there are three to six parts,
+   * there are at least three parts,
    * `TITLE` is not empty,
    * `MIN` and `MAX` are whole numbers of at least 1,
    * `MAX` is not less than `MIN`,
@@ -216,7 +221,9 @@ The sequence diagram below shows what happens.
      time is recorded, and
    * each tag in `TAGS`, if present, follows the tag rules once `Tag#normalise(...)` has trimmed it and put it in
      lower case, as checked by `Tag#isValid(...)`. Blank entries (e.g. from a trailing comma) and repeated tags
-     are ignored.
+     are ignored, and
+   * every part after `TAGS` is a `KEY=VALUE` field whose key is known and not repeated, and whose value is valid
+     (see `GameDecoder#decodeNamedField(...)`).
 4. A valid line becomes a `Game`. An invalid line causes `GameDecoder` to throw a `GameVaultException` whose
    message says exactly what is wrong (e.g. `MAX (2) is less than MIN (3)`). `Storage` catches it, records the
    line number, the line and the reason in its `skippedLines` list, and moves on to the next line.
@@ -262,6 +269,21 @@ optional fifth field. Tags may only contain letters, digits and hyphens, so a ta
 that separate fields and tags, and no escaping is needed. If games gain many more fields later, switching to JSON
 would only require changes inside the `Storage` component.
 
+**Aspect: How to add more optional fields** (added in v2.1)
+
+* **Alternative 1 (current choice):** Fields after `TAGS` are named `KEY=VALUE` fields, e.g. `sessions=...`.
+  * Pros: Fields can be in any order and are only written when there is data, so adding a new kind of data
+    (sessions, difficulty, ratings, ...) never changes how existing lines are read. Lines stay short.
+  * Cons: Slightly more code in `GameDecoder`, and keys take up some space in the file.
+* **Alternative 2:** Keep adding numbered fields (a sixth, seventh, ... field).
+  * Pros: Same approach as `TIME` and `TAGS`.
+  * Cons: Every game with any later field needs blanks for all the fields before it, and every developer adding a
+    field must agree on the column order.
+
+We chose Alternative 1 because several v2.1 features each add optional data. To store a new kind of data, add a
+named field in `Game#getNamedFileFields()` and a matching `case` in `GameDecoder#decodeNamedField(...)`. Unknown
+or repeated keys make the line invalid, so a typo in a hand-edited file is reported rather than silently dropped.
+
 **Aspect: What to do with invalid lines when loading**
 
 * **Alternative 1 (current choice):** Skip each invalid line, keep the valid ones, and tell the user which lines
@@ -300,6 +322,57 @@ without creating any files.
   loading, so that the user can still recover those lines.
 * Write to a temporary file first and then rename it over `games.txt`, so that a crash in the middle of saving
   cannot leave a half-written file.
+
+<!-- @@author Xandurs -->
+### Logging a play session
+
+The `log` command records that a game was played, e.g. `log 1 /players 4 /date 2026-10-30`. The logged sessions
+are what features such as "last played" are worked out from.
+
+**Model.** A `PlaySession` stores a `LocalDate` and a player count, and cannot be changed once created. Each `Game`
+holds an `ArrayList<PlaySession>`. `Game#addSession(...)` inserts each new session after every session on or
+before its date, so the list is always sorted oldest first, and `Game#getLastPlayed()` simply returns the date of
+the last session. Sessions on the same day stay in the order they were logged.
+
+**Parsing.** `Parser#parseLog(arguments, today)` uses `splitByPrefixes(...)` to read `INDEX`, `/players` and the
+optional `/date`. Today's date is passed in (`LocalDate.now()` in normal use) so that the rule "not in the future"
+can be unit-tested with a fixed date. Without `/date`, the session is logged for today. `LocalDate.parse(...)`
+is strict, so impossible dates such as `2026-02-30` are rejected rather than adjusted.
+
+**Executing.** The sequence diagram below shows `log 1 /players 4 /date 2026-10-30`.
+
+![Sequence diagram for log 1 /players 4 /date 2026-10-30](images/LogSequenceDiagram.png)
+
+1. `LogCommand#execute(...)` checks that game 1 exists, then gets it from the `GameList`.
+2. It checks that 4 is within the game's player range with `Game#fitsPlayerCount(4)`.
+3. It adds the session with `Game#addSession(...)` and saves the collection with `Storage#save(...)`.
+4. It shows the session and the game's new play count.
+
+**Storage.** Sessions are saved in the named field `sessions`, each as `DATE@PLAYERS` and separated by `;`, e.g.
+`Catan | 3 | 4 | 60 |  | sessions=2026-10-25@3;2026-10-30@4`. Because `EditCommand` builds a new `Game` when
+editing, it copies the old game's sessions (as well as its tags) into the new one.
+
+#### Design considerations
+
+**Aspect: Player counts outside the game's range**
+
+* **Alternative 1 (current choice):** Reject them, and suggest using `edit` to change the range first.
+  * Pros: Catches typos such as `44` for `4`, and keeps the history consistent with the range that `filter` and
+    `pick` use.
+  * Cons: Groups that play with house rules must widen the game's range first.
+* **Alternative 2:** Accept any count of at least 1.
+  * Pros: More flexible.
+  * Cons: A typo is saved silently and can only be removed by editing the data file.
+
+**Aspect: Future dates in the data file**
+
+The `log` command rejects future dates, but `GameDecoder` accepts them when loading. Otherwise a computer whose
+clock is set wrongly would treat saved sessions as invalid and skip the whole game.
+
+#### Possible future improvements
+
+* An `unlog INDEX` command to remove a session logged by mistake.
+* Accept other date forms, e.g. `today`, `yesterday` or `30/10/2026`.
 
 <!-- @@author yy261 -->
 ### Filtering games by player count and play time

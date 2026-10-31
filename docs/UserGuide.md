@@ -47,6 +47,7 @@ Here are the commands you can use:
   tag     Adds tags to a game: tag INDEX TAG [MORE_TAGS]...
   untag   Removes tags from a game: untag INDEX TAG [MORE_TAGS]...
   tags    Lists all tags in use and how many games have each.
+  log     Logs that a game was played: log INDEX /players COUNT [/date YYYY-MM-DD]
   sort    Sorts your collection: sort title|players|time
   lend    Records that a game is lent out: lend INDEX /to NAME
   return  Records that a lent game is back: return INDEX
@@ -396,6 +397,36 @@ ____________________________________________________________
 ```
 
 If your collection is empty, GameVault shows `No games in your collection to sort yet.` instead.
+
+<!-- @@author Xandurs -->
+### Logging a play session: `log`
+
+Records that your group played a game, so GameVault can keep track of when each game was last played.
+
+Format: `log INDEX /players COUNT [/date YYYY-MM-DD]`
+
+* `INDEX` is the game's number in `list`, and must be a whole number of at least 1.
+* `COUNT` is how many people played. It must be within the game's player range; if you now play a game
+  with a different range, change it with `edit` first.
+* `/date` is the day you played, in the form `YYYY-MM-DD` (e.g. `2026-10-30`). It cannot be in the future.
+  Leave it out to log the session for today.
+* `/players` and `/date` can be given in either order.
+* You can log the same game more than once on the same day.
+
+Examples of usage:
+
+* `log 1 /players 4` logs that game 1 was played today by 4 people.
+* `log 2 /players 3 /date 2026-10-25` logs that game 2 was played on 25 October 2026 by 3 people.
+
+Expected output (for `log 1 /players 4 /date 2026-10-30`):
+
+```
+____________________________________________________________
+Logged: Catan played on 2026-10-30 (4 players)
+Catan has now been played 2 times.
+____________________________________________________________
+```
+
 <!-- @@author -->
 
 <!-- @@author yy261 -->
@@ -483,7 +514,7 @@ ____________________________________________________________
 
 If no game is lent out, GameVault shows `None of your games are lent out. Everything is on your shelf.` instead.
 <!-- @@author -->
- 
+
 ### Exiting the program: `exit`
  
 Exits GameVault.
@@ -510,16 +541,18 @@ Catan | 3 | 4 | 60
 Codenames | 2 | 8
 Azul | 2 | 4 | 45 | family,strategy
 Werewolf | 8 | 18 |  | party
-Hive | 2 | 2 |  |  | Alice
+Hive | 2 | 2 |  |  | lent=Alice
+Love Letter | 2 | 4 | 20 |  | sessions=2026-10-25@3;2026-10-30@4
 ```
  
 * `MIN` and `MAX` must be whole numbers of at least 1, and `MAX` must not be less than `MIN`.
 * `TIME`, if given, must be a whole number of at least 1. A line with no `TIME` means no play time is recorded.
 * `TAGS`, if given, must be the fifth field. For a game with tags but no play time, leave `TIME` blank,
   as in the `Werewolf` line above. Each tag must follow the rules in [Tagging a game](#tagging-a-game-tag-untag).
-* `BORROWER`, if given, must be the sixth field, so leave `TIME` and `TAGS` blank if the game has neither,
-  as in the `Hive` line above. It follows the same rules as `NAME` in [`lend`](#lending-a-game-to-a-friend-lend).
-  A blank `BORROWER` means the game is on your shelf.
+* Any further data comes after `TAGS` as named `KEY=VALUE` fields. For these lines, write `TIME` and `TAGS`
+  even if blank, as in the `Hive` and `Love Letter` lines above. The current named fields are `lent`
+  (see [`lend`](#lending-a-game-to-a-friend-lend)) and `sessions`, which lists the logged play sessions as
+  `DATE@PLAYERS` (e.g. `2026-10-30@4`), separated by `;`.
 * Blank lines are ignored.
 
 If a line is not in this format, GameVault skips that line, loads the rest of your games, and tells you which
@@ -528,7 +561,7 @@ lines were skipped and why, for example:
 ```
 Warning: 1 line(s) in your data file could not be read and were skipped:
   Line 2: "Codenames | two | 8" (MIN should be a whole number, but was 'two')
-Each line should be in the format: TITLE | MIN | MAX | TIME | TAGS | BORROWER (TIME, TAGS and BORROWER are optional)
+Each line should be in the format: TITLE | MIN | MAX | TIME | TAGS | KEY=VALUE... (everything after MAX is optional)
 ```
  
 **Caution:** Skipped lines are not saved back to the file. To keep those games, exit GameVault and fix the lines
@@ -559,6 +592,6 @@ Sort | `sort title`, `sort players` or `sort time`, e.g. `sort time`
 Lend | `lend INDEX /to NAME`, e.g. `lend 2 /to Alice`
 Return | `return INDEX`, e.g. `return 2`
 List lent games | `lent`
+Log | `log INDEX /players COUNT [/date YYYY-MM-DD]`, e.g. `log 1 /players 4 /date 2026-10-30`
 Help | `help`
 Exit | `exit`
- 

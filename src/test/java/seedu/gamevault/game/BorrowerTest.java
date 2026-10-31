@@ -50,12 +50,12 @@ class BorrowerTest {
     void toFileString_lentGame_keepsEachFieldInItsPosition() {
         Game untimed = new Game("Hive", 2, 2);
         untimed.lendTo("Alice");
-        assertEquals("Hive | 2 | 2 |  |  | Alice", untimed.toFileString());
+        assertEquals("Hive | 2 | 2 |  |  | lent=Alice", untimed.toFileString());
 
         Game timedAndTagged = new Game("Catan", 3, 4, 60);
         timedAndTagged.addTag("strategy");
         timedAndTagged.lendTo("Ben");
-        assertEquals("Catan | 3 | 4 | 60 | strategy | Ben", timedAndTagged.toFileString());
+        assertEquals("Catan | 3 | 4 | 60 | strategy | lent=Ben", timedAndTagged.toFileString());
     }
 
     @Test

@@ -141,7 +141,7 @@ class GameDecoderTest {
     //@@author yy261
     @Test
     void decodeLine_withBorrower_returnsLentGame() throws GameVaultException {
-        Game game = GameDecoder.decodeLine("Hive | 2 | 2 |  |  |   Mary   Tan ");
+        Game game = GameDecoder.decodeLine("Hive | 2 | 2 |  |  | lent=  Mary   Tan ");
         assertTrue(game.isLent());
         // The name is normalised in the same way as when it is typed with 'lend'.
         assertEquals("Mary Tan", game.getBorrower());
@@ -150,16 +150,22 @@ class GameDecoderTest {
     }
 
     @Test
-    void decodeLine_blankBorrower_returnsGameOnShelf() throws GameVaultException {
-        assertFalse(GameDecoder.decodeLine("Catan | 3 | 4 | 60 | strategy |   ").isLent());
+    void decodeLine_noLentField_returnsGameOnShelf() throws GameVaultException {
+        assertFalse(GameDecoder.decodeLine("Catan | 3 | 4 | 60 | strategy").isLent());
+    }
+
+    @Test
+    void decodeLine_blankLentField_throwsException() {
+        assertThrows(GameVaultException.class,
+                () -> GameDecoder.decodeLine("Catan | 3 | 4 | 60 | strategy | lent="));
     }
 
     @Test
     void decodeLine_borrowerTooLong_throwsExceptionNamingField() {
         String longName = "a".repeat(31);
         GameVaultException e = assertThrows(GameVaultException.class,
-                () -> GameDecoder.decodeLine("Hive | 2 | 2 |  |  | " + longName));
-        assertTrue(e.getMessage().startsWith("BORROWER is '" + longName + "'"));
+                () -> GameDecoder.decodeLine("Hive | 2 | 2 |  |  | lent=" + longName));
+        assertTrue(e.getMessage().startsWith("lent is '" + longName + "'"));
     }
 
     @Test

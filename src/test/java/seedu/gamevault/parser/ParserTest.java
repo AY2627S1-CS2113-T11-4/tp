@@ -10,12 +10,14 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import seedu.gamevault.command.AddCommand;
+import seedu.gamevault.command.Command;
 import seedu.gamevault.command.DeleteCommand;
 import seedu.gamevault.command.EditCommand;
 import seedu.gamevault.command.ExitCommand;
@@ -27,6 +29,7 @@ import seedu.gamevault.command.LendCommand;
 import seedu.gamevault.command.LentCommand;
 import seedu.gamevault.command.ListCommand;
 import seedu.gamevault.command.ListTagsCommand;
+import seedu.gamevault.command.LogCommand;
 import seedu.gamevault.command.TagCommand;
 import seedu.gamevault.command.UntagCommand;
 import seedu.gamevault.command.PickCommand;
@@ -39,6 +42,8 @@ import seedu.gamevault.storage.Storage;
 import seedu.gamevault.ui.Ui;
 
 class ParserTest {
+    /** Fixed "today" for the log tests, so that they do not depend on when they are run. */
+    private static final LocalDate TODAY = LocalDate.of(2026, 10, 31);
 
     @Test
     void parse_help_returnsHelpCommand() throws GameVaultException {
@@ -464,5 +469,73 @@ class ParserTest {
         assertInstanceOf(LentCommand.class, Parser.parse("lent"));
         GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("lent 2"));
         assertTrue(e.getMessage().contains("does not take any arguments"));
+    }
+    //@@author Xandurs
+    @Test
+    void parseLog_indexPlayersAndDate_logsThatDate(@TempDir Path tempDir) throws GameVaultException {
+        GameList games = new GameList();
+        games.add(new Game("Catan", 3, 4));
+        Command command = Parser.parseLog("1 /date 2026-10-30 /players 4", TODAY);
+        command.execute(games, new Ui(new ByteArrayInputStream(new byte[0]), new PrintStream(
+                new ByteArrayOutputStream())), new Storage(tempDir.resolve("games.txt").toString()));
+
+        assertEquals(LocalDate.of(2026, 10, 30), games.get(0).getLastPlayed().get());
+        assertEquals(4, games.get(0).getSessions().get(0).getPlayerCount());
+    }
+
+    @Test
+    void parseLog_noDate_logsToday(@TempDir Path tempDir) throws GameVaultException {
+        GameList games = new GameList();
+        games.add(new Game("Catan", 3, 4));
+        Parser.parseLog("1 /players 3", TODAY).execute(games,
+                new Ui(new ByteArrayInputStream(new byte[0]), new PrintStream(new ByteArrayOutputStream())),
+                new Storage(tempDir.resolve("games.txt").toString()));
+
+        assertEquals(TODAY, games.get(0).getLastPlayed().get());
+    }
+
+    @Test
+    void parse_logCommandWord_returnsLogCommand() throws GameVaultException {
+        assertInstanceOf(LogCommand.class, Parser.parse("LOG 1 /players 4 /date 2026-01-01"));
+    }
+
+    @Test
+    void parseLog_todayGivenExplicitly_accepted() throws GameVaultException {
+        assertInstanceOf(LogCommand.class, Parser.parseLog("1 /players 4 /date 2026-10-31", TODAY));
+    }
+
+    @Test
+    void parseLog_missingIndexOrPlayers_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parseLog("", TODAY));
+        assertTrue(e.getMessage().startsWith("INDEX is missing."));
+        e = assertThrows(GameVaultException.class, () -> Parser.parseLog("/players 4", TODAY));
+        assertTrue(e.getMessage().startsWith("INDEX is missing."));
+        e = assertThrows(GameVaultException.class, () -> Parser.parseLog("1", TODAY));
+        assertTrue(e.getMessage().startsWith("Please say how many people played"));
+        e = assertThrows(GameVaultException.class, () -> Parser.parseLog("1 /players", TODAY));
+        assertTrue(e.getMessage().startsWith("COUNT is missing."));
+    }
+
+    @Test
+    void parseLog_invalidNumbers_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parseLog("0 /players 4", TODAY));
+        assertThrows(GameVaultException.class, () -> Parser.parseLog("one /players 4", TODAY));
+        assertThrows(GameVaultException.class, () -> Parser.parseLog("1 /players 0", TODAY));
+        assertThrows(GameVaultException.class, () -> Parser.parseLog("1 /players four", TODAY));
+        assertThrows(GameVaultException.class, () -> Parser.parseLog("1 /players 4 /players 5", TODAY));
+    }
+
+    @Test
+    void parseLog_invalidDate_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> Parser.parseLog("1 /players 4 /date 2026-11-01", TODAY));
+        assertEquals("DATE cannot be in the future, but was 2026-11-01.", e.getMessage());
+
+        e = assertThrows(GameVaultException.class, () -> Parser.parseLog("1 /players 4 /date 30/10/2026", TODAY));
+        assertTrue(e.getMessage().startsWith("DATE should be a real date in the form YYYY-MM-DD"));
+        e = assertThrows(GameVaultException.class, () -> Parser.parseLog("1 /players 4 /date 2026-02-30", TODAY));
+        assertTrue(e.getMessage().startsWith("DATE should be a real date in the form YYYY-MM-DD"));
+        e = assertThrows(GameVaultException.class, () -> Parser.parseLog("1 /players 4 /date", TODAY));
+        assertTrue(e.getMessage().startsWith("DATE is missing."));
     }
 }
