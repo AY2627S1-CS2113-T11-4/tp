@@ -29,6 +29,7 @@ import seedu.gamevault.command.ListCommand;
 import seedu.gamevault.command.ListTagsCommand;
 import seedu.gamevault.command.LogCommand;
 import seedu.gamevault.command.PickCommand;
+import seedu.gamevault.command.RateCommand;
 import seedu.gamevault.command.ReturnCommand;
 import seedu.gamevault.command.SortCommand;
 import seedu.gamevault.command.TagCommand;
@@ -119,6 +120,8 @@ public class Parser {
             return new LentCommand();
         case LogCommand.COMMAND_WORD:
             return parseLog(arguments);
+        case RateCommand.COMMAND_WORD:
+            return parseRate(arguments);
         default:
             throw new GameVaultException("Unknown command '" + parts[0]
                     + "'. Type 'help' to see all commands.");
@@ -269,6 +272,36 @@ public class Parser {
                     + " (e.g. return 2)");
         }
         return new ReturnCommand(parseIndex(indexText));
+    }
+
+    //@@author MohamedFarsat
+    /**
+     * Builds a {@link RateCommand} from arguments in the form {@code INDEX up|down}, e.g. {@code 2 up}.
+     * {@code up} and {@code down} are not case-sensitive, so {@code 2 UP} works too.
+     *
+     * @throws GameVaultException If INDEX or the rating is missing or invalid, or there are extra words.
+     */
+    private static Command parseRate(String arguments) throws GameVaultException {
+        String example = " (e.g. rate 2 up)";
+        if (arguments.isBlank()) {
+            throw new GameVaultException("INDEX and up/down are missing. Format: " + RateCommand.USAGE + example);
+        }
+        String[] parts = arguments.trim().split("\\s+");
+        if (parts.length == 1) {
+            throw new GameVaultException("Please say 'up' or 'down' after INDEX. Format: " + RateCommand.USAGE
+                    + example);
+        }
+        if (parts.length > 2) {
+            throw new GameVaultException("Too many words after 'rate'. Format: " + RateCommand.USAGE + example);
+        }
+
+        int displayNumber = parseIndex(parts[0]);
+        String direction = parts[1].toLowerCase();
+        if (!direction.equals(RateCommand.UP) && !direction.equals(RateCommand.DOWN)) {
+            throw new GameVaultException("The rating should be 'up' or 'down', but was '" + parts[1] + "'. Format: "
+                    + RateCommand.USAGE + example);
+        }
+        return new RateCommand(displayNumber, direction.equals(RateCommand.UP));
     }
 
     //@@author SwaggyDaddy67

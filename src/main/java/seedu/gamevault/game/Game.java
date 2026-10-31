@@ -21,6 +21,10 @@ public class Game {
     public static final String SESSION_FILE_SEPARATOR = ";";
     /** Name of the data-file field that holds who the game is lent to, e.g. {@code lent=Alice}. */
     public static final String LENT_FILE_KEY = "lent";
+    /** Name of the data-file field that holds the thumbs-up and thumbs-down counts, e.g. {@code ratings=5/1}. */
+    public static final String RATINGS_FILE_KEY = "ratings";
+    /** Separates the thumbs-up count from the thumbs-down count in the ratings field, e.g. {@code 5/1}. */
+    public static final String RATINGS_FILE_SEPARATOR = "/";
     /** Value of {@code playTime} for a game whose play time has not been recorded. */
     private static final int NO_PLAY_TIME = 0;
 
@@ -34,6 +38,10 @@ public class Game {
     private final TreeSet<String> tags = new TreeSet<>();
     /** Normalised name of the person this game is lent to (see {@link Borrower}), or null if it is on the shelf. */
     private String borrower;
+    /** Number of times the group gave this game a thumbs up after playing it (see {@code rate}). */
+    private int thumbsUp;
+    /** Number of times the group gave this game a thumbs down after playing it. */
+    private int thumbsDown;
 
     /**
      * Creates a game with no play time recorded.
@@ -238,14 +246,19 @@ public class Game {
         if (isLent()) {
             fields.add(LENT_FILE_KEY + "=" + borrower);
         }
+        //@@author MohamedFarsat
+        if (isRated()) {
+            fields.add(RATINGS_FILE_KEY + "=" + thumbsUp + RATINGS_FILE_SEPARATOR + thumbsDown);
+        }
         //@@ author Xandurs
         return fields;
     }
     //@@ author
     /**
      * Returns this game as it is shown to the user, e.g.
-     * {@code Catan (3-4 players, 60 min) [strategy] (lent to Alice)},
+     * {@code Catan (3-4 players, 60 min) [strategy] +5/-1 (lent to Alice)},
      * or {@code Chess (2 players)} when the minimum and maximum are the same and nothing else is set.
+     * The rating ({@code +5/-1}) is only shown once the game has been rated.
      */
     @Override
     public String toString() {
@@ -254,8 +267,70 @@ public class Game {
                 : minPlayers + "-" + maxPlayers;
         String time = hasPlayTime() ? ", " + playTime + " min" : "";
         String tagList = tags.isEmpty() ? "" : " [" + String.join(", ", tags) + "]";
+        String rating = isRated() ? " " + describeRatings() : "";
         String lent = isLent() ? " (lent to " + borrower + ")" : "";
-        return title + " (" + players + " players" + time + ")" + tagList + lent;
+        return title + " (" + players + " players" + time + ")" + tagList + rating + lent;
+    }
+
+    //@@author MohamedFarsat
+    public int getThumbsUp() {
+        return thumbsUp;
+    }
+
+    public int getThumbsDown() {
+        return thumbsDown;
+    }
+
+    /**
+     * Returns whether this game has been given at least one thumbs up or thumbs down.
+     */
+    public boolean isRated() {
+        return thumbsUp > 0 || thumbsDown > 0;
+    }
+
+    /**
+     * Records one more thumbs up. Callers must check that the count is below {@link Integer#MAX_VALUE} first.
+     */
+    public void addThumbsUp() {
+        assert thumbsUp < Integer.MAX_VALUE : "Thumbs-up count should not overflow";
+        thumbsUp++;
+    }
+
+    /**
+     * Records one more thumbs down. Callers must check that the count is below {@link Integer#MAX_VALUE} first.
+     */
+    public void addThumbsDown() {
+        assert thumbsDown < Integer.MAX_VALUE : "Thumbs-down count should not overflow";
+        thumbsDown++;
+    }
+
+    /**
+     * Replaces both rating counts, e.g. when loading the game from the data file or copying it in {@code edit}.
+     *
+     * @param thumbsUp Number of thumbs up (at least 0).
+     * @param thumbsDown Number of thumbs down (at least 0).
+     */
+    public void setRatings(int thumbsUp, int thumbsDown) {
+        assert thumbsUp >= 0 && thumbsDown >= 0 : "Rating counts should not be negative";
+        this.thumbsUp = thumbsUp;
+        this.thumbsDown = thumbsDown;
+    }
+
+    /**
+     * Returns the rating counts as shown to the user, e.g. {@code +5/-1} for 5 thumbs up and 1 thumbs down.
+     */
+    public String describeRatings() {
+        return "+" + thumbsUp + "/-" + thumbsDown;
+    }
+
+    /**
+     * Returns how strongly {@code pick} should favour this game: {@code (thumbsUp + 1) / (thumbsDown + 1)}.
+     * An unrated game has weight 1, a game rated +3/-0 has weight 4 (4 times as likely to be picked),
+     * and a game rated +0/-3 has weight 0.25. Adding 1 to both counts means the weight is never 0,
+     * so even a disliked game can still come up now and then.
+     */
+    public double getPickWeight() {
+        return (thumbsUp + 1.0) / (thumbsDown + 1.0);
     }
 
     //@@author Xandurs

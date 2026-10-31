@@ -115,6 +115,10 @@ public class EditCommand extends Command {
         for (PlaySession session : oldGame.getSessions()) {
             editedGame.addSession(session);
         }
+        //@@author MohamedFarsat
+        // Ratings are changed with rate, not edit, so keep them too.
+        editedGame.setRatings(oldGame.getThumbsUp(), oldGame.getThumbsDown());
+        //@@author Xandurs
 
         if (editedGame.toFileString().equals(oldGame.toFileString())) {
             // Nothing would change, so tell the user instead of rewriting the data file.

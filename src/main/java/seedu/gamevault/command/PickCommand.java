@@ -73,10 +73,14 @@ public class PickCommand extends Command {
         if (matches.isEmpty()) {
             message.append(getNoMatchMessage(criteria));
         } else {
-            Game pickedGame = matches.get(random.nextInt(matches.size()));
+            Game pickedGame = chooseWeighted(matches);
             message.append("How about: ").append(pickedGame).append(System.lineSeparator())
                     .append("(picked from ").append(matches.size()).append(" game(s) that fit ")
                     .append(criteria).append(")");
+            if (hasRatedGame(matches)) {
+                message.append(System.lineSeparator())
+                        .append("(Games rated up were more likely to be picked, and games rated down less likely.)");
+            }
         }
 
         // Like filter, explain games left out only because they have no play time recorded.
@@ -94,6 +98,44 @@ public class PickCommand extends Command {
         //@@author
         ui.showMessage(message.toString());
     }
+
+    //@@author MohamedFarsat
+    /**
+     * Returns one of the matches at random, where each game's chance is proportional to its
+     * {@link Game#getPickWeight()}, so games the group rated up come up more often.
+     * Think of the weights as lengths laid end to end: a random point along the total length
+     * lands inside one game's length, and longer lengths are more likely to be hit.
+     *
+     * @param matches Games to choose from; must not be empty.
+     */
+    private Game chooseWeighted(ArrayList<Game> matches) {
+        assert !matches.isEmpty() : "There should be at least one game to choose from";
+        double totalWeight = 0;
+        for (Game game : matches) {
+            totalWeight += game.getPickWeight();
+        }
+
+        double point = random.nextDouble() * totalWeight;
+        for (Game game : matches) {
+            point -= game.getPickWeight();
+            if (point < 0) {
+                return game;
+            }
+        }
+        // Rounding errors can leave the point just past the end, in which case it belongs to the last game.
+        return matches.get(matches.size() - 1);
+    }
+
+    private static boolean hasRatedGame(ArrayList<Game> matches) {
+        for (Game game : matches) {
+            if (game.isRated()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    //@@author
 
     /**
      * Returns a description of what the picked game must fit, e.g. {@code 4 players in 45 minutes or less}.
