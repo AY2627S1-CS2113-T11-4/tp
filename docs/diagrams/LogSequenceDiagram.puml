@@ -1,0 +1,56 @@
+@startuml
+' Sequence diagram for "log 1 /players 4 /date 2026-10-30" -- GameVault log feature
+hide footbox
+skinparam sequenceMessageAlign center
+
+participant ":GameVault" as GV
+participant "<<class>>\nParser" as P
+participant "l:LogCommand" as L
+participant ":GameList" as GL
+participant "g:Game" as G
+participant ":Storage" as S
+participant ":Ui" as UI
+
+GV -> P : parse("log 1 /players 4 /date 2026-10-30")
+activate P
+P -> P : parseLog("1 /players 4 /date 2026-10-30", today)
+activate P
+create L
+P -> L : new LogCommand(1, 2026-10-30, 4)
+activate L
+L --> P
+deactivate L
+deactivate P
+P --> GV : l
+deactivate P
+
+GV -> L : execute(games, ui, storage)
+activate L
+L -> GL : get(0)
+activate GL
+GL --> L : g
+deactivate GL
+
+L -> G : fitsPlayerCount(4)
+activate G
+G --> L : true
+deactivate G
+
+L -> G : addSession(session)
+activate G
+G --> L
+deactivate G
+
+L -> S : save(games)
+activate S
+S --> L
+deactivate S
+
+L -> UI : showMessage("Logged: ...")
+activate UI
+UI --> L
+deactivate UI
+L --> GV
+deactivate L
+destroy L
+@enduml
