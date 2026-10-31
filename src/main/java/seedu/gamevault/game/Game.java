@@ -3,15 +3,26 @@ package seedu.gamevault.game;
 import java.util.Collections;
 import java.util.Set;
 import java.util.TreeSet;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
 
 /**
  * Represents a single game in the user's collection, with the range of player counts it supports,
  * optionally how many minutes one round usually takes, and any tags the user has given it.
  */
 public class Game {
+    /** Name of the data-file field that holds the play sessions, e.g. {@code sessions=2026-10-30@4}. */
+    public static final String SESSIONS_FILE_KEY = "sessions";
+    /** Separates the sessions within the sessions field, e.g. {@code 2026-06-01@3;2026-10-30@4}. */
+    public static final String SESSION_FILE_SEPARATOR = ";";
     /** Value of {@code playTime} for a game whose play time has not been recorded. */
     private static final int NO_PLAY_TIME = 0;
 
+    /** Play sessions logged for this game, kept oldest first. */
+    private final ArrayList<PlaySession> sessions = new ArrayList<>();
     private final String title;
     private final int minPlayers;
     private final int maxPlayers;
@@ -145,7 +156,7 @@ public class Game {
         return hasPlayTime() && playTime <= minutes;
     }
 
-    //@@author
+    //@@author Xandurs
     /**
      * Returns this game as one line of the data file, in the format {@code TITLE | MIN | MAX},
      * followed by {@code | TIME} when a play time is recorded, and by {@code | TAGS} when the game has tags.
@@ -157,11 +168,31 @@ public class Game {
      */
     public String toFileString() {
         String line = title + " | " + minPlayers + " | " + maxPlayers;
-        if (!tags.isEmpty()) {
-            String time = hasPlayTime() ? String.valueOf(playTime) : "";
-            return line + " | " + time + " | " + String.join(",", tags);
+        List<String> namedFields = getNamedFileFields();
+        if (tags.isEmpty() && namedFields.isEmpty()) {
+            return hasPlayTime() ? line + " | " + playTime : line;
         }
-        return hasPlayTime() ? line + " | " + playTime : line;
+        // TIME and TAGS are found by position, so write both (maybe blank) before named fields.
+        String time = hasPlayTime() ? String.valueOf(playTime) : "";
+        line += " | " + time + " | " + String.join(",", tags);
+        for (String field : namedFields) {
+            line += " | " + field;
+        }
+        return line;
+    }
+
+    //@@author Xandurs
+    /** Named KEY=VALUE fields after TAGS. Teammates: add your new field here. */
+    private List<String> getNamedFileFields() {
+        List<String> fields = new ArrayList<>();
+        if (!sessions.isEmpty()) {
+            List<String> encoded = new ArrayList<>();
+            for (PlaySession session : sessions) {
+                encoded.add(session.toFileString());
+            }
+            fields.add(SESSIONS_FILE_KEY + "=" + String.join(SESSION_FILE_SEPARATOR, encoded));
+        }
+        return fields;
     }
 
     /**
@@ -176,5 +207,32 @@ public class Game {
         String time = hasPlayTime() ? ", " + playTime + " min" : "";
         String tagList = tags.isEmpty() ? "" : " [" + String.join(", ", tags) + "]";
         return title + " (" + players + " players" + time + ")" + tagList;
+    }
+
+    //@@author Xandurs
+    /** Records a session, keeping sessions sorted by date (same-day sessions stay in logged order). */
+    public void addSession(PlaySession session) {
+        assert session != null : "Session to add should not be null";
+        int position = sessions.size();
+        while (position > 0 && sessions.get(position - 1).getDate().isAfter(session.getDate())) {
+            position--;
+        }
+        sessions.add(position, session);
+    }
+
+    public List<PlaySession> getSessions() {
+        return Collections.unmodifiableList(sessions);
+    }
+
+    public int getPlayCount() {
+        return sessions.size();
+    }
+
+    /** Returns the date this game was last played, or empty if never played. */
+    public Optional<LocalDate> getLastPlayed() {
+        if (sessions.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(sessions.get(sessions.size() - 1).getDate());
     }
 }

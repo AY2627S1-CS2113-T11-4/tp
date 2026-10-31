@@ -1,7 +1,13 @@
 package seedu.gamevault.storage;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import java.util.HashSet;
+import java.util.Set;
+
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Game;
+import seedu.gamevault.game.PlaySession;
 import seedu.gamevault.game.Tag;
 
 /**
@@ -12,16 +18,24 @@ import seedu.gamevault.game.Tag;
  * Files saved before play time was added have no TIME field and still load.
  * A game with tags has a fifth field, TAGS, holding comma-separated tags, e.g. {@code Catan | 3 | 4 | 60 | strategy}
  * or {@code Codenames | 4 | 8 |  | party,word} (TIME is left blank when there is no play time).
+ * Any further data follows TAGS as named {@code KEY=VALUE} fields, in any order, e.g.
+ * {@code Catan | 3 | 4 | 60 |  | sessions=2026-06-01@3;2026-10-30@4}. Named fields let new kinds of data be
+ * added without breaking older data files: to store something new, add a named field in
+ * {@code Game#toFileString()} and a matching case in {@link #decodeNamedField}.
+ * The {@code sessions} field holds the play sessions, each written as {@code DATE@PLAYERS}
+ * (DATE in {@code YYYY-MM-DD} form) and separated by {@code ;}.
  * Users may edit the data file by hand, so every part of the line is checked and a
  * specific reason is given when something is wrong.</p>
  */
 public class GameDecoder {
-    public static final String FORMAT = "TITLE | MIN | MAX | TIME | TAGS (TIME and TAGS are optional)";
+    public static final String FORMAT = "TITLE | MIN | MAX | TIME | TAGS | KEY=VALUE..."
+            + " (everything after MAX is optional)";
 
     private static final String FIELD_SEPARATOR_REGEX = "\\|";
     private static final int FIELD_COUNT_WITHOUT_TIME = 3;
     private static final int FIELD_COUNT_WITH_TIME = 4;
     private static final int FIELD_COUNT_WITH_TAGS = 5;
+    private static final String KEY_VALUE_SEPARATOR = "=";
     private static final String TAG_SEPARATOR = ",";
     private static final int NO_PLAY_TIME = 0;
     /** Invisible marker some editors (e.g. Windows Notepad) put at the start of a file. */
@@ -39,8 +53,8 @@ public class GameDecoder {
 
         // A limit of -1 keeps empty trailing fields, so "Catan | 3 |" is reported as a missing MAX.
         String[] fields = line.replace(BYTE_ORDER_MARK, "").split(FIELD_SEPARATOR_REGEX, -1);
-        if (fields.length < FIELD_COUNT_WITHOUT_TIME || fields.length > FIELD_COUNT_WITH_TAGS) {
-            throw new GameVaultException("expected " + FIELD_COUNT_WITHOUT_TIME + " to " + FIELD_COUNT_WITH_TAGS
+        if (fields.length < FIELD_COUNT_WITHOUT_TIME) {
+            throw new GameVaultException("expected at least " + FIELD_COUNT_WITHOUT_TIME
                     + " parts in the format " + FORMAT + ", but found " + fields.length);
         }
 
@@ -56,7 +70,81 @@ public class GameDecoder {
         int playTime = decodePlayTime(fields);
         Game game = new Game(title, minPlayers, maxPlayers, playTime);
         decodeTags(fields, game);
+        decodeNamedFields(fields, game);
         return game;
+    }
+
+    //@@author Xandurs
+    /**
+     * Reads the named {@code KEY=VALUE} fields that come after TAGS, if any, into the game.
+     * Keys are case-insensitive. An unknown or repeated key makes the line invalid, so that a typo in a
+     * hand-edited file is reported instead of the data being silently dropped.
+     *
+     * @throws GameVaultException If a field is not in {@code KEY=VALUE} form, its key is unknown or repeated,
+     *     or its value is invalid.
+     */
+    private static void decodeNamedFields(String[] fields, Game game) throws GameVaultException {
+        Set<String> seenKeys = new HashSet<>();
+        for (int i = FIELD_COUNT_WITH_TAGS; i < fields.length; i++) {
+            String field = fields[i].trim();
+            int separatorIndex = field.indexOf(KEY_VALUE_SEPARATOR);
+            if (separatorIndex <= 0) {
+                throw new GameVaultException("expected a KEY=VALUE field after TAGS, but found '" + field + "'");
+            }
+            String key = field.substring(0, separatorIndex).trim().toLowerCase();
+            String value = field.substring(separatorIndex + 1).trim();
+            if (!seenKeys.add(key)) {
+                throw new GameVaultException("the field '" + key + "' appears more than once");
+            }
+            decodeNamedField(key, value, game);
+        }
+    }
+
+    /**
+     * Reads one named field into the game. Add a case here for each new kind of named field.
+     *
+     * @param key Lower-case name of the field, e.g. {@code sessions}.
+     * @param value Text after the {@code =}, already trimmed.
+     * @throws GameVaultException If the key is unknown or the value is invalid.
+     */
+    private static void decodeNamedField(String key, String value, Game game) throws GameVaultException {
+        switch (key) {
+        case Game.SESSIONS_FILE_KEY:
+            decodeSessions(value, game);
+            break;
+        default:
+            throw new GameVaultException("unknown field '" + key + "'");
+        }
+    }
+
+    /**
+     * Adds the sessions in a {@code sessions} field, e.g. {@code 2026-06-01@3;2026-10-30@4}, to the game.
+     * Blank entries (e.g. from a trailing {@code ;}) are ignored. Dates in the future are accepted here,
+     * unlike in the {@code log} command, so that a wrong computer clock cannot make saved history vanish.
+     *
+     * @throws GameVaultException If a session is not in the form {@code YYYY-MM-DD@PLAYERS}.
+     */
+    private static void decodeSessions(String value, Game game) throws GameVaultException {
+        for (String text : value.split(Game.SESSION_FILE_SEPARATOR)) {
+            String sessionText = text.trim();
+            if (sessionText.isEmpty()) {
+                continue;
+            }
+            String[] parts = sessionText.split(PlaySession.FILE_SEPARATOR, -1);
+            if (parts.length != 2) {
+                throw new GameVaultException("session '" + sessionText + "' should be in the form "
+                        + "YYYY-MM-DD" + PlaySession.FILE_SEPARATOR + "PLAYERS");
+            }
+            LocalDate date;
+            try {
+                date = LocalDate.parse(parts[0].trim());
+            } catch (DateTimeParseException e) {
+                throw new GameVaultException("session '" + sessionText + "' has an invalid date; "
+                        + "use the form YYYY-MM-DD");
+            }
+            int playerCount = parsePositiveNumber(parts[1], "PLAYERS in session '" + sessionText + "'");
+            game.addSession(new PlaySession(date, playerCount));
+        }
     }
 
     //@@author KRAZYZECTRON
