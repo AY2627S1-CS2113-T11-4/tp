@@ -25,12 +25,16 @@ import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.FilterTagCommand;
 import seedu.gamevault.command.FindCommand;
 import seedu.gamevault.command.HelpCommand;
+import seedu.gamevault.command.LendCommand;
+import seedu.gamevault.command.LentCommand;
 import seedu.gamevault.command.ListCommand;
 import seedu.gamevault.command.ListTagsCommand;
 import seedu.gamevault.command.LogCommand;
 import seedu.gamevault.command.TagCommand;
 import seedu.gamevault.command.UntagCommand;
 import seedu.gamevault.command.PickCommand;
+import seedu.gamevault.command.RateCommand;
+import seedu.gamevault.command.ReturnCommand;
 import seedu.gamevault.command.SortCommand;
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Game;
@@ -419,6 +423,54 @@ class ParserTest {
         assertEquals("KEYWORD is missing. Format: " + FindCommand.USAGE + " (e.g. find cat)", e.getMessage());
     }
 
+    //@@author yy261
+    @Test
+    void parse_validLend_returnsLendCommand() throws GameVaultException {
+        assertInstanceOf(LendCommand.class, Parser.parse("lend 2 /to Alice"));
+        assertInstanceOf(LendCommand.class, Parser.parse("LEND 1 /to   Mary   Tan  "));
+    }
+
+    @Test
+    void parse_lendWithMissingParts_throwsExceptionShowingFormat() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("lend 2"));
+        assertTrue(e.getMessage().startsWith("NAME is missing. Format: " + LendCommand.USAGE));
+        e = assertThrows(GameVaultException.class, () -> Parser.parse("lend 2 /to"));
+        assertTrue(e.getMessage().startsWith("NAME is missing."));
+        e = assertThrows(GameVaultException.class, () -> Parser.parse("lend /to Alice"));
+        assertTrue(e.getMessage().startsWith("INDEX is missing. Format: " + LendCommand.USAGE));
+    }
+
+    @Test
+    void parse_lendWithInvalidParts_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("lend 0 /to Alice"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("lend two /to Alice"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("lend 2 /to Alice /to Ben"));
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> Parser.parse("lend 2 /to Alice | Ben"));
+        assertTrue(e.getMessage().startsWith("NAME should be"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("lend 2 /to " + "a".repeat(31)));
+    }
+
+    @Test
+    void parse_validReturn_returnsReturnCommand() throws GameVaultException {
+        assertInstanceOf(ReturnCommand.class, Parser.parse("return 3"));
+        assertInstanceOf(ReturnCommand.class, Parser.parse("RETURN   1 "));
+    }
+
+    @Test
+    void parse_returnWithInvalidIndex_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("return"));
+        assertTrue(e.getMessage().startsWith("INDEX is missing. Format: " + ReturnCommand.USAGE));
+        assertThrows(GameVaultException.class, () -> Parser.parse("return 0"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("return 1 2"));
+    }
+
+    @Test
+    void parse_lent_returnsLentCommandAndRejectsArguments() throws GameVaultException {
+        assertInstanceOf(LentCommand.class, Parser.parse("lent"));
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("lent 2"));
+        assertTrue(e.getMessage().contains("does not take any arguments"));
+    }
     //@@author Xandurs
     @Test
     void parseLog_indexPlayersAndDate_logsThatDate(@TempDir Path tempDir) throws GameVaultException {
@@ -486,5 +538,45 @@ class ParserTest {
         assertTrue(e.getMessage().startsWith("DATE should be a real date in the form YYYY-MM-DD"));
         e = assertThrows(GameVaultException.class, () -> Parser.parseLog("1 /players 4 /date", TODAY));
         assertTrue(e.getMessage().startsWith("DATE is missing."));
+    }
+
+    //@@author MohamedFarsat
+    @Test
+    void parse_validRate_ratesTheRightGameUpOrDown(@TempDir Path tempDir) throws GameVaultException {
+        GameList games = new GameList();
+        games.add(new Game("Catan", 3, 4));
+        games.add(new Game("Chess", 2, 2));
+        Storage storage = new Storage(tempDir.resolve("games.txt").toString());
+
+        assertInstanceOf(RateCommand.class, Parser.parse("rate 1 up"));
+        run("rate 1 up", games, storage);
+        run("RATE   2   DOWN ", games, storage);
+        run("rate 2 Down", games, storage);
+
+        assertEquals("+1/-0", games.get(0).describeRatings());
+        assertEquals("+0/-2", games.get(1).describeRatings());
+    }
+
+    @Test
+    void parse_rateWithMissingParts_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("rate"));
+        assertTrue(e.getMessage().startsWith("INDEX and up/down are missing."));
+        e = assertThrows(GameVaultException.class, () -> Parser.parse("rate 2"));
+        assertTrue(e.getMessage().startsWith("Please say 'up' or 'down' after INDEX."));
+        e = assertThrows(GameVaultException.class, () -> Parser.parse("rate up"));
+        assertTrue(e.getMessage().startsWith("Please say 'up' or 'down' after INDEX."));
+    }
+
+    @Test
+    void parse_rateWithInvalidParts_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("rate 2 great"));
+        assertTrue(e.getMessage().startsWith("The rating should be 'up' or 'down', but was 'great'."));
+        e = assertThrows(GameVaultException.class, () -> Parser.parse("rate 2 up down"));
+        assertTrue(e.getMessage().startsWith("Too many words after 'rate'."));
+        e = assertThrows(GameVaultException.class, () -> Parser.parse("rate up 2"));
+        assertEquals("INDEX should be a whole number, but was 'up'.", e.getMessage());
+        assertThrows(GameVaultException.class, () -> Parser.parse("rate 0 up"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("rate -1 down"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("rate 2 +1"));
     }
 }

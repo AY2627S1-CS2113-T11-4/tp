@@ -49,6 +49,9 @@ Here are the commands you can use:
   tags    Lists all tags in use and how many games have each.
   log     Logs that a game was played: log INDEX /players COUNT [/date YYYY-MM-DD]
   sort    Sorts your collection: sort title|players|time
+  lend    Records that a game is lent out: lend INDEX /to NAME
+  return  Records that a lent game is back: return INDEX
+  lent    Lists the games that are lent out and who has them.
   help    Shows this list of commands.
   exit    Exits GameVault.
 ____________________________________________________________
@@ -223,6 +226,8 @@ Format: `pick COUNT [/time MINUTES]`
 * If you give `/time MINUTES`, the game is picked only from games that take `MINUTES` or less.
   Games with no play time recorded are not considered, and GameVault tells you how many were left out for this reason.
 * Each use may pick a different game. Your collection is not changed.
+* Games your group rated up with [`rate`](#rating-a-game-after-playing-rate) are more likely to be picked,
+  and games rated down are less likely. When any of the games that fit has been rated, `pick` reminds you of this.
 
 Examples of usage: `pick 4`, `pick 4 /time 45`
 
@@ -424,7 +429,133 @@ Catan has now been played 2 times.
 ____________________________________________________________
 ```
 
+<!-- @@author MohamedFarsat -->
+### Rating a game after playing: `rate`
+
+Gives a game a thumbs up or a thumbs down after your group has played it, so that `pick` suggests the games your
+group enjoyed more often.
+
+Format: `rate INDEX up|down`
+
+* `INDEX` is the game's number in `list`, and must be a whole number of at least 1.
+* Use `up` if the group enjoyed the game, or `down` if they did not. `UP` and `Down` work too.
+* You can rate the same game as many times as you like, e.g. once after every game night. Each rating is added
+  to the game's count of thumbs up or thumbs down.
+* Once a game has been rated, `list` (and other commands that show the game) show its counts after it,
+  e.g. `Catan (3-4 players) +5/-1` for 5 thumbs up and 1 thumbs down.
+
+Examples of usage: `rate 1 up`, `rate 3 down`
+
+Expected output (for `rate 1 up`, when Catan already had 4 thumbs up and 1 thumbs down):
+
+```
+____________________________________________________________
+Thumbs up for Catan!
+Catan is now rated +5/-1 (thumbs up/thumbs down).
+____________________________________________________________
+```
+
+**How ratings affect `pick`:** each game that fits is given a weight of
+(thumbs up + 1) ÷ (thumbs down + 1), and `pick` chooses games in proportion to their weights:
+
+Rating | Weight | Compared with an unrated game
+-------|--------|------------------------------
+Not rated (`+0/-0`) | 1 | Equally likely
+`+3/-0` | 4 | 4 times as likely
+`+2/-2` | 1 | Equally likely
+`+0/-3` | 0.25 | A quarter as likely
+
+A game with many thumbs down is picked less often, but never ruled out completely, so your group still gets
+the occasional surprise. Ratings do not change `filter`, which always shows every game that fits.
+
 <!-- @@author -->
+
+<!-- @@author yy261 -->
+### Lending a game to a friend: `lend`
+
+Records that a game has been lent to someone. While a game is lent out, `filter` and `pick` leave it out,
+so you are never offered a game that is not on your shelf.
+
+Format: `lend INDEX /to NAME`
+
+* `INDEX` is the number shown next to the game in `list`.
+* `NAME` is the person borrowing the game, e.g. `Alice` or `Mary Tan`. It must be 1 to 30 characters long and
+  cannot contain `|`. Extra spaces are removed, so `/to   Mary   Tan` is saved as `Mary Tan`.
+* A game can only be lent to one person at a time. To lend it to someone else, `return` it first.
+* The game stays in your collection: `list` and `find` still show it, with `(lent to NAME)` after it.
+
+Example of usage: `lend 2 /to Alice`
+
+Expected output:
+
+```
+____________________________________________________________
+Lent to Alice: Codenames
+It will be left out of 'filter' and 'pick' until you 'return 2'.
+____________________________________________________________
+```
+
+If the game is already lent out, GameVault tells you who has it and changes nothing, e.g.
+`Codenames is already lent to Alice. Use 'return 2' first if it has come back.`
+
+**How lent games affect other commands:** `filter` and `pick` leave out lent games, and say which games were
+left out and who has them, so you know why a game you expected is missing:
+
+```
+____________________________________________________________
+Games that fit 4 players:
+  Love Letter (2-4 players, 20 min)
+(Not shown because they are lent out: Catan (to Mary Tan), Codenames (to Alice))
+____________________________________________________________
+```
+
+A lent game is only mentioned if it would otherwise have been shown, e.g. a 60-minute game is not mentioned
+for `filter 4 /time 30`. `edit`, `tag`, `untag`, `sort` and `delete` work on lent games as usual,
+and an edited game stays lent to the same person.
+
+### Getting a game back: `return`
+
+Records that a lent game is back on your shelf, so `filter` and `pick` can suggest it again.
+
+Format: `return INDEX`
+
+* `INDEX` is the number shown next to the game in `list` or `lent`.
+
+Example of usage: `return 2`
+
+Expected output:
+
+```
+____________________________________________________________
+Returned by Alice: Codenames
+It is back on your shelf and can be suggested by 'filter' and 'pick' again.
+____________________________________________________________
+```
+
+If the game is not lent out, GameVault shows
+`Love Letter is not lent to anyone. Use 'lent' to see which games are lent out.` and changes nothing.
+
+### Seeing which games are lent out: `lent`
+
+Shows every game that is lent out and who has it, so you know which games to ask for back.
+
+Format: `lent`
+
+* The numbers are the same as in `list`, so you can use them with `return` straight away.
+
+Expected output:
+
+```
+____________________________________________________________
+2 game(s) are lent out:
+1. Catan - lent to Mary Tan
+2. Codenames - lent to Alice
+____________________________________________________________
+```
+
+If no game is lent out, GameVault shows `None of your games are lent out. Everything is on your shelf.` instead.
+<!-- @@author -->
+
 ### Exiting the program: `exit`
  
 Exits GameVault.
@@ -443,14 +574,17 @@ ____________________________________________________________
  
 GameVault stores your games in `data/games.txt` (relative to the folder you run GameVault from).
 Advanced users can edit this file directly. Each line describes one game in the format `TITLE | MIN | MAX`,
-optionally followed by `| TIME`, the play time in minutes, and `| TAGS`, the game's tags separated by commas:
+optionally followed by `| TIME`, the play time in minutes, `| TAGS`, the game's tags separated by commas,
+and `| BORROWER`, the person the game is lent to:
  
 ```
 Catan | 3 | 4 | 60
 Codenames | 2 | 8
 Azul | 2 | 4 | 45 | family,strategy
 Werewolf | 8 | 18 |  | party
+Hive | 2 | 2 |  |  | lent=Alice
 Love Letter | 2 | 4 | 20 |  | sessions=2026-10-25@3;2026-10-30@4
+Splendor | 2 | 4 | 30 |  | ratings=5/1
 ```
  
 * `MIN` and `MAX` must be whole numbers of at least 1, and `MAX` must not be less than `MIN`.
@@ -458,8 +592,11 @@ Love Letter | 2 | 4 | 20 |  | sessions=2026-10-25@3;2026-10-30@4
 * `TAGS`, if given, must be the fifth field. For a game with tags but no play time, leave `TIME` blank,
   as in the `Werewolf` line above. Each tag must follow the rules in [Tagging a game](#tagging-a-game-tag-untag).
 * Any further data comes after `TAGS` as named `KEY=VALUE` fields. For these lines, write `TIME` and `TAGS`
-  even if blank, as in the `Love Letter` line above. Currently the only named field is `sessions`, which lists
-  the logged play sessions as `DATE@PLAYERS` (e.g. `2026-10-30@4`), separated by `;`.
+  even if blank, as in the `Hive` and `Love Letter` lines above. The current named fields are `lent`
+  (see [`lend`](#lending-a-game-to-a-friend-lend)) and `sessions`, which lists the logged play sessions as
+  `DATE@PLAYERS` (e.g. `2026-10-30@4`), separated by `;`, and `ratings`, which holds the thumbs-up and
+  thumbs-down counts from [`rate`](#rating-a-game-after-playing-rate) as `UP/DOWN` (e.g. `5/1`). Both counts must be
+  whole numbers of at least 0.
 * Blank lines are ignored.
 
 If a line is not in this format, GameVault skips that line, loads the rest of your games, and tells you which
@@ -496,6 +633,10 @@ Tag | `tag INDEX TAG [MORE_TAGS]...`, e.g. `tag 2 party drawing`
 Untag | `untag INDEX TAG [MORE_TAGS]...`, e.g. `untag 2 co-op`
 List tags | `tags`
 Sort | `sort title`, `sort players` or `sort time`, e.g. `sort time`
+Lend | `lend INDEX /to NAME`, e.g. `lend 2 /to Alice`
+Return | `return INDEX`, e.g. `return 2`
+List lent games | `lent`
 Log | `log INDEX /players COUNT [/date YYYY-MM-DD]`, e.g. `log 1 /players 4 /date 2026-10-30`
+Rate | `rate INDEX up\|down`, e.g. `rate 1 up`
 Help | `help`
 Exit | `exit`

@@ -26,9 +26,13 @@ public class HelpCommand extends Command {
               edit    Edits a game: edit INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES|none]
               tag     Adds tags to a game: tag INDEX TAG [MORE_TAGS]...
               log     Logs that a game was played: log INDEX /players COUNT [/date YYYY-MM-DD]
+              rate    Gives a game a thumbs up or down after playing: rate INDEX up|down
               untag   Removes tags from a game: untag INDEX TAG [MORE_TAGS]...
               tags    Lists all tags in use and how many games have each.
               sort    Sorts your collection: sort title|players|time
+              lend    Records that a game is lent out: lend INDEX /to NAME
+              return  Records that a lent game is back: return INDEX
+              lent    Lists the games that are lent out and who has them.
               help    Shows this list of commands.
               exit    Exits GameVault.""";
 

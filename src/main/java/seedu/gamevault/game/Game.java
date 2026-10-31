@@ -1,23 +1,30 @@
 package seedu.gamevault.game;
 
-import java.util.Collections;
-import java.util.Set;
-import java.util.TreeSet;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 
 
 /**
  * Represents a single game in the user's collection, with the range of player counts it supports,
- * optionally how many minutes one round usually takes, and any tags the user has given it.
+ * optionally how many minutes one round usually takes, any tags the user has given it,
+ * and who it is lent to, if anyone.
  */
 public class Game {
     /** Name of the data-file field that holds the play sessions, e.g. {@code sessions=2026-10-30@4}. */
     public static final String SESSIONS_FILE_KEY = "sessions";
     /** Separates the sessions within the sessions field, e.g. {@code 2026-06-01@3;2026-10-30@4}. */
     public static final String SESSION_FILE_SEPARATOR = ";";
+    /** Name of the data-file field that holds who the game is lent to, e.g. {@code lent=Alice}. */
+    public static final String LENT_FILE_KEY = "lent";
+    /** Name of the data-file field that holds the thumbs-up and thumbs-down counts, e.g. {@code ratings=5/1}. */
+    public static final String RATINGS_FILE_KEY = "ratings";
+    /** Separates the thumbs-up count from the thumbs-down count in the ratings field, e.g. {@code 5/1}. */
+    public static final String RATINGS_FILE_SEPARATOR = "/";
     /** Value of {@code playTime} for a game whose play time has not been recorded. */
     private static final int NO_PLAY_TIME = 0;
 
@@ -29,6 +36,12 @@ public class Game {
     private final int playTime;
     /** Normalised tags (see {@link Tag}); a TreeSet keeps them unique and in alphabetical order. */
     private final TreeSet<String> tags = new TreeSet<>();
+    /** Normalised name of the person this game is lent to (see {@link Borrower}), or null if it is on the shelf. */
+    private String borrower;
+    /** Number of times the group gave this game a thumbs up after playing it (see {@code rate}). */
+    private int thumbsUp;
+    /** Number of times the group gave this game a thumbs down after playing it. */
+    private int thumbsDown;
 
     /**
      * Creates a game with no play time recorded.
@@ -155,13 +168,50 @@ public class Game {
         assert minutes >= 1 : "Time available should be at least 1 minute";
         return hasPlayTime() && playTime <= minutes;
     }
+    /**
+     * Returns whether this game is lent to someone, i.e. it is not on the shelf.
+     */
+    public boolean isLent() {
+        return borrower != null;
+    }
 
+    /**
+     * Returns the name of the person this game is lent to.
+     * Only meaningful when {@link #isLent()} is true.
+     */
+    public String getBorrower() {
+        assert isLent() : "Check isLent() before asking for the borrower";
+        return borrower;
+    }
+
+    /**
+     * Records that this game has been lent to the given person.
+     * Callers must check {@link #isLent()} first so that the user can be told who already has the game;
+     * the assertions here only catch programming errors.
+     *
+     * @param name A valid, normalised name (see {@link Borrower}).
+     */
+    public void lendTo(String name) {
+        assert Borrower.isValid(name) : "Borrower name should be valid and normalised";
+        assert !isLent() : "Game should not already be lent";
+        borrower = name;
+    }
+
+    /**
+     * Records that this game is back on the shelf. Callers must check {@link #isLent()} first.
+     */
+    public void markReturned() {
+        assert isLent() : "Only a lent game can be returned";
+        borrower = null;
+    }
     //@@author Xandurs
     /**
      * Returns this game as one line of the data file, in the format {@code TITLE | MIN | MAX},
-     * followed by {@code | TIME} when a play time is recorded, and by {@code | TAGS} when the game has tags.
-     * TAGS is a comma-separated list, e.g. {@code Codenames | 4 | 8 |  | party,word}; TIME is left blank
-     * when a game has tags but no play time, so that TAGS is always the fifth field.
+     * followed by {@code | TIME} when a play time is recorded, by {@code | TAGS} when the game has tags,
+     * and by {@code | BORROWER} when the game is lent to someone.
+     * TAGS is a comma-separated list, e.g. {@code Codenames | 4 | 8 |  | party,word}. A field that is not set is
+     * left blank when a later field is set, so that each field is always in the same position,
+     * e.g. {@code Hive | 2 | 2 |  |  | Alice} for a lent game with no play time or tags.
      * {@link seedu.gamevault.storage.GameDecoder} reads this format back.
      *
      * @return Line to write to the data file.
@@ -192,12 +242,23 @@ public class Game {
             }
             fields.add(SESSIONS_FILE_KEY + "=" + String.join(SESSION_FILE_SEPARATOR, encoded));
         }
+        //@@author yy261
+        if (isLent()) {
+            fields.add(LENT_FILE_KEY + "=" + borrower);
+        }
+        //@@author MohamedFarsat
+        if (isRated()) {
+            fields.add(RATINGS_FILE_KEY + "=" + thumbsUp + RATINGS_FILE_SEPARATOR + thumbsDown);
+        }
+        //@@ author Xandurs
         return fields;
     }
-
+    //@@ author
     /**
-     * Returns this game as it is shown to the user, e.g. {@code Catan (3-4 players, 60 min) [strategy]},
-     * or {@code Chess (2 players)} when the minimum and maximum are the same and there is no play time or tag.
+     * Returns this game as it is shown to the user, e.g.
+     * {@code Catan (3-4 players, 60 min) [strategy] +5/-1 (lent to Alice)},
+     * or {@code Chess (2 players)} when the minimum and maximum are the same and nothing else is set.
+     * The rating ({@code +5/-1}) is only shown once the game has been rated.
      */
     @Override
     public String toString() {
@@ -206,7 +267,70 @@ public class Game {
                 : minPlayers + "-" + maxPlayers;
         String time = hasPlayTime() ? ", " + playTime + " min" : "";
         String tagList = tags.isEmpty() ? "" : " [" + String.join(", ", tags) + "]";
-        return title + " (" + players + " players" + time + ")" + tagList;
+        String rating = isRated() ? " " + describeRatings() : "";
+        String lent = isLent() ? " (lent to " + borrower + ")" : "";
+        return title + " (" + players + " players" + time + ")" + tagList + rating + lent;
+    }
+
+    //@@author MohamedFarsat
+    public int getThumbsUp() {
+        return thumbsUp;
+    }
+
+    public int getThumbsDown() {
+        return thumbsDown;
+    }
+
+    /**
+     * Returns whether this game has been given at least one thumbs up or thumbs down.
+     */
+    public boolean isRated() {
+        return thumbsUp > 0 || thumbsDown > 0;
+    }
+
+    /**
+     * Records one more thumbs up. Callers must check that the count is below {@link Integer#MAX_VALUE} first.
+     */
+    public void addThumbsUp() {
+        assert thumbsUp < Integer.MAX_VALUE : "Thumbs-up count should not overflow";
+        thumbsUp++;
+    }
+
+    /**
+     * Records one more thumbs down. Callers must check that the count is below {@link Integer#MAX_VALUE} first.
+     */
+    public void addThumbsDown() {
+        assert thumbsDown < Integer.MAX_VALUE : "Thumbs-down count should not overflow";
+        thumbsDown++;
+    }
+
+    /**
+     * Replaces both rating counts, e.g. when loading the game from the data file or copying it in {@code edit}.
+     *
+     * @param thumbsUp Number of thumbs up (at least 0).
+     * @param thumbsDown Number of thumbs down (at least 0).
+     */
+    public void setRatings(int thumbsUp, int thumbsDown) {
+        assert thumbsUp >= 0 && thumbsDown >= 0 : "Rating counts should not be negative";
+        this.thumbsUp = thumbsUp;
+        this.thumbsDown = thumbsDown;
+    }
+
+    /**
+     * Returns the rating counts as shown to the user, e.g. {@code +5/-1} for 5 thumbs up and 1 thumbs down.
+     */
+    public String describeRatings() {
+        return "+" + thumbsUp + "/-" + thumbsDown;
+    }
+
+    /**
+     * Returns how strongly {@code pick} should favour this game: {@code (thumbsUp + 1) / (thumbsDown + 1)}.
+     * An unrated game has weight 1, a game rated +3/-0 has weight 4 (4 times as likely to be picked),
+     * and a game rated +0/-3 has weight 0.25. Adding 1 to both counts means the weight is never 0,
+     * so even a disliked game can still come up now and then.
+     */
+    public double getPickWeight() {
+        return (thumbsUp + 1.0) / (thumbsDown + 1.0);
     }
 
     //@@author Xandurs

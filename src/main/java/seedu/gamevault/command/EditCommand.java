@@ -105,10 +105,20 @@ public class EditCommand extends Command {
         for (String tag : oldGame.getTags()) {
             editedGame.addTag(tag);
         }
+        //@@author yy261
+        // Lending cannot be changed with edit either (use lend/return), so keep the game lent if it was.
+        if (oldGame.isLent()) {
+            editedGame.lendTo(oldGame.getBorrower());
+        }
+        //@@author Xandurs
         // Play history is not something edit changes either, so keep every logged session.
         for (PlaySession session : oldGame.getSessions()) {
             editedGame.addSession(session);
         }
+        //@@author MohamedFarsat
+        // Ratings are changed with rate, not edit, so keep them too.
+        editedGame.setRatings(oldGame.getThumbsUp(), oldGame.getThumbsDown());
+        //@@author Xandurs
 
         if (editedGame.toFileString().equals(oldGame.toFileString())) {
             // Nothing would change, so tell the user instead of rewriting the data file.

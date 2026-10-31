@@ -67,6 +67,10 @@ public class FilterCommand extends Command {
         if (hasTimeLimit) {
             appendUntimedNote(message, games);
         }
+        ArrayList<Game> lentGames = hasTimeLimit
+                ? games.findLentFitting(playerCount, minutes)
+                : games.findLentFitting(playerCount);
+        message.append(LentCommand.describeLeftOut(lentGames, "shown"));
         ui.showMessage(message.toString());
     }
 

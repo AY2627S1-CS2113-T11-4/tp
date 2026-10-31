@@ -1,0 +1,52 @@
+@startuml
+' Running "rate 1 up": giving the first game a thumbs up
+hide footbox
+skinparam sequenceReferenceBackgroundColor #FFFFFF
+
+participant ":GameVault" as GV
+participant "<<class>>\nParser" as P
+participant ":RateCommand" as RC
+participant ":GameList" as GL
+participant "game:Game" as G
+participant ":Storage" as S
+participant ":Ui" as UI
+
+activate GV
+GV -> P : parse("rate 1 up")
+activate P
+P -> P : parseRate("1 up")
+P -> P : parseIndex("1")
+create RC
+P -> RC : new RateCommand(1, true)
+activate RC
+RC --> P
+deactivate RC
+P --> GV
+deactivate P
+
+GV -> RC : execute(games, ui, storage)
+activate RC
+RC -> GL : get(0)
+activate GL
+GL --> RC : game
+deactivate GL
+
+RC -> G : addThumbsUp()
+activate G
+G --> RC
+deactivate G
+RC -> S : save(games)
+activate S
+S --> RC
+deactivate S
+RC -> G : describeRatings()
+activate G
+G --> RC : "+1/-0"
+deactivate G
+RC -> UI : showMessage("Thumbs up for ...")
+activate UI
+UI --> RC
+deactivate UI
+RC --> GV
+deactivate RC
+@enduml

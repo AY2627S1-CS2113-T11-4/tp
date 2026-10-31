@@ -47,7 +47,7 @@ class GameDecoderTest {
         assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan"));
         assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan | 3"));
         assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan | 3 |"));
-        assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan | 3 | 4 | 60 | party | 5"));
+        assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan | 3 | 4 | 60 | party | Alice | 5"));
         assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan, 3, 4"));
     }
 
@@ -136,5 +136,84 @@ class GameDecoderTest {
         original.addTag("party");
         original.addTag("co-op");
         assertEquals(original.toString(), GameDecoder.decodeLine(original.toFileString()).toString());
+    }
+
+    //@@author yy261
+    @Test
+    void decodeLine_withBorrower_returnsLentGame() throws GameVaultException {
+        Game game = GameDecoder.decodeLine("Hive | 2 | 2 |  |  | lent=  Mary   Tan ");
+        assertTrue(game.isLent());
+        // The name is normalised in the same way as when it is typed with 'lend'.
+        assertEquals("Mary Tan", game.getBorrower());
+        assertFalse(game.hasPlayTime());
+        assertTrue(game.getTags().isEmpty());
+    }
+
+    @Test
+    void decodeLine_noLentField_returnsGameOnShelf() throws GameVaultException {
+        assertFalse(GameDecoder.decodeLine("Catan | 3 | 4 | 60 | strategy").isLent());
+    }
+
+    @Test
+    void decodeLine_blankLentField_throwsException() {
+        assertThrows(GameVaultException.class,
+                () -> GameDecoder.decodeLine("Catan | 3 | 4 | 60 | strategy | lent="));
+    }
+
+    @Test
+    void decodeLine_borrowerTooLong_throwsExceptionNamingField() {
+        String longName = "a".repeat(31);
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> GameDecoder.decodeLine("Hive | 2 | 2 |  |  | lent=" + longName));
+        assertTrue(e.getMessage().startsWith("lent is '" + longName + "'"));
+    }
+
+    @Test
+    void decodeLine_toFileStringOfLentGame_decodesToSameGame() throws GameVaultException {
+        Game original = new Game("Catan", 3, 4, 60);
+        original.addTag("strategy");
+        original.lendTo("Alice");
+        assertEquals(original.toString(), GameDecoder.decodeLine(original.toFileString()).toString());
+    }
+
+    //@@author MohamedFarsat
+    @Test
+    void decodeLine_withRatings_returnsRatedGame() throws GameVaultException {
+        Game game = GameDecoder.decodeLine("Catan | 3 | 4 |  |  | ratings=5/1");
+        assertEquals(5, game.getThumbsUp());
+        assertEquals(1, game.getThumbsDown());
+        assertEquals("+0/-2", GameDecoder.decodeLine("Hive | 2 | 2 |  |  | RATINGS = 0 / 2").describeRatings());
+    }
+
+    @Test
+    void decodeLine_noRatingsField_returnsUnratedGame() throws GameVaultException {
+        assertFalse(GameDecoder.decodeLine("Catan | 3 | 4 | 60 | strategy").isRated());
+    }
+
+    @Test
+    void decodeLine_invalidRatings_throwsException() {
+        String[] invalidValues = {"", "5", "5/1/2", "/1", "five/1", "5/-1", "-1/0", "1.5/0", "99999999999/0"};
+        for (String value : invalidValues) {
+            assertThrows(GameVaultException.class,
+                    () -> GameDecoder.decodeLine("Catan | 3 | 4 |  |  | ratings=" + value), value);
+        }
+    }
+
+    @Test
+    void decodeLine_negativeRating_throwsExceptionNamingField() {
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> GameDecoder.decodeLine("Catan | 3 | 4 |  |  | ratings=2/-1"));
+        assertEquals("DOWN in ratings should not be negative, but was -1", e.getMessage());
+    }
+
+    @Test
+    void decodeLine_toFileStringOfRatedGameWithEverything_decodesToSameGame() throws GameVaultException {
+        Game original = new Game("Catan", 3, 4, 60);
+        original.addTag("strategy");
+        original.lendTo("Alice");
+        original.setRatings(3, 2);
+        Game decoded = GameDecoder.decodeLine(original.toFileString());
+        assertEquals(original.toString(), decoded.toString());
+        assertEquals(original.toFileString(), decoded.toFileString());
     }
 }
