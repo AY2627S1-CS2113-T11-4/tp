@@ -226,6 +226,8 @@ Format: `pick COUNT [/time MINUTES]`
 * If you give `/time MINUTES`, the game is picked only from games that take `MINUTES` or less.
   Games with no play time recorded are not considered, and GameVault tells you how many were left out for this reason.
 * Each use may pick a different game. Your collection is not changed.
+* Games your group rated up with [`rate`](#rating-a-game-after-playing-rate) are more likely to be picked,
+  and games rated down are less likely. When any of the games that fit has been rated, `pick` reminds you of this.
 
 Examples of usage: `pick 4`, `pick 4 /time 45`
 
@@ -427,6 +429,45 @@ Catan has now been played 2 times.
 ____________________________________________________________
 ```
 
+<!-- @@author MohamedFarsat -->
+### Rating a game after playing: `rate`
+
+Gives a game a thumbs up or a thumbs down after your group has played it, so that `pick` suggests the games your
+group enjoyed more often.
+
+Format: `rate INDEX up|down`
+
+* `INDEX` is the game's number in `list`, and must be a whole number of at least 1.
+* Use `up` if the group enjoyed the game, or `down` if they did not. `UP` and `Down` work too.
+* You can rate the same game as many times as you like, e.g. once after every game night. Each rating is added
+  to the game's count of thumbs up or thumbs down.
+* Once a game has been rated, `list` (and other commands that show the game) show its counts after it,
+  e.g. `Catan (3-4 players) +5/-1` for 5 thumbs up and 1 thumbs down.
+
+Examples of usage: `rate 1 up`, `rate 3 down`
+
+Expected output (for `rate 1 up`, when Catan already had 4 thumbs up and 1 thumbs down):
+
+```
+____________________________________________________________
+Thumbs up for Catan!
+Catan is now rated +5/-1 (thumbs up/thumbs down).
+____________________________________________________________
+```
+
+**How ratings affect `pick`:** each game that fits is given a weight of
+(thumbs up + 1) ÷ (thumbs down + 1), and `pick` chooses games in proportion to their weights:
+
+Rating | Weight | Compared with an unrated game
+-------|--------|------------------------------
+Not rated (`+0/-0`) | 1 | Equally likely
+`+3/-0` | 4 | 4 times as likely
+`+2/-2` | 1 | Equally likely
+`+0/-3` | 0.25 | A quarter as likely
+
+A game with many thumbs down is picked less often, but never ruled out completely, so your group still gets
+the occasional surprise. Ratings do not change `filter`, which always shows every game that fits.
+
 <!-- @@author -->
 
 <!-- @@author yy261 -->
@@ -543,6 +584,7 @@ Azul | 2 | 4 | 45 | family,strategy
 Werewolf | 8 | 18 |  | party
 Hive | 2 | 2 |  |  | lent=Alice
 Love Letter | 2 | 4 | 20 |  | sessions=2026-10-25@3;2026-10-30@4
+Splendor | 2 | 4 | 30 |  | ratings=5/1
 ```
  
 * `MIN` and `MAX` must be whole numbers of at least 1, and `MAX` must not be less than `MIN`.
@@ -552,7 +594,9 @@ Love Letter | 2 | 4 | 20 |  | sessions=2026-10-25@3;2026-10-30@4
 * Any further data comes after `TAGS` as named `KEY=VALUE` fields. For these lines, write `TIME` and `TAGS`
   even if blank, as in the `Hive` and `Love Letter` lines above. The current named fields are `lent`
   (see [`lend`](#lending-a-game-to-a-friend-lend)) and `sessions`, which lists the logged play sessions as
-  `DATE@PLAYERS` (e.g. `2026-10-30@4`), separated by `;`.
+  `DATE@PLAYERS` (e.g. `2026-10-30@4`), separated by `;`, and `ratings`, which holds the thumbs-up and
+  thumbs-down counts from [`rate`](#rating-a-game-after-playing-rate) as `UP/DOWN` (e.g. `5/1`). Both counts must be
+  whole numbers of at least 0.
 * Blank lines are ignored.
 
 If a line is not in this format, GameVault skips that line, loads the rest of your games, and tells you which
@@ -593,5 +637,6 @@ Lend | `lend INDEX /to NAME`, e.g. `lend 2 /to Alice`
 Return | `return INDEX`, e.g. `return 2`
 List lent games | `lent`
 Log | `log INDEX /players COUNT [/date YYYY-MM-DD]`, e.g. `log 1 /players 4 /date 2026-10-30`
+Rate | `rate INDEX up\|down`, e.g. `rate 1 up`
 Help | `help`
 Exit | `exit`
