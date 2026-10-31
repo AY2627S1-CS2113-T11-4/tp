@@ -1,0 +1,53 @@
+@startuml
+' Picking a random game for the command: pick 4 /time 45
+hide footbox
+skinparam sequenceReferenceBackgroundColor #FFFFFF
+
+participant ":GameVault" as GV
+participant "Parser" as P <<class>>
+participant ":PickCommand" as PC
+participant ":GameList" as GL
+participant ":Random" as R
+participant ":Ui" as UI
+
+activate GV
+GV -> P : parse("pick 4 /time 45")
+activate P
+P -> P : splitByPrefixes(...)
+create PC
+P -> PC : new PickCommand(4, 45)
+activate PC
+PC --> P
+deactivate PC
+P --> GV : command
+deactivate P
+
+GV -> PC : execute(games, ui, storage)
+activate PC
+PC -> GL : filterByPlayersAndTime(4, 45)
+activate GL
+GL --> PC : matches
+deactivate GL
+
+alt matches is empty
+  PC -> PC : build "nothing to pick from" message
+else at least one match
+  PC -> R : nextInt(matches.size())
+  activate R
+  R --> PC : i
+  deactivate R
+  PC -> PC : pickedGame = matches.get(i)
+end
+
+PC -> GL : countWithoutPlayTime(4)
+activate GL
+GL --> PC : untimedCount
+deactivate GL
+
+PC -> UI : showMessage(message)
+activate UI
+UI --> PC
+deactivate UI
+PC --> GV
+deactivate PC
+@enduml
