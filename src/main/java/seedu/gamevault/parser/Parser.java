@@ -1,5 +1,7 @@
 package seedu.gamevault.parser;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -23,6 +25,7 @@ import seedu.gamevault.command.FindCommand;
 import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.command.ListCommand;
 import seedu.gamevault.command.ListTagsCommand;
+import seedu.gamevault.command.LogCommand;
 import seedu.gamevault.command.PickCommand;
 import seedu.gamevault.command.SortCommand;
 import seedu.gamevault.command.TagCommand;
@@ -43,6 +46,8 @@ public class Parser {
     private static final String TITLE_PREFIX = "/title";
     private static final String TIME_PREFIX = "/time";
     private static final String TAG_PREFIX = "/tag";
+    private static final String PLAYERS_PREFIX = "/players";
+    private static final String DATE_PREFIX = "/date";
     private static final String NO_TIME_VALUE = "none";
     /** Key under which {@link #splitByPrefixes} stores the text that comes before the first prefix. */
     private static final String PREAMBLE = "";
@@ -100,6 +105,8 @@ public class Parser {
             return parsePick(arguments);
         case SortCommand.COMMAND_WORD:
             return parseSort(arguments);
+        case LogCommand.COMMAND_WORD:
+            return parseLog(arguments);
         default:
             throw new GameVaultException("Unknown command '" + parts[0]
                     + "'. Type 'help' to see all commands.");
@@ -347,6 +354,66 @@ public class Parser {
             return EditCommand.CLEAR_PLAY_TIME;
         }
         return parsePositiveNumber(text, "MINUTES", EditCommand.USAGE);
+    }
+
+    //@@author Xandurs
+    /**
+     * Builds a {@link LogCommand} from arguments in the form {@code INDEX /players COUNT [/date YYYY-MM-DD]},
+     * e.g. {@code 2 /players 4 /date 2026-10-30}. Without /date, the session is logged for today,
+     * since games are usually logged right after playing.
+     *
+     * @param today Today's date, used when /date is left out and to reject dates in the future.
+     * @throws GameVaultException If INDEX or COUNT is missing or invalid, a field is repeated,
+     *     or the date is invalid or in the future.
+     */
+    static Command parseLog(String arguments, LocalDate today) throws GameVaultException {
+        Map<String, String> fields = splitByPrefixes(arguments, PLAYERS_PREFIX, DATE_PREFIX);
+
+        String indexText = fields.get(PREAMBLE);
+        if (indexText.isEmpty()) {
+            throw new GameVaultException("INDEX is missing. Format: " + LogCommand.USAGE
+                    + " (e.g. log 2 /players 4)");
+        }
+        int displayNumber = parseIndex(indexText);
+        if (!fields.containsKey(PLAYERS_PREFIX)) {
+            throw new GameVaultException("Please say how many people played with /players. Format: "
+                    + LogCommand.USAGE + " (e.g. log 2 /players 4)");
+        }
+        int playerCount = parsePositiveNumber(fields.get(PLAYERS_PREFIX), "COUNT", LogCommand.USAGE);
+        LocalDate date = fields.containsKey(DATE_PREFIX)
+                ? parseDate(fields.get(DATE_PREFIX), today)
+                : today;
+        return new LogCommand(displayNumber, date, playerCount);
+    }
+
+    private static Command parseLog(String arguments) throws GameVaultException {
+        return parseLog(arguments, LocalDate.now());
+    }
+
+    /**
+     * Returns the date in {@code text}, which must be in the form {@code YYYY-MM-DD} and not after today.
+     * Impossible dates such as {@code 2026-02-30} are rejected rather than adjusted.
+     *
+     * @param today Today's date; a later date is rejected, since a game cannot have been played in the future.
+     * @throws GameVaultException If the date is missing, not in the form YYYY-MM-DD, impossible, or in the future.
+     */
+    private static LocalDate parseDate(String text, LocalDate today) throws GameVaultException {
+        String dateText = text.trim();
+        if (dateText.isEmpty()) {
+            throw new GameVaultException("DATE is missing. Format: " + LogCommand.USAGE);
+        }
+        LocalDate date;
+        try {
+            // LocalDate.parse uses the strict ISO format, so "2026-2-3" and "2026-02-30" are both rejected.
+            date = LocalDate.parse(dateText);
+        } catch (DateTimeParseException e) {
+            throw new GameVaultException("DATE should be a real date in the form YYYY-MM-DD (e.g. 2026-10-30), "
+                    + "but was '" + dateText + "'.");
+        }
+        if (date.isAfter(today)) {
+            throw new GameVaultException("DATE cannot be in the future, but was " + date + ".");
+        }
+        return date;
     }
 
     //@@author SwaggyDaddy67
