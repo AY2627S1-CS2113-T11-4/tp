@@ -1,0 +1,62 @@
+@startuml
+' Sequence diagram for "history 1" -- GameVault play history feature
+hide footbox
+skinparam sequenceMessageAlign center
+
+participant ":GameVault" as GV
+participant "<<class>>\nParser" as P
+participant "h:HistoryCommand" as H
+participant ":GameList" as GL
+participant "game:Game" as G
+participant ":Ui" as UI
+
+GV -> P : parse("history 1")
+activate P
+P -> P : parseHistory("1")
+activate P
+create H
+P -> H : new HistoryCommand(1)
+activate H
+H --> P
+deactivate H
+deactivate P
+P --> GV : h
+deactivate P
+
+GV -> H : execute(games, ui, storage)
+activate H
+H -> GL : get(0)
+activate GL
+GL --> H : game
+deactivate GL
+H -> G : getSessions()
+activate G
+G --> H : sessions
+deactivate G
+
+alt sessions is empty
+    H -> UI : showMessage(never-played message)
+    activate UI
+    UI --> H
+    deactivate UI
+else at least one session
+    loop for each session in sessions
+        H -> H : append "  session"
+    end
+    H -> G : getPlayCount()
+    activate G
+    G --> H : count
+    deactivate G
+    H -> G : getLastPlayed()
+    activate G
+    G --> H : lastPlayed
+    deactivate G
+    H -> UI : showMessage(header + sessions + summary)
+    activate UI
+    UI --> H
+    deactivate UI
+end
+H --> GV
+deactivate H
+destroy H
+@enduml
