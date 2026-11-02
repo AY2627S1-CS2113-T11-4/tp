@@ -19,7 +19,7 @@ public class HelpCommand extends Command {
               add          Adds a game: add TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]
               list         Lists all games in your collection.
               find         Finds games by title: find KEYWORD
-              filter       Shows games that fit a player count: filter COUNT [/time MINUTES]
+              filter       Shows games that fit a player count: filter COUNT [/time MINUTES] [/notplayedin DAYS]
                            or games with a tag: filter [COUNT] [/time MINUTES] /tag TAG
               pick         Picks a random game that fits a player count: pick COUNT [/time MINUTES]
               delete       Deletes a game: delete INDEX

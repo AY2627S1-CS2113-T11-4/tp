@@ -125,7 +125,8 @@ class UnavailableCommandTest {
 
         new ListCommand().execute(games, ui, storage);
 
-        assertTrue(output.toString().contains("1. Catan (3-4 players, 60 min)" + System.lineSeparator()));
+        assertTrue(output.toString().contains("1. Catan (3-4 players, 60 min) - never played"
+                  + System.lineSeparator()));
         assertTrue(output.toString().contains("2. Codenames (4-8 players) (unavailable: damaged)"));
     }
 

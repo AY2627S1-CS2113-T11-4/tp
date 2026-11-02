@@ -1,6 +1,7 @@
 package seedu.gamevault.game;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -538,5 +539,48 @@ public class Game {
             return Optional.empty();
         }
         return Optional.of(sessions.get(sessions.size() - 1).getDate());
+    }
+
+    /**
+     * Returns how many days ago this game was last played, e.g. 0 if it was played today,
+     * or an empty Optional if it has never been played.
+     *
+     * @param today Today's date; passed in so that tests can use a fixed date.
+     */
+    public Optional<Long> getDaysSinceLastPlayed(LocalDate today) {
+        assert today != null : "Today's date should not be null";
+        // log rejects future dates, but a hand-edited data file might not, so never report a negative number.
+        return getLastPlayed().map(lastPlayed -> Math.max(0L, ChronoUnit.DAYS.between(lastPlayed, today)));
+    }
+
+    /**
+     * Returns whether this game was played within the last {@code days} days, counting today as 0 days ago.
+     * For example, with {@code days} = 14, a game played 13 days ago was played within that time,
+     * but one played 14 days ago was not. A game that has never been played was not played within any time.
+     *
+     * @param days Number of days to look back; must be at least 1.
+     * @param today Today's date; passed in so that tests can use a fixed date.
+     */
+    public boolean wasPlayedWithin(int days, LocalDate today) {
+        assert days >= 1 : "Number of days should be at least 1";
+        return getDaysSinceLastPlayed(today).map(daysAgo -> daysAgo < days).orElse(false);
+    }
+
+    /**
+     * Returns when this game was last played, in words: {@code last played today},
+     * {@code last played 1 day ago}, {@code last played 12 days ago} or {@code never played}.
+     *
+     * @param today Today's date; passed in so that tests can use a fixed date.
+     */
+    public String describeLastPlayed(LocalDate today) {
+        Optional<Long> daysAgo = getDaysSinceLastPlayed(today);
+        if (daysAgo.isEmpty()) {
+            return "never played";
+        }
+        long days = daysAgo.get();
+        if (days == 0) {
+            return "last played today";
+        }
+        return "last played " + days + (days == 1 ? " day ago" : " days ago");
     }
 }

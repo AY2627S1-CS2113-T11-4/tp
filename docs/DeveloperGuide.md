@@ -428,6 +428,73 @@ clock is set wrongly would treat saved sessions as invalid and skip the whole ga
 * An `unlog INDEX` command to remove a session logged by mistake.
 * Accept other date forms, e.g. `today`, `yesterday` or `30/10/2026`.
 
+### Showing when games were last played
+
+`list` shows how long ago each game was last played (e.g. `Catan (3-4 players) - last played 3 days ago`), and
+`filter COUNT /notplayedin DAYS` hides games played within the last `DAYS` days. Both are worked out from the play
+sessions recorded by `log`, so nothing new is saved to the data file.
+
+**Model.** Three methods in `Game` build on `Game#getLastPlayed()`:
+
+* `getDaysSinceLastPlayed(today)` returns the number of days between the last session and `today`
+  (`ChronoUnit.DAYS.between(...)`), or an empty `Optional` if the game was never played. It never returns a
+  negative number, in case a hand-edited data file contains a session after today.
+* `wasPlayedWithin(days, today)` returns whether that number is less than `days`, so with `days` = 14, a game played
+  13 days ago counts as recent but one played 14 days ago does not. A never-played game is never recent.
+* `describeLastPlayed(today)` turns the number into words: `last played today`, `last played 1 day ago`,
+  `last played N days ago` or `never played`.
+
+**Listing.** `ListCommand` already stores `today` (used for overdue borrowed games). Its new
+`formatNumberedListWithLastPlayed(...)` adds ` - ` and `Game#describeLastPlayed(today)` to the end of each line.
+`ListCommand#formatNumberedList(...)` is left unchanged because `SortCommand` also uses it, and the sorted view
+does not need the extra detail.
+
+**Filtering.** `Parser#parseFilter(...)` reads the optional `/notplayedin DAYS` with `splitByPrefixes(...)` and
+checks it with `parsePositiveNumber(...)`, then creates `FilterCommand(count, minutes, notPlayedInDays)`.
+When `/notplayedin` is left out, `notPlayedInDays` is `FilterCommand.NO_DAYS_LIMIT` (0), so `filter` behaves
+exactly as before. In `FilterCommand#execute(...)`:
+
+1. The games that fit the player count (and time, if given) are found exactly as before.
+2. If there is a day limit, `removeRecentlyPlayed(matches)` removes every game for which
+   `Game#wasPlayedWithin(notPlayedInDays, today)` is true, and returns how many were removed.
+3. The criteria line says `not played in the last N day(s)`, and if any games were removed, a note says how many
+   were hidden, so the user knows why a game they expected is missing.
+
+#### Design considerations
+
+**Aspect: Store "last played" or work it out**
+
+* **Alternative 1 (current choice):** Work it out from the logged sessions each time it is needed.
+  * Pros: Nothing new to save or load, and it can never disagree with the play history.
+  * Cons: Every `list` looks at each game's last session, but this is quick because sessions are kept in date order.
+* **Alternative 2:** Store a `lastPlayed` date in each game and update it in `log`.
+  * Pros: Slightly less work when listing.
+  * Cons: The same fact is stored twice, and the two could disagree, e.g. after hand-editing the data file.
+
+**Aspect: How to pass in today's date**
+
+* **Alternative 1 (current choice):** Pass `today` into the `Game` methods, and give `ListCommand` and
+  `FilterCommand` a package-private constructor that takes it. Normal use passes `LocalDate.now()`.
+  * Pros: Tests can use a fixed date, so they don't start failing as the real date moves on.
+  * Cons: One extra parameter and constructor.
+* **Alternative 2:** Call `LocalDate.now()` inside `Game`.
+  * Pros: Simpler method signatures.
+  * Cons: Results change every day, so tests could only check vague things.
+
+**Aspect: Never-played games with `/notplayedin`**
+
+* **Alternative 1 (current choice):** Always show them.
+  * Pros: Matches the goal of avoiding games played *recently*; a never-played game is a fresh choice.
+  * Cons: A brand-new game appears even if the group hasn't decided whether they want it yet.
+* **Alternative 2:** Hide them as well.
+  * Pros: Shows only games with a known history.
+  * Cons: Hides exactly the games the group has not tried, which goes against the point of the feature.
+
+#### Possible future improvements
+
+* Support `/notplayedin` together with `/tag`, and in `pick`, so a random pick also avoids recent games.
+* Add `sort lastplayed`, to see the games that have gone longest without being played first.
+
 <!-- @@author MohamedFarsat -->
 ### Rating games and weighted picking
 
@@ -865,6 +932,7 @@ The `borrow` command rejects a due-back date in the past, since it is most likel
 |v1.0|new user|see usage instructions|refer to them when I forget how to use the application|
 |v2.0|host with a large collection|find a game by part of its title|locate it without going through the entire list|
 |v2.0|host with many games|sort my collection by title, player count or play time|scan it more easily|
+|v2.1|host who runs regular game nights|see how long it has been since each game was last played|avoid repeating games the group just played|
 
 ## Non-Functional Requirements
 

@@ -39,7 +39,7 @@ Here are the commands you can use:
   add          Adds a game: add TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]
   list         Lists all games in your collection.
   find         Finds games by title: find KEYWORD
-  filter       Shows games that fit a player count: filter COUNT [/time MINUTES]
+  filter       Shows games that fit a player count: filter COUNT [/time MINUTES] [/notplayedin DAYS]
                or games with a tag: filter [COUNT] [/time MINUTES] /tag TAG
   pick         Picks a random game that fits a player count: pick COUNT [/time MINUTES]
   delete       Deletes a game: delete INDEX
@@ -108,13 +108,23 @@ Expected output:
 ```
 ____________________________________________________________
 Here are the games in your collection:
-1. Catan (3-4 players, 60 min)
-2. Codenames (4-8 players) [party]
-3. Chess (2 players)
+1. Catan (3-4 players, 60 min) - last played 3 days ago
+2. Codenames (4-8 players) [party] - never played
+3. Chess (2 players) - last played today
 ____________________________________________________________
 ```
 
 If your collection is empty, GameVault shows `No games in your collection yet.` instead.
+<!-- @@author Xandurs -->
+
+Each game ends with when it was last played, worked out from the sessions you recorded with
+[`log`](#logging-a-play-session-log):
+
+* `last played today`, `last played 1 day ago` or `last played N days ago`
+* `never played` if no session has been logged for the game yet
+
+This helps you avoid suggesting a game the group played very recently. To hide those games when choosing what to
+play, use [`filter COUNT /notplayedin DAYS`](#finding-games-for-your-group-filter).
 <!-- @@author KRAZYZECTRON -->
 
 If a game you [borrowed](#recording-who-lent-or-gave-you-a-game-borrow-giveback) should already have been given back,
@@ -131,7 +141,7 @@ Overdue, please give these back:
 Shows the games that can be played by the given number of players, optionally only those that fit in the time
 you have.
  
-Format: `filter COUNT [/time MINUTES]`
+Format: `filter COUNT [/time MINUTES] [/notplayedin DAYS]`
  
 * `COUNT` is the number of players, and must be a whole number of at least 1.
 * A game is shown if `COUNT` is within its minimum and maximum players (both inclusive).
@@ -140,7 +150,7 @@ Format: `filter COUNT [/time MINUTES]`
 * Games that are lent out or [marked unavailable](#marking-a-game-unavailable-unavailable-available) are left out.
 * Your collection is not changed.
 
-Examples of usage: `filter 4`, `filter 4 /time 45`
+Examples of usage: `filter 4`, `filter 4 /time 45`, `filter 4 /notplayedin 14`
  
 Expected output:
  
@@ -162,6 +172,32 @@ No games fit 4 players in 45 minutes or less.
 (1 game(s) for 4 players were left out because they have no play time recorded.)
 ____________________________________________________________
 ```
+
+<!-- @@author Xandurs -->
+
+**Hiding games played recently.** Add `/notplayedin DAYS` to leave out games the group played in the last
+`DAYS` days, so you don't end up playing the same game again.
+
+* `DAYS` must be a whole number of at least 1.
+* Today counts as 0 days ago. For example, with `/notplayedin 14`, a game last played 13 days ago is hidden, but a
+  game last played 14 days ago is shown.
+* Games that have never been played are always shown.
+* GameVault tells you how many games were hidden for this reason.
+* `/notplayedin` can be combined with `/time`, in any order, but not with `/tag` (yet).
+* When a game was played comes from the sessions you recorded with [`log`](#logging-a-play-session-log).
+
+Example: `filter 4 /notplayedin 14`, when Catan was played 3 days ago, Azul 32 days ago, and Hive never:
+
+```
+____________________________________________________________
+Games that fit 4 players not played in the last 14 day(s):
+  Azul (2-4 players)
+  Hive (2-4 players)
+(1 game(s) were hidden because they were played in the last 14 day(s).)
+____________________________________________________________
+```
+
+<!-- @@author -->
 
 <!-- @@author KRAZYZECTRON -->
 #### Finding games by tag: `filter /tag`
@@ -757,7 +793,7 @@ Action | Format
 -------|-------
 Add | `add TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]`, e.g. `add Catan /min 3 /max 4 /time 60 /tag strategy`
 List | `list`
-Filter | `filter COUNT [/time MINUTES]`, e.g. `filter 4 /time 45`<br>`filter [COUNT] [/time MINUTES] /tag TAG`, e.g. `filter 6 /tag party`
+Filter | `filter COUNT [/time MINUTES] [/notplayedin DAYS]`, e.g. `filter 4 /time 45`, `filter 4 /notplayedin 14`<br>`filter [COUNT] [/time MINUTES] /tag TAG`, e.g. `filter 6 /tag party`
 Find | `find KEYWORD`, e.g. `find mono`
 Pick | `pick COUNT [/time MINUTES]`, e.g. `pick 4 /time 45`
 Delete | `delete INDEX`, e.g. `delete 2`

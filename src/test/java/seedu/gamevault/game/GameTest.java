@@ -236,4 +236,48 @@ class GameTest {
         assertTrue(game.hasLender());
         assertTrue(game.isAvailable());
     }
+
+    //@@author Xandurs
+    @Test
+    void describeLastPlayed_neverPlayed_saysNeverPlayed() {
+        Game game = new Game("Catan", 3, 4);
+        assertEquals("never played", game.describeLastPlayed(LocalDate.of(2026, 11, 2)));
+        assertTrue(game.getDaysSinceLastPlayed(LocalDate.of(2026, 11, 2)).isEmpty());
+    }
+
+    @Test
+    void describeLastPlayed_playedBefore_countsDaysFromLatestSession() {
+        Game game = new Game("Catan", 3, 4);
+        game.addSession(new PlaySession(LocalDate.of(2026, 10, 1), 4));
+        game.addSession(new PlaySession(LocalDate.of(2026, 10, 20), 3));
+        LocalDate today = LocalDate.of(2026, 11, 2);
+
+        assertEquals(13L, game.getDaysSinceLastPlayed(today).orElseThrow());
+        assertEquals("last played 13 days ago", game.describeLastPlayed(today));
+        assertEquals("last played 1 day ago", game.describeLastPlayed(LocalDate.of(2026, 10, 21)));
+        assertEquals("last played today", game.describeLastPlayed(LocalDate.of(2026, 10, 20)));
+    }
+
+    @Test
+    void getDaysSinceLastPlayed_sessionAfterToday_returnsZero() {
+        // Only possible if the data file was edited by hand, since log rejects future dates.
+        Game game = new Game("Catan", 3, 4);
+        game.addSession(new PlaySession(LocalDate.of(2026, 12, 25), 4));
+        assertEquals(0L, game.getDaysSinceLastPlayed(LocalDate.of(2026, 11, 2)).orElseThrow());
+    }
+
+    @Test
+    void wasPlayedWithin_boundaries_countsTodayAsZeroDaysAgo() {
+        Game game = new Game("Catan", 3, 4);
+        game.addSession(new PlaySession(LocalDate.of(2026, 10, 20), 4));
+
+        assertTrue(game.wasPlayedWithin(14, LocalDate.of(2026, 11, 2))); // 13 days ago
+        assertFalse(game.wasPlayedWithin(14, LocalDate.of(2026, 11, 3))); // exactly 14 days ago
+        assertTrue(game.wasPlayedWithin(1, LocalDate.of(2026, 10, 20))); // played today
+    }
+
+    @Test
+    void wasPlayedWithin_neverPlayed_returnsFalse() {
+        assertFalse(new Game("Catan", 3, 4).wasPlayedWithin(30, LocalDate.of(2026, 11, 2)));
+    }
 }
