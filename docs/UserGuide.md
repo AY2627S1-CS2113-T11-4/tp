@@ -36,24 +36,28 @@ Expected output:
 ```
 ____________________________________________________________
 Here are the commands you can use:
-  add     Adds a game: add TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]
-  list    Lists all games in your collection.
-  find    Finds games by title: find KEYWORD
-  filter  Shows games that fit a player count: filter COUNT [/time MINUTES]
-          or games with a tag: filter [COUNT] [/time MINUTES] /tag TAG
-  pick    Picks a random game that fits a player count: pick COUNT [/time MINUTES]
-  delete  Deletes a game: delete INDEX
-  edit    Edits a game: edit INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES|none]
-  tag     Adds tags to a game: tag INDEX TAG [MORE_TAGS]...
-  untag   Removes tags from a game: untag INDEX TAG [MORE_TAGS]...
-  tags    Lists all tags in use and how many games have each.
-  log     Logs that a game was played: log INDEX /players COUNT [/date YYYY-MM-DD]
-  sort    Sorts your collection: sort title|players|time
-  lend    Records that a game is lent out: lend INDEX /to NAME
-  return  Records that a lent game is back: return INDEX
-  lentout Lists the games that are lent out and who has them.
-  help    Shows this list of commands.
-  exit    Exits GameVault.
+  add          Adds a game: add TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]
+  list         Lists all games in your collection.
+  find         Finds games by title: find KEYWORD
+  filter       Shows games that fit a player count: filter COUNT [/time MINUTES]
+               or games with a tag: filter [COUNT] [/time MINUTES] /tag TAG
+  pick         Picks a random game that fits a player count: pick COUNT [/time MINUTES]
+  delete       Deletes a game: delete INDEX
+  edit         Edits a game: edit INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES|none]
+  tag          Adds tags to a game: tag INDEX TAG [MORE_TAGS]...
+  log          Logs that a game was played: log INDEX /players COUNT [/date YYYY-MM-DD]
+  rate         Gives a game a thumbs up or down after playing: rate INDEX up|down
+  unrate       Removes a thumbs up or down given by mistake: unrate INDEX up|down
+  untag        Removes tags from a game: untag INDEX TAG [MORE_TAGS]...
+  tags         Lists all tags in use and how many games have each.
+  sort         Sorts your collection: sort title|players|time
+  lend         Records that a game is lent out: lend INDEX /to NAME
+  return       Records that a lent game is back: return INDEX
+  lentout      Lists the games that are lent out and who has them.
+  unavailable  Marks a game unavailable: unavailable INDEX /reason missing|damaged
+  available    Marks a game available again: available INDEX
+  help         Shows this list of commands.
+  exit         Exits GameVault.
 ____________________________________________________________
 ```
  
@@ -122,6 +126,7 @@ Format: `filter COUNT [/time MINUTES]`
 * A game is shown if `COUNT` is within its minimum and maximum players (both inclusive).
 * If you give `/time MINUTES`, only games that take `MINUTES` or less are shown.
   Games with no play time recorded are left out, and GameVault tells you how many were left out for this reason.
+* Games that are lent out or [marked unavailable](#marking-a-game-unavailable-unavailable-available) are left out.
 * Your collection is not changed.
 
 Examples of usage: `filter 4`, `filter 4 /time 45`
@@ -225,6 +230,7 @@ Format: `pick COUNT [/time MINUTES]`
 * The game is picked only from games where `COUNT` is within its minimum and maximum players (both inclusive).
 * If you give `/time MINUTES`, the game is picked only from games that take `MINUTES` or less.
   Games with no play time recorded are not considered, and GameVault tells you how many were left out for this reason.
+* Games that are lent out or [marked unavailable](#marking-a-game-unavailable-unavailable-available) are not considered.
 * Each use may pick a different game. Your collection is not changed.
 * Games your group rated up with [`rate`](#rating-a-game-after-playing-rate) are more likely to be picked,
   and games rated down are less likely. When any of the games that fit has been rated, `pick` reminds you of this.
@@ -495,6 +501,40 @@ Codenames is now rated +1/-0 (thumbs up/thumbs down).
 ____________________________________________________________
 ```
 
+<!-- @@author KRAZYZECTRON -->
+### Marking a game unavailable: `unavailable`, `available`
+
+Marks a game you cannot play at the moment, for example because pieces are missing or it is damaged.
+`filter` and `pick` then leave it out, so you are never offered a game you cannot play, and `list` shows why.
+Mark it available again once it is back in play.
+
+Format: `unavailable INDEX /reason REASON` and `available INDEX`
+
+* `INDEX` is the game's number in `list`, and must be a whole number of at least 1.
+* `REASON` is `missing` (missing pieces) or `damaged`, in any case.
+* Marking a game that is already unavailable with a different reason replaces the old reason.
+* An unavailable game stays in your collection: `list`, `find` and `sort` still show it, with its reason after it.
+  `edit`, `tag`, `untag`, `log` and `rate` work on it as usual, and `edit` keeps its reason.
+* For games you have lent to someone, use [`lend`](#lending-a-game-to-a-friend-lend) instead,
+  which also records who has the game.
+
+Examples of usage:
+
+* `unavailable 1 /reason missing` marks game 1 as having missing pieces.
+* `available 1` marks game 1 as available again.
+
+Expected output (for `unavailable 1 /reason damaged`, when game 1 was already marked as having missing pieces):
+
+```
+____________________________________________________________
+Marked unavailable: Catan (3-4 players, 60 min) (unavailable: damaged)
+(Was: missing pieces.)
+Use 'available 1' once it can be played again.
+____________________________________________________________
+```
+
+`list` then shows the reason after the game, e.g. `1. Catan (3-4 players, 60 min) (unavailable: damaged)`.
+
 <!-- @@author -->
 
 <!-- @@author yy261 -->
@@ -619,11 +659,13 @@ Splendor | 2 | 4 | 30 |  | ratings=5/1
 * `TAGS`, if given, must be the fifth field. For a game with tags but no play time, leave `TIME` blank,
   as in the `Werewolf` line above. Each tag must follow the rules in [Tagging a game](#tagging-a-game-tag-untag).
 * Any further data comes after `TAGS` as named `KEY=VALUE` fields. For these lines, write `TIME` and `TAGS`
-  even if blank, as in the `Hive` and `Love Letter` lines above. The current named fields are `lent`
-  (see [`lend`](#lending-a-game-to-a-friend-lend)) and `sessions`, which lists the logged play sessions as
-  `DATE@PLAYERS` (e.g. `2026-10-30@4`), separated by `;`, and `ratings`, which holds the thumbs-up and
-  thumbs-down counts from [`rate`](#rating-a-game-after-playing-rate) as `UP/DOWN` (e.g. `5/1`). Both counts must be
-  whole numbers of at least 0.
+  even if blank, as in the `Hive` and `Love Letter` lines above. The named fields are:
+  * `lent`, the person the game is lent to (see [`lend`](#lending-a-game-to-a-friend-lend)).
+  * `sessions`, which lists the logged play sessions as `DATE@PLAYERS` (e.g. `2026-10-30@4`), separated by `;`.
+  * `ratings`, which holds the thumbs-up and thumbs-down counts from [`rate`](#rating-a-game-after-playing-rate)
+    as `UP/DOWN` (e.g. `5/1`). Both counts must be whole numbers of at least 0.
+  * `unavailable`, which says why the game cannot be played at the moment: `missing` or `damaged`
+    (e.g. `unavailable=missing`).
 * Blank lines are ignored.
 
 If a line is not in this format, GameVault skips that line, loads the rest of your games, and tells you which
@@ -666,5 +708,7 @@ List lent games | `lentout`
 Log | `log INDEX /players COUNT [/date YYYY-MM-DD]`, e.g. `log 1 /players 4 /date 2026-10-30`
 Rate | `rate INDEX up\|down`, e.g. `rate 1 up`
 Unrate | `unrate INDEX up\|down`, e.g. `unrate 2 down`
+Mark unavailable | `unavailable INDEX /reason missing\|damaged`, e.g. `unavailable 1 /reason missing`
+Mark available | `available INDEX`, e.g. `available 1`
 Help | `help`
 Exit | `exit`

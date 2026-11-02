@@ -5,10 +5,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalDate;
+import java.util.Optional;
+
 import org.junit.jupiter.api.Test;
 
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Game;
+import seedu.gamevault.game.PlaySession;
+import seedu.gamevault.game.UnavailableReason;
 
 class GameDecoderTest {
 
@@ -136,6 +141,34 @@ class GameDecoderTest {
         original.addTag("party");
         original.addTag("co-op");
         assertEquals(original.toString(), GameDecoder.decodeLine(original.toFileString()).toString());
+    }
+
+    //@@author KRAZYZECTRON
+    @Test
+    void decodeLine_unavailableField_returnsUnavailableGame() throws GameVaultException {
+        Game game = GameDecoder.decodeLine("Catan | 3 | 4 |  |  | unavailable=DAMAGED");
+        assertEquals(Optional.of(UnavailableReason.DAMAGED), game.getUnavailableReason());
+        assertFalse(GameDecoder.decodeLine("Catan | 3 | 4").isMarkedUnavailable());
+    }
+
+    @Test
+    void decodeLine_unknownUnavailableReason_throwsExceptionNamingReason() {
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> GameDecoder.decodeLine("Catan | 3 | 4 |  |  | unavailable=lost"));
+        assertEquals("unavailable reason 'lost' should be missing or damaged", e.getMessage());
+    }
+
+    @Test
+    void decodeLine_toFileStringWithUnavailableAndSessions_decodesToSameGame() throws GameVaultException {
+        Game original = new Game("Catan", 3, 4, 60);
+        original.addTag("strategy");
+        original.addSession(new PlaySession(LocalDate.of(2026, 10, 30), 4));
+        original.markUnavailable(UnavailableReason.MISSING);
+
+        Game decoded = GameDecoder.decodeLine(original.toFileString());
+
+        assertEquals(original.toFileString(), decoded.toFileString());
+        assertEquals(Optional.of(UnavailableReason.MISSING), decoded.getUnavailableReason());
     }
 
     //@@author yy261

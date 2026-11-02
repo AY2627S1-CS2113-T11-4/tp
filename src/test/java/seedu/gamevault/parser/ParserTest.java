@@ -12,11 +12,13 @@ import java.io.PrintStream;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import seedu.gamevault.command.AddCommand;
+import seedu.gamevault.command.AvailableCommand;
 import seedu.gamevault.command.Command;
 import seedu.gamevault.command.DeleteCommand;
 import seedu.gamevault.command.EditCommand;
@@ -31,6 +33,7 @@ import seedu.gamevault.command.ListLentCommand;
 import seedu.gamevault.command.ListTagsCommand;
 import seedu.gamevault.command.LogCommand;
 import seedu.gamevault.command.TagCommand;
+import seedu.gamevault.command.UnavailableCommand;
 import seedu.gamevault.command.UnrateCommand;
 import seedu.gamevault.command.UntagCommand;
 import seedu.gamevault.command.PickCommand;
@@ -40,6 +43,7 @@ import seedu.gamevault.command.SortCommand;
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
+import seedu.gamevault.game.UnavailableReason;
 import seedu.gamevault.storage.Storage;
 import seedu.gamevault.ui.Ui;
 
@@ -539,6 +543,59 @@ class ParserTest {
         assertTrue(e.getMessage().startsWith("DATE should be a real date in the form YYYY-MM-DD"));
         e = assertThrows(GameVaultException.class, () -> Parser.parseLog("1 /players 4 /date", TODAY));
         assertTrue(e.getMessage().startsWith("DATE is missing."));
+    }
+
+    //@@author KRAZYZECTRON
+    @Test
+    void parse_unavailableWithReason_returnsUnavailableCommand() throws GameVaultException {
+        assertInstanceOf(UnavailableCommand.class, Parser.parse("unavailable 2 /reason missing"));
+        assertInstanceOf(UnavailableCommand.class, Parser.parse("UNAVAILABLE 1 /reason Damaged"));
+    }
+
+    @Test
+    void parse_unavailableReasonIsUsed_marksGameWithThatReason(@TempDir Path tempDir) throws GameVaultException {
+        GameList games = new GameList();
+        games.add(new Game("Catan", 3, 4));
+
+        Parser.parse("unavailable 1 /reason damaged").execute(games,
+                new Ui(new ByteArrayInputStream(new byte[0]), new PrintStream(new ByteArrayOutputStream())),
+                new Storage(tempDir.resolve("games.txt").toString()));
+
+        assertEquals(Optional.of(UnavailableReason.DAMAGED), games.get(0).getUnavailableReason());
+    }
+
+    @Test
+    void parse_unavailableMissingParts_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("unavailable"));
+        assertTrue(e.getMessage().startsWith("INDEX is missing."));
+        e = assertThrows(GameVaultException.class, () -> Parser.parse("unavailable /reason missing"));
+        assertTrue(e.getMessage().startsWith("INDEX is missing."));
+        e = assertThrows(GameVaultException.class, () -> Parser.parse("unavailable 2"));
+        assertTrue(e.getMessage().startsWith("Please say why with /reason missing or damaged."));
+        e = assertThrows(GameVaultException.class, () -> Parser.parse("unavailable 2 /reason"));
+        assertTrue(e.getMessage().startsWith("Please say why with /reason"));
+        e = assertThrows(GameVaultException.class, () -> Parser.parse("unavailable 2 missing"));
+        assertTrue(e.getMessage().startsWith("Did you forget /reason?"));
+    }
+
+    @Test
+    void parse_unavailableInvalidParts_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> Parser.parse("unavailable 2 /reason lent"));
+        assertEquals("REASON should be missing or damaged, but was 'lent'.", e.getMessage());
+        assertThrows(GameVaultException.class, () -> Parser.parse("unavailable 0 /reason missing"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("unavailable two /reason missing"));
+        assertThrows(GameVaultException.class,
+                () -> Parser.parse("unavailable 2 /reason missing /reason damaged"));
+    }
+
+    @Test
+    void parse_available_returnsAvailableCommandOrRejectsBadIndex() throws GameVaultException {
+        assertInstanceOf(AvailableCommand.class, Parser.parse("available 3"));
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("available"));
+        assertTrue(e.getMessage().startsWith("INDEX is missing."));
+        assertThrows(GameVaultException.class, () -> Parser.parse("available -1"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("available 1 2"));
     }
 
     //@@author MohamedFarsat

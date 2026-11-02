@@ -19,6 +19,8 @@ public class Game {
     public static final String SESSIONS_FILE_KEY = "sessions";
     /** Separates the sessions within the sessions field, e.g. {@code 2026-06-01@3;2026-10-30@4}. */
     public static final String SESSION_FILE_SEPARATOR = ";";
+    /** Name of the data-file field that says why a game is unavailable, e.g. {@code unavailable=missing}. */
+    public static final String UNAVAILABLE_FILE_KEY = "unavailable";
     /** Name of the data-file field that holds who the game is lent to, e.g. {@code lent=Alice}. */
     public static final String LENT_FILE_KEY = "lent";
     /** Name of the data-file field that holds the thumbs-up and thumbs-down counts, e.g. {@code ratings=5/1}. */
@@ -40,6 +42,8 @@ public class Game {
     private final int playTime;
     /** Normalised tags (see {@link Tag}); a TreeSet keeps them unique and in alphabetical order. */
     private final TreeSet<String> tags = new TreeSet<>();
+    /** Why the game cannot be played at the moment, or null while it is available. */
+    private UnavailableReason unavailableReason;
     /** Normalised name of the person this game is lent to (see {@link Borrower}), or null if it is on the shelf. */
     private String borrower;
     /** Number of times the group gave this game a thumbs up after playing it (see {@code rate}). */
@@ -150,6 +154,39 @@ public class Game {
         return Collections.unmodifiableSet(tags);
     }
 
+    /**
+     * Returns whether the user marked this game unavailable, e.g. because pieces are missing.
+     */
+    public boolean isMarkedUnavailable() {
+        return unavailableReason != null;
+    }
+
+    /**
+     * Returns why this game is unavailable, or an empty Optional if it is not marked unavailable.
+     */
+    public Optional<UnavailableReason> getUnavailableReason() {
+        return Optional.ofNullable(unavailableReason);
+    }
+
+    /**
+     * Marks this game unavailable for the given reason, replacing any earlier reason.
+     *
+     * @param reason Why the game cannot be played at the moment.
+     */
+    public void markUnavailable(UnavailableReason reason) {
+        assert reason != null : "Reason should not be null; use markAvailable() to clear it";
+        unavailableReason = reason;
+    }
+
+    /**
+     * Marks this game available again. Callers must check {@link #isMarkedUnavailable()} first,
+     * so that the user can be told when the game was already available.
+     */
+    public void markAvailable() {
+        assert isMarkedUnavailable() : "Game should be marked unavailable before it is made available";
+        unavailableReason = null;
+    }
+
     //@@author yy261
     /**
      * Returns whether this game can be played by the given number of players,
@@ -180,11 +217,14 @@ public class Game {
     }
 
     /**
-     * Returns whether this game can be played tonight, i.e. whether {@code filter} and {@code pick} may suggest it.
+     * Returns whether this game can be played tonight, i.e. whether {@code filter} and {@code pick} may suggest it:
+     * it is not lent out and not marked unavailable (e.g. because pieces are missing).
      * Suggestions should use this method instead of checking each reason a game might be unavailable.
      */
     public boolean isAvailable() {
-        return !isLent();
+        //@@author KRAZYZECTRON
+        return !isLent() && !isMarkedUnavailable();
+        //@@author yy261
     }
 
     /**
@@ -254,6 +294,10 @@ public class Game {
             }
             fields.add(SESSIONS_FILE_KEY + "=" + String.join(SESSION_FILE_SEPARATOR, encoded));
         }
+        //@@author KRAZYZECTRON
+        if (isMarkedUnavailable()) {
+            fields.add(UNAVAILABLE_FILE_KEY + "=" + unavailableReason.getKeyword());
+        }
         //@@author yy261
         if (isLent()) {
             fields.add(LENT_FILE_KEY + "=" + borrower);
@@ -271,6 +315,8 @@ public class Game {
      * {@code Catan (3-4 players, 60 min) [strategy] +5/-1 (lent to Alice)},
      * or {@code Chess (2 players)} when the minimum and maximum are the same and nothing else is set.
      * The rating ({@code +5/-1}) is only shown once the game has been rated.
+     * An unavailable game ends with its reason, in the same style as a lent game,
+     * e.g. {@code Catan (3-4 players) (unavailable: missing pieces)}.
      */
     @Override
     public String toString() {
@@ -281,7 +327,10 @@ public class Game {
         String tagList = tags.isEmpty() ? "" : " [" + String.join(", ", tags) + "]";
         String rating = isRated() ? " " + describeRatings() : "";
         String lent = isLent() ? " (lent to " + borrower + ")" : "";
-        return title + " (" + players + " players" + time + ")" + tagList + rating + lent;
+        String availability = isMarkedUnavailable()
+                ? " (unavailable: " + unavailableReason.getDescription() + ")"
+                : "";
+        return title + " (" + players + " players" + time + ")" + tagList + rating + lent + availability;
     }
 
     //@@author MohamedFarsat

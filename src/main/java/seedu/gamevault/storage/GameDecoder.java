@@ -3,6 +3,7 @@ package seedu.gamevault.storage;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 import seedu.gamevault.exception.GameVaultException;
@@ -10,6 +11,7 @@ import seedu.gamevault.game.Borrower;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.PlaySession;
 import seedu.gamevault.game.Tag;
+import seedu.gamevault.game.UnavailableReason;
 
 /**
  * Converts one line of the data file back into a {@link Game}, checking that the line is valid.
@@ -25,6 +27,7 @@ import seedu.gamevault.game.Tag;
  * {@code Game#toFileString()} and a matching case in {@link #decodeNamedField}.
  * The {@code sessions} field holds the play sessions, each written as {@code DATE@PLAYERS}
  * (DATE in {@code YYYY-MM-DD} form) and separated by {@code ;}.
+ * The {@code unavailable} field holds why a game cannot be played at the moment, e.g. {@code unavailable=missing}.
  * The {@code lent} field holds the name of the person the game is lent to, e.g. {@code lent=Alice}.
  * The {@code ratings} field holds the thumbs-up and thumbs-down counts as {@code UP/DOWN}, e.g. {@code ratings=5/1}.
  * Users may edit the data file by hand, so every part of the line is checked and a
@@ -114,6 +117,9 @@ public class GameDecoder {
         switch (key) {
         case Game.SESSIONS_FILE_KEY:
             decodeSessions(value, game);
+            break;
+        case Game.UNAVAILABLE_FILE_KEY:
+            decodeUnavailableReason(value, game);
             break;
         case Game.LENT_FILE_KEY:
             decodeBorrower(value, game);
@@ -208,6 +214,20 @@ public class GameDecoder {
     }
 
     //@@author KRAZYZECTRON
+    /**
+     * Marks the game unavailable for the reason in an {@code unavailable} field, e.g. {@code missing}.
+     *
+     * @throws GameVaultException If the value is not one of the {@link UnavailableReason} keywords.
+     */
+    private static void decodeUnavailableReason(String value, Game game) throws GameVaultException {
+        Optional<UnavailableReason> reason = UnavailableReason.fromKeyword(value);
+        if (reason.isEmpty()) {
+            throw new GameVaultException("unavailable reason '" + value + "' should be "
+                    + UnavailableReason.describeKeywords());
+        }
+        game.markUnavailable(reason.get());
+    }
+
     /**
      * Adds the tags in the TAGS field, if the line has one, to the game.
      * Blank entries (e.g. from a trailing comma) are ignored, and a tag listed twice is only added once,

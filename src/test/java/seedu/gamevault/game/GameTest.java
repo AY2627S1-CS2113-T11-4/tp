@@ -189,4 +189,27 @@ class GameTest {
         assertTrue(Thumb.fromKeyword("sideways").isEmpty());
         assertTrue(Thumb.fromKeyword("").isEmpty());
     }
+
+    //@@author KRAZYZECTRON
+    @Test
+    void isAvailable_lentOrMarkedUnavailable_returnsFalse() {
+        Game game = new Game("Catan", 3, 4);
+        assertTrue(game.isAvailable());
+
+        game.markUnavailable(UnavailableReason.MISSING);
+        assertFalse(game.isAvailable());
+        game.markAvailable();
+        assertTrue(game.isAvailable());
+
+        game.lendTo("Alice");
+        assertFalse(game.isAvailable());
+    }
+
+    @Test
+    void toString_lentAndUnavailable_showsBothInSameStyle() {
+        Game game = new Game("Catan", 3, 4);
+        game.lendTo("Alice");
+        game.markUnavailable(UnavailableReason.DAMAGED);
+        assertEquals("Catan (3-4 players) (lent to Alice) (unavailable: damaged)", game.toString());
+    }
 }

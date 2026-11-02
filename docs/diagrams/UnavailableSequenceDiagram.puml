@@ -1,0 +1,61 @@
+@startuml
+' Sequence diagram for "unavailable 1 /reason missing" -- GameVault unavailable feature
+hide footbox
+skinparam sequenceMessageAlign center
+
+participant ":GameVault" as GV
+participant "<<class>>\nParser" as P
+participant "<<enumeration>>\nUnavailableReason" as R
+participant "u:UnavailableCommand" as U
+participant ":GameList" as GL
+participant "g:Game" as G
+participant ":Storage" as S
+participant ":Ui" as UI
+
+GV -> P : parse("unavailable 1 /reason missing")
+activate P
+P -> P : parseUnavailable("1 /reason missing")
+activate P
+P -> R : fromKeyword("missing")
+activate R
+R --> P : MISSING
+deactivate R
+create U
+P -> U : new UnavailableCommand(1, MISSING)
+activate U
+U --> P
+deactivate U
+deactivate P
+P --> GV : u
+deactivate P
+
+GV -> U : execute(games, ui, storage)
+activate U
+U -> GL : get(0)
+activate GL
+GL --> U : g
+deactivate GL
+
+U -> G : getUnavailableReason()
+activate G
+G --> U : empty
+deactivate G
+
+U -> G : markUnavailable(MISSING)
+activate G
+G --> U
+deactivate G
+
+U -> S : save(games)
+activate S
+S --> U
+deactivate S
+
+U -> UI : showMessage("Marked unavailable: ...")
+activate UI
+UI --> U
+deactivate UI
+U --> GV
+deactivate U
+destroy U
+@enduml
