@@ -808,9 +808,9 @@ public class Parser {
     }
     //@@author Xandurs
     /**
-     * Returns that trimmed title, which must not be empty or contain '|'
+     * Returns the trimmed title, which must not be empty or contain '|'
      * 
-     * @param usage Format of the command being aprsed, shown when the title is missing
+     * @param usage Format of the command being parsed, shown when the title is missing
      */
     private static String parseTitle(String text, String usage) throws GameVaultException {
         String title = text.trim();
