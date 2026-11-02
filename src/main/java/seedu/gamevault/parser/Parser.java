@@ -35,7 +35,9 @@ import seedu.gamevault.command.TagCommand;
 import seedu.gamevault.command.UntagCommand;
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Borrower;
+import seedu.gamevault.game.Difficulty;
 import seedu.gamevault.game.Game;
+import seedu.gamevault.game.GameList;
 import seedu.gamevault.game.SortOrder;
 import seedu.gamevault.game.Tag;
 
@@ -51,6 +53,8 @@ public class Parser {
     private static final String TIME_PREFIX = "/time";
     private static final String TAG_PREFIX = "/tag";
     private static final String TO_PREFIX = "/to";
+    private static final String DIFF_PREFIX = "/diff";
+    private static final String NO_DIFFICULTY_VALUE = "none";
     private static final String PLAYERS_PREFIX = "/players";
     private static final String DATE_PREFIX = "/date";
     private static final String NO_TIME_VALUE = "none";
@@ -137,14 +141,15 @@ public class Parser {
     //@@author Xandurs
     /**
      * Builds an {@link AddCommand} from arguments in the form
-     * {@code TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]},
+     * {@code TITLE /min MIN /max MAX [/time MINUTES] [/diff LEVEL] [/tag TAG [MORE_TAGS]...]},
      * e.g. {@code Catan /min 3 /max 4 /time 60 /tag strategy}. The prefixes may come in any order after the title.
      *
      * @throws GameVaultException If a field is missing or repeated, a number is not a whole number,
      *     a number is less than 1, MAX is less than MIN, or a tag is invalid.
      */
     private static Command parseAdd(String arguments) throws GameVaultException {
-        Map<String, String> fields = splitByPrefixes(arguments, MIN_PREFIX, MAX_PREFIX, TIME_PREFIX, TAG_PREFIX);
+        Map<String, String> fields = splitByPrefixes(arguments, MIN_PREFIX, MAX_PREFIX, TIME_PREFIX, TAG_PREFIX,
+                DIFF_PREFIX);
         if (!fields.containsKey(MIN_PREFIX) || !fields.containsKey(MAX_PREFIX)) {
             throw new GameVaultException("Please use the format: " + AddCommand.USAGE
                     + " (e.g. add Catan /min 3 /max 4 /time 60)");
@@ -175,29 +180,63 @@ public class Parser {
                 game.addTag(tag);
             }
         }
+        Difficulty difficulty = parseOptionalDifficulty(fields, AddCommand.USAGE);
+        if (difficulty != null) {
+            game.setDifficulty(difficulty);
+        }
         return new AddCommand(game);
     }
 
     //@@author yy261
     /**
-     * Builds a {@link FilterCommand} from arguments in the form {@code COUNT [/time MINUTES]},
-     * e.g. {@code 4} or {@code 4 /time 45}, or a {@link FilterTagCommand} from arguments in the form
-     * {@code [COUNT] [/time MINUTES] /tag TAG}, e.g. {@code /tag party} or {@code 6 /tag party}.
+     * Builds a {@link FilterCommand} from arguments in the form {@code COUNT [/time MINUTES] [/diff LEVEL]},
+     * e.g. {@code 4} or {@code 4 /time 45 /diff easy}, or a {@link FilterTagCommand} from arguments in the form
+     * {@code [COUNT] [/time MINUTES] [/diff LEVEL] /tag TAG}, e.g. {@code /tag party} or {@code 6 /tag party}.
      *
      * @throws GameVaultException If COUNT is missing, a number is not a whole number or is less than 1,
-     *     /time is repeated, or the /tag form is invalid.
+     *     a prefix is repeated, LEVEL is invalid, or the /tag form is invalid.
      */
     private static Command parseFilter(String arguments) throws GameVaultException {
-        Map<String, String> fields = splitByPrefixes(arguments, TIME_PREFIX, TAG_PREFIX);
+        Map<String, String> fields = splitByPrefixes(arguments, TIME_PREFIX, TAG_PREFIX, DIFF_PREFIX);
         if (fields.containsKey(TAG_PREFIX)) {
             return parseFilterByTag(fields);
         }
         int playerCount = parsePositiveNumber(fields.get(PREAMBLE), "COUNT", FilterCommand.USAGE);
-        if (!fields.containsKey(TIME_PREFIX)) {
-            return new FilterCommand(playerCount);
+        int minutes = fields.containsKey(TIME_PREFIX)
+                ? parsePositiveNumber(fields.get(TIME_PREFIX), "MINUTES", FilterCommand.USAGE)
+                : GameList.NO_TIME_LIMIT;
+        return new FilterCommand(playerCount, minutes, parseOptionalDifficulty(fields, FilterCommand.USAGE));
+    }
+
+    /**
+     * Returns the level given with /diff, or null if /diff was not used.
+     *
+     * @param usage Format of the command being parsed, shown when the level is missing.
+     * @throws GameVaultException If /diff has no level, or the level is not a valid one.
+     */
+    private static Difficulty parseOptionalDifficulty(Map<String, String> fields, String usage)
+            throws GameVaultException {
+        if (!fields.containsKey(DIFF_PREFIX)) {
+            return null;
         }
-        int minutes = parsePositiveNumber(fields.get(TIME_PREFIX), "MINUTES", FilterCommand.USAGE);
-        return new FilterCommand(playerCount, minutes);
+        return parseDifficulty(fields.get(DIFF_PREFIX), usage);
+    }
+
+    /**
+     * Returns the level in {@code text}, which must be one of the {@link Difficulty} keywords, in any case.
+     *
+     * @throws GameVaultException If the text is empty or is not a valid level.
+     */
+    private static Difficulty parseDifficulty(String text, String usage) throws GameVaultException {
+        if (text.isEmpty()) {
+            throw new GameVaultException("LEVEL is missing. Format: " + usage);
+        }
+        Optional<Difficulty> difficulty = Difficulty.fromKeyword(text);
+        if (difficulty.isEmpty()) {
+            throw new GameVaultException("LEVEL should be " + Difficulty.KEYWORDS_IN_WORDS
+                    + ", but was '" + text + "'.");
+        }
+        return difficulty.get();
     }
 
     /**
@@ -296,13 +335,12 @@ public class Parser {
      *     or /time is repeated.
      */
     private static Command parsePick(String arguments) throws GameVaultException {
-        Map<String, String> fields = splitByPrefixes(arguments, TIME_PREFIX);
+        Map<String, String> fields = splitByPrefixes(arguments, TIME_PREFIX, DIFF_PREFIX);
         int playerCount = parsePositiveNumber(fields.get(PREAMBLE), "COUNT", PickCommand.USAGE);
-        if (!fields.containsKey(TIME_PREFIX)) {
-            return new PickCommand(playerCount);
-        }
-        int minutes = parsePositiveNumber(fields.get(TIME_PREFIX), "MINUTES", PickCommand.USAGE);
-        return new PickCommand(playerCount, minutes);
+        int minutes = fields.containsKey(TIME_PREFIX)
+                ? parsePositiveNumber(fields.get(TIME_PREFIX), "MINUTES", PickCommand.USAGE)
+                : GameList.NO_TIME_LIMIT;
+        return new PickCommand(playerCount, minutes, parseOptionalDifficulty(fields, PickCommand.USAGE));
     }
 
     //@@author SwaggyDaddy67
@@ -350,15 +388,16 @@ public class Parser {
     //@@author Xandurs
     /**
      * Builds an {@link EditCommand} from arguments in the form
-     * {@code INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES|none]},
-     * e.g. {@code 2 /max 6 /title Catan} or {@code 3 /time none}.
+     * {@code INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES|none] [/diff LEVEL|none]},
+     * e.g. {@code 2 /max 6 /title Catan}, {@code 3 /time none} or {@code 4 /diff easy}.
      * At least one field must be given, and fields may be in any order.
      *
      * @throws GameVaultException If INDEX is missing or invalid, no field is given,
      *         a field is repeated, or a field's value is invalid.
      */
     private static Command parseEdit(String arguments) throws GameVaultException {
-        Map<String, String> fields = splitByPrefixes(arguments, TITLE_PREFIX, MIN_PREFIX, MAX_PREFIX, TIME_PREFIX);
+        Map<String, String> fields = splitByPrefixes(arguments, TITLE_PREFIX, MIN_PREFIX, MAX_PREFIX, TIME_PREFIX,
+                DIFF_PREFIX);
 
         String indexText = fields.get(PREAMBLE);
         if (indexText.isEmpty()) {
@@ -379,8 +418,11 @@ public class Parser {
         Integer playTime = fields.containsKey(TIME_PREFIX)
                 ? parseEditPlayTime(fields.get(TIME_PREFIX))
                 : null;
+        boolean isClearingDifficulty = NO_DIFFICULTY_VALUE.equalsIgnoreCase(fields.get(DIFF_PREFIX));
+        Difficulty difficulty = isClearingDifficulty ? null : parseOptionalDifficulty(fields, EditCommand.USAGE);
 
-        if (title == null && minPlayers == null && maxPlayers == null && playTime == null) {
+        if (title == null && minPlayers == null && maxPlayers == null && playTime == null
+                && difficulty == null && !isClearingDifficulty) {
             throw new GameVaultException("Please give at least one field to change. Format: "
                     + EditCommand.USAGE + " (e.g. edit 2 /max 6)");
         }
@@ -390,7 +432,8 @@ public class Parser {
             throw new GameVaultException("MAX (" + maxPlayers + ") cannot be less than MIN (" + minPlayers + ").");
         }
         logger.log(Level.FINE, "Parsed edit of game " + displayNumber);
-        return new EditCommand(displayNumber, title, minPlayers, maxPlayers, playTime);
+        return new EditCommand(displayNumber, title, minPlayers, maxPlayers, playTime, difficulty,
+                isClearingDifficulty);
     
     }
     //@@author Xandurs
@@ -547,7 +590,8 @@ public class Parser {
         int minutes = fields.containsKey(TIME_PREFIX)
                 ? parsePositiveNumber(fields.get(TIME_PREFIX), "MINUTES", FilterTagCommand.USAGE)
                 : 0;
-        return new FilterTagCommand(tag, playerCount, minutes);
+        return new FilterTagCommand(tag, playerCount, minutes,
+                parseOptionalDifficulty(fields, FilterTagCommand.USAGE));
     }
 
     /**

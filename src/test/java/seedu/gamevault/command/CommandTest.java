@@ -10,6 +10,7 @@ import java.io.PrintStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import seedu.gamevault.game.Difficulty;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
 import seedu.gamevault.storage.Storage;
@@ -156,5 +157,125 @@ class CommandTest {
         new FilterCommand(4).execute(games, ui, new Storage("unused.txt"));
 
         assertFalse(output.toString().contains("lent out"));
+    }
+
+    @Test
+    void filterCommand_withDifficulty_showsOnlyGamesAtThatLevel() {
+        GameList games = new GameList();
+        Game catan = new Game("Catan", 3, 4, 60);
+        catan.setDifficulty(Difficulty.MEDIUM);
+        games.add(catan);
+        Game loveLetter = new Game("Love Letter", 2, 4, 20);
+        loveLetter.setDifficulty(Difficulty.EASY);
+        games.add(loveLetter);
+        Game splendor = new Game("Splendor", 2, 4, 30);
+        splendor.setDifficulty(Difficulty.EASY);
+        games.add(splendor);
+        games.add(new Game("Codenames", 2, 8));
+
+        new FilterCommand(4, 0, Difficulty.EASY).execute(games, ui, new Storage("unused.txt"));
+
+        String printed = output.toString();
+        assertTrue(printed.contains("Games that fit 4 players at easy difficulty:"));
+        assertTrue(printed.contains("  Love Letter (2-4 players, 20 min, easy)"));
+        assertTrue(printed.contains("  Splendor (2-4 players, 30 min, easy)"));
+        assertFalse(printed.contains("  Catan"));
+        assertTrue(printed.contains(
+                "(1 game(s) for 4 players were left out because they have no difficulty recorded.)"));
+    }
+
+    @Test
+    void filterCommand_withTimeAndDifficulty_appliesBothConditions() {
+        GameList games = new GameList();
+        Game catan = new Game("Catan", 3, 4, 60);
+        catan.setDifficulty(Difficulty.MEDIUM);
+        games.add(catan);
+        Game loveLetter = new Game("Love Letter", 2, 4, 20);
+        loveLetter.setDifficulty(Difficulty.EASY);
+        games.add(loveLetter);
+        Game splendor = new Game("Splendor", 2, 4, 30);
+        splendor.setDifficulty(Difficulty.EASY);
+        games.add(splendor);
+        games.add(new Game("Codenames", 2, 8));
+
+        new FilterCommand(4, 25, Difficulty.EASY).execute(games, ui, new Storage("unused.txt"));
+
+        String printed = output.toString();
+        assertTrue(printed.contains("Games that fit 4 players in 25 minutes or less at easy difficulty:"));
+        assertTrue(printed.contains("  Love Letter"));
+        assertFalse(printed.contains("  Splendor"));
+    }
+
+    @Test
+    void filterCommand_noGamesAtDifficulty_showsNoGamesMessage() {
+        GameList games = new GameList();
+        Game catan = new Game("Catan", 3, 4, 60);
+        catan.setDifficulty(Difficulty.MEDIUM);
+        games.add(catan);
+        Game loveLetter = new Game("Love Letter", 2, 4, 20);
+        loveLetter.setDifficulty(Difficulty.EASY);
+        games.add(loveLetter);
+        Game splendor = new Game("Splendor", 2, 4, 30);
+        splendor.setDifficulty(Difficulty.EASY);
+        games.add(splendor);
+        games.add(new Game("Codenames", 2, 8));
+
+        new FilterCommand(4, 0, Difficulty.HARD).execute(games, ui, new Storage("unused.txt"));
+
+        assertTrue(output.toString().contains("No games fit 4 players at hard difficulty."));
+    }
+
+    @Test
+    void filterCommand_withoutDifficulty_addsNoDifficultyNote() {
+        GameList games = new GameList();
+        Game catan = new Game("Catan", 3, 4, 60);
+        catan.setDifficulty(Difficulty.MEDIUM);
+        games.add(catan);
+        Game loveLetter = new Game("Love Letter", 2, 4, 20);
+        loveLetter.setDifficulty(Difficulty.EASY);
+        games.add(loveLetter);
+        Game splendor = new Game("Splendor", 2, 4, 30);
+        splendor.setDifficulty(Difficulty.EASY);
+        games.add(splendor);
+        games.add(new Game("Codenames", 2, 8));
+
+        new FilterCommand(4).execute(games, ui, new Storage("unused.txt"));
+
+        assertFalse(output.toString().contains("no difficulty recorded"));
+    }
+
+    @Test
+    void filterCommand_lentGameAtOtherLevel_notMentioned() {
+        GameList games = new GameList();
+        Game catan = new Game("Catan", 3, 4, 60);
+        catan.setDifficulty(Difficulty.MEDIUM);
+        games.add(catan);
+        Game loveLetter = new Game("Love Letter", 2, 4, 20);
+        loveLetter.setDifficulty(Difficulty.EASY);
+        games.add(loveLetter);
+        Game splendor = new Game("Splendor", 2, 4, 30);
+        splendor.setDifficulty(Difficulty.EASY);
+        games.add(splendor);
+        games.add(new Game("Codenames", 2, 8));
+        catan.lendTo("Alice");
+        loveLetter.lendTo("Ben");
+
+        new FilterCommand(4, 0, Difficulty.EASY).execute(games, ui, new Storage("unused.txt"));
+
+        // Catan is medium, so it would not have been shown anyway.
+        assertTrue(output.toString().contains("(Not shown because they are lent out: Love Letter (to Ben))"));
+        assertFalse(output.toString().contains("Catan (to Alice)"));
+    }
+
+    @Test
+    void filterCommand_untimedGameAtOtherLevel_notCounted() {
+        GameList games = new GameList();
+        Game codenames = new Game("Codenames", 2, 8);
+        codenames.setDifficulty(Difficulty.HARD);
+        games.add(codenames);
+
+        new FilterCommand(4, 30, Difficulty.EASY).execute(games, ui, new Storage("unused.txt"));
+
+        assertFalse(output.toString().contains("no play time recorded"));
     }
 }

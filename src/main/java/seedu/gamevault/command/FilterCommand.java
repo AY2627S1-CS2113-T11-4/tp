@@ -2,6 +2,7 @@ package seedu.gamevault.command;
 
 import java.util.ArrayList;
 
+import seedu.gamevault.game.Difficulty;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
 import seedu.gamevault.storage.Storage;
@@ -15,13 +16,15 @@ import seedu.gamevault.ui.Ui;
  */
 public class FilterCommand extends Command {
     public static final String COMMAND_WORD = "filter";
-    public static final String USAGE = "filter COUNT [/time MINUTES]";
+    public static final String USAGE = "filter COUNT [/time MINUTES] [/diff LEVEL]";
 
     /** Value of {@code minutes} when the user did not give a time limit. */
     private static final int NO_TIME_LIMIT = GameList.NO_TIME_LIMIT;
 
     private final int playerCount;
     private final int minutes;
+    /** Level the games must be at, or null for any level. */
+    private final Difficulty difficulty;
 
     /**
      * Creates a command that shows the games fitting the given number of players, however long they take.
@@ -40,19 +43,30 @@ public class FilterCommand extends Command {
      * @param minutes Time available in minutes; already checked to be at least 1, or 0 for no limit.
      */
     public FilterCommand(int playerCount, int minutes) {
+        this(playerCount, minutes, null);
+    }
+
+    /**
+     * Creates a command that shows the games fitting the given number of players, time limit and level.
+     *
+     * @param playerCount Number of players tonight; already checked to be at least 1.
+     * @param minutes Time available in minutes; already checked to be at least 1, or 0 for no limit.
+     * @param difficulty Level the games must be at, or null for any level.
+     */
+    public FilterCommand(int playerCount, int minutes, Difficulty difficulty) {
         assert playerCount >= 1 : "Player count should be at least 1";
         assert minutes >= NO_TIME_LIMIT : "Time available should not be negative";
         this.playerCount = playerCount;
         this.minutes = minutes;
+        this.difficulty = difficulty;
     }
 
     @Override
     public void execute(GameList games, Ui ui, Storage storage) {
         boolean hasTimeLimit = minutes != NO_TIME_LIMIT;
-        ArrayList<Game> matches = hasTimeLimit
-                ? games.filterAvailableByPlayersAndTime(playerCount, minutes)
-                : games.filterAvailableByPlayers(playerCount);
-        String criteria = playerCount + " players" + (hasTimeLimit ? " in " + minutes + " minutes or less" : "");
+        ArrayList<Game> matches = games.filterAvailable(playerCount, minutes, difficulty);
+        String criteria = playerCount + " players" + (hasTimeLimit ? " in " + minutes + " minutes or less" : "")
+                + (difficulty == null ? "" : " at " + difficulty.describe());
 
         StringBuilder message = new StringBuilder();
         if (matches.isEmpty()) {
@@ -67,7 +81,10 @@ public class FilterCommand extends Command {
         if (hasTimeLimit) {
             appendUntimedNote(message, games);
         }
-        message.append(games.describeLeftOut(playerCount, minutes, "shown"));
+        if (difficulty != null) {
+            message.append(games.describeNoDifficulty(playerCount, minutes, "left out"));
+        }
+        message.append(games.describeLeftOut(playerCount, minutes, difficulty, "shown"));
         ui.showMessage(message.toString());
     }
 
@@ -76,7 +93,7 @@ public class FilterCommand extends Command {
      * their play time was never recorded, so they know why a game they expected is missing.
      */
     private void appendUntimedNote(StringBuilder message, GameList games) {
-        int untimedCount = games.countWithoutPlayTime(playerCount);
+        int untimedCount = games.countWithoutPlayTime(playerCount, difficulty);
         if (untimedCount > 0) {
             message.append(System.lineSeparator())
                     .append("(").append(untimedCount)

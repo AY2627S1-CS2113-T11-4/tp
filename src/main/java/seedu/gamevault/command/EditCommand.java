@@ -5,6 +5,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import seedu.gamevault.exception.GameVaultException;
+import seedu.gamevault.game.Difficulty;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
 import seedu.gamevault.game.PlaySession;
@@ -19,7 +20,8 @@ import seedu.gamevault.ui.Ui;
  */
 public class EditCommand extends Command {
     public static final String COMMAND_WORD = "edit";
-    public static final String USAGE = "edit INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES|none]";
+    public static final String USAGE =
+            "edit INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES|none] [/diff LEVEL|none]";
 
     /**
      * Value of {@code newPlayTime} that means "remove the game's recorded play time",
@@ -35,6 +37,12 @@ public class EditCommand extends Command {
     private final Integer newMaxPlayers;
     /** New play time in minutes, {@link #CLEAR_PLAY_TIME} to remove it, or null to keep the current one. */
     private final Integer newPlayTime;
+    //@@author yy261
+    /** New difficulty, or null to keep the current one (unless {@link #isClearingDifficulty} is set). */
+    private final Difficulty newDifficulty;
+    /** Whether to remove the game's recorded difficulty, as typed by the user with {@code /diff none}. */
+    private final boolean isClearingDifficulty;
+    //@@author Xandurs
 
     /**
      * Creates a command that edits the game shown with the given number in {@code list}.
@@ -64,15 +72,38 @@ public class EditCommand extends Command {
      */
     public EditCommand(int displayNumber, String newTitle, Integer newMinPlayers, Integer newMaxPlayers,
             Integer newPlayTime) {
+        this(displayNumber, newTitle, newMinPlayers, newMaxPlayers, newPlayTime, null, false);
+    }
+
+    //@@author yy261
+    /**
+     * Creates a command that edits the game shown with the given number in {@code list},
+     * including its play time and difficulty.
+     *
+     * @param displayNumber Number of the game as shown in {@code list} (at least 1).
+     * @param newTitle New title, or null to keep the current one.
+     * @param newMinPlayers New minimum players, or null to keep the current value.
+     * @param newMaxPlayers New maximum players, or null to keep the current value.
+     * @param newPlayTime New play time in minutes (at least 1), {@link #CLEAR_PLAY_TIME} to remove it,
+     *     or null to keep the current one.
+     * @param newDifficulty New difficulty, or null to keep the current one.
+     * @param isClearingDifficulty Whether to remove the game's difficulty instead.
+     */
+    public EditCommand(int displayNumber, String newTitle, Integer newMinPlayers, Integer newMaxPlayers,
+            Integer newPlayTime, Difficulty newDifficulty, boolean isClearingDifficulty) {
+        //@@author Xandurs
         assert displayNumber >= 1 : "Display number should be at least 1";
         assert newTitle != null || newMinPlayers != null || newMaxPlayers != null || newPlayTime != null
-                : "At least one field should be edited";
+                || newDifficulty != null || isClearingDifficulty : "At least one field should be edited";
+        assert newDifficulty == null || !isClearingDifficulty : "Cannot both set and remove the difficulty";
         assert newPlayTime == null || newPlayTime >= CLEAR_PLAY_TIME : "Play time should not be negative";
         this.displayNumber = displayNumber;
         this.newTitle = newTitle;
         this.newMinPlayers = newMinPlayers;
         this.newMaxPlayers = newMaxPlayers;
         this.newPlayTime = newPlayTime;
+        this.newDifficulty = newDifficulty;
+        this.isClearingDifficulty = isClearingDifficulty;
     }
 
     @Override
@@ -97,6 +128,10 @@ public class EditCommand extends Command {
             throw new GameVaultException("This game has no play time to remove. The game is currently: " + oldGame);
         }
 
+        if (isClearingDifficulty && !oldGame.hasDifficulty()) {
+            throw new GameVaultException("This game has no difficulty to remove. The game is currently: " + oldGame);
+        }
+
         int playTime = choosePlayTime(oldGame);
         Game editedGame = playTime == CLEAR_PLAY_TIME
                 ? new Game(title, minPlayers, maxPlayers)
@@ -109,6 +144,11 @@ public class EditCommand extends Command {
         // Lending cannot be changed with edit either (use lend/return), so keep the game lent if it was.
         if (oldGame.isLent()) {
             editedGame.lendTo(oldGame.getBorrower());
+        }
+        if (newDifficulty != null) {
+            editedGame.setDifficulty(newDifficulty);
+        } else if (oldGame.hasDifficulty() && !isClearingDifficulty) {
+            editedGame.setDifficulty(oldGame.getDifficulty());
         }
         //@@author Xandurs
         // Play history is not something edit changes either, so keep every logged session.
