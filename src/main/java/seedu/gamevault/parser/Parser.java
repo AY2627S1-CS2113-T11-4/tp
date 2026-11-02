@@ -793,7 +793,12 @@ public class Parser {
         }
         return new GiveBackCommand(parseIndex(indexText));
     }
-
+    //@@author Xandurs
+    /**
+     * Returns that trimmed title, which must not be empty or contain '|'
+     * 
+     * @param usage Format of the command being aprsed, shown when the title is missing
+     */
     private static String parseTitle(String text, String usage) throws GameVaultException {
         String title = text.trim();
         if (title.isEmpty()) {
