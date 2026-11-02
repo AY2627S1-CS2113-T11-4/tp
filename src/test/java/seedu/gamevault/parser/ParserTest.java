@@ -19,6 +19,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import seedu.gamevault.command.AddCommand;
 import seedu.gamevault.command.AvailableCommand;
+import seedu.gamevault.command.BorrowCommand;
 import seedu.gamevault.command.Command;
 import seedu.gamevault.command.DeleteCommand;
 import seedu.gamevault.command.EditCommand;
@@ -26,6 +27,7 @@ import seedu.gamevault.command.ExitCommand;
 import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.FilterTagCommand;
 import seedu.gamevault.command.FindCommand;
+import seedu.gamevault.command.GiveBackCommand;
 import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.command.LendCommand;
 import seedu.gamevault.command.ListCommand;
@@ -659,5 +661,67 @@ class ParserTest {
         assertThrows(GameVaultException.class, () -> Parser.parse("unrate"));
         assertThrows(GameVaultException.class, () -> Parser.parse("unrate 1 maybe"));
         assertThrows(GameVaultException.class, () -> Parser.parse("unrate 0 up"));
+    }
+
+    //@@author KRAZYZECTRON
+    @Test
+    void parseBorrow_nameAndDueDate_recordsBoth(@TempDir Path tempDir) throws GameVaultException {
+        GameList games = new GameList();
+        games.add(new Game("Hive", 2, 2));
+
+        Command command = Parser.parseBorrow("1 /due 2026-11-10 /from   Mary   Tan ", TODAY);
+        assertInstanceOf(BorrowCommand.class, command);
+        command.execute(games, new Ui(new ByteArrayInputStream(new byte[0]),
+                new PrintStream(new ByteArrayOutputStream())), new Storage(tempDir.resolve("games.txt").toString()));
+
+        assertEquals("Mary Tan", games.get(0).getLender());
+        assertEquals(Optional.of(LocalDate.of(2026, 11, 10)), games.get(0).getDueBack());
+    }
+
+    @Test
+    void parseBorrow_noDueOrDueToday_accepted() throws GameVaultException {
+        assertInstanceOf(BorrowCommand.class, Parser.parseBorrow("1 /from Bob", TODAY));
+        assertInstanceOf(BorrowCommand.class, Parser.parseBorrow("1 /from Bob /due 2026-10-31", TODAY));
+        assertInstanceOf(BorrowCommand.class, Parser.parse("BORROW 1 /from Bob"));
+    }
+
+    @Test
+    void parseBorrow_missingParts_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parseBorrow("", TODAY));
+        assertTrue(e.getMessage().startsWith("INDEX is missing."));
+        e = assertThrows(GameVaultException.class, () -> Parser.parseBorrow("/from Bob", TODAY));
+        assertTrue(e.getMessage().startsWith("INDEX is missing."));
+        e = assertThrows(GameVaultException.class, () -> Parser.parseBorrow("1", TODAY));
+        assertTrue(e.getMessage().startsWith("NAME is missing."));
+        e = assertThrows(GameVaultException.class, () -> Parser.parseBorrow("1 /from", TODAY));
+        assertTrue(e.getMessage().startsWith("NAME is missing."));
+        e = assertThrows(GameVaultException.class, () -> Parser.parseBorrow("1 /from Bob /due", TODAY));
+        assertTrue(e.getMessage().startsWith("DATE is missing."));
+        e = assertThrows(GameVaultException.class, () -> Parser.parseBorrow("2 Bob", TODAY));
+        assertTrue(e.getMessage().startsWith("Did you forget /from?"));
+    }
+
+    @Test
+    void parseBorrow_invalidParts_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> Parser.parseBorrow("1 /from Bob /due 2026-10-30", TODAY));
+        assertEquals("DATE cannot be in the past, but was 2026-10-30.", e.getMessage());
+        e = assertThrows(GameVaultException.class, () -> Parser.parseBorrow("1 /from Bob /due 10/11/2026", TODAY));
+        assertTrue(e.getMessage().startsWith("DATE should be a real date in the form YYYY-MM-DD"));
+        e = assertThrows(GameVaultException.class, () -> Parser.parseBorrow("1 /from Bob /due 2026-11-31", TODAY));
+        assertTrue(e.getMessage().startsWith("DATE should be a real date in the form YYYY-MM-DD"));
+        e = assertThrows(GameVaultException.class, () -> Parser.parseBorrow("1 /from A|B", TODAY));
+        assertTrue(e.getMessage().startsWith("NAME should be"));
+        assertThrows(GameVaultException.class, () -> Parser.parseBorrow("1 /from " + "a".repeat(31), TODAY));
+        assertThrows(GameVaultException.class, () -> Parser.parseBorrow("0 /from Bob", TODAY));
+        assertThrows(GameVaultException.class, () -> Parser.parseBorrow("1 /from Bob /from Alice", TODAY));
+    }
+
+    @Test
+    void parse_giveBack_returnsGiveBackCommandOrRejectsBadIndex() throws GameVaultException {
+        assertInstanceOf(GiveBackCommand.class, Parser.parse("giveback 2"));
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("giveback"));
+        assertTrue(e.getMessage().startsWith("INDEX is missing."));
+        assertThrows(GameVaultException.class, () -> Parser.parse("giveback zero"));
     }
 }

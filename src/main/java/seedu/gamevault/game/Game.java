@@ -21,6 +21,10 @@ public class Game {
     public static final String SESSION_FILE_SEPARATOR = ";";
     /** Name of the data-file field that says why a game is unavailable, e.g. {@code unavailable=missing}. */
     public static final String UNAVAILABLE_FILE_KEY = "unavailable";
+    /** Name of the data-file field that holds who lent or gave the game to the user, e.g. {@code from=Bob}. */
+    public static final String LENDER_FILE_KEY = "from";
+    /** Name of the data-file field that holds when the game must be given back, e.g. {@code due=2026-11-10}. */
+    public static final String DUE_BACK_FILE_KEY = "due";
     /** Name of the data-file field that holds who the game is lent to, e.g. {@code lent=Alice}. */
     public static final String LENT_FILE_KEY = "lent";
     /** Name of the data-file field that holds the thumbs-up and thumbs-down counts, e.g. {@code ratings=5/1}. */
@@ -44,6 +48,10 @@ public class Game {
     private final TreeSet<String> tags = new TreeSet<>();
     /** Why the game cannot be played at the moment, or null while it is available. */
     private UnavailableReason unavailableReason;
+    /** Normalised name of the person who lent or gave this game to the user (see {@link Borrower}), or null. */
+    private String lender;
+    /** Date the game must be given back to {@link #lender}, or null if it does not have to be (e.g. a gift). */
+    private LocalDate dueBack;
     /** Normalised name of the person this game is lent to (see {@link Borrower}), or null if it is on the shelf. */
     private String borrower;
     /** Number of times the group gave this game a thumbs up after playing it (see {@code rate}). */
@@ -187,6 +195,73 @@ public class Game {
         unavailableReason = null;
     }
 
+    /**
+     * Returns whether the user recorded who lent or gave this game to them (see the {@code borrow} command).
+     */
+    public boolean hasLender() {
+        return lender != null;
+    }
+
+    /**
+     * Returns the name of the person who lent or gave this game to the user.
+     * Only meaningful when {@link #hasLender()} is true.
+     */
+    public String getLender() {
+        assert hasLender() : "Check hasLender() before asking for the lender";
+        return lender;
+    }
+
+    /**
+     * Returns the date this game must be given back to its lender, or an empty Optional if there is none,
+     * e.g. because the game was a gift.
+     */
+    public Optional<LocalDate> getDueBack() {
+        return Optional.ofNullable(dueBack);
+    }
+
+    /**
+     * Records who lent or gave this game to the user, replacing any earlier record.
+     *
+     * @param name A valid, normalised name (see {@link Borrower}).
+     * @param dueBackDate Date the game must be given back, or null if it does not have to be given back.
+     */
+    public void recordLender(String name, LocalDate dueBackDate) {
+        assert Borrower.isValid(name) : "Lender name should be valid and normalised";
+        lender = name;
+        dueBack = dueBackDate;
+    }
+
+    /**
+     * Sets only the due-back date. This is for {@link seedu.gamevault.storage.GameDecoder}, which may read the
+     * {@code due} field before the {@code from} field and checks afterwards that both are there;
+     * commands should use {@link #recordLender} instead.
+     *
+     * @param dueBackDate Date the game must be given back.
+     */
+    public void setDueBack(LocalDate dueBackDate) {
+        assert dueBackDate != null : "Due-back date should not be null";
+        dueBack = dueBackDate;
+    }
+
+    /**
+     * Returns whether this game should already have been given back, i.e. its due-back date is before today.
+     * A game due back today is not overdue yet.
+     *
+     * @param today Today's date; passed in so that tests can use a fixed date.
+     */
+    public boolean isOverdue(LocalDate today) {
+        return dueBack != null && dueBack.isBefore(today);
+    }
+
+    /**
+     * Returns who the game is from in words, e.g. {@code from Bob} or {@code borrowed from Bob, due 2026-11-10}.
+     * Only meaningful when {@link #hasLender()} is true.
+     */
+    public String describeLender() {
+        assert hasLender() : "Check hasLender() before describing the lender";
+        return dueBack == null ? "from " + lender : "borrowed from " + lender + ", due " + dueBack;
+    }
+
     //@@author yy261
     /**
      * Returns whether this game can be played by the given number of players,
@@ -298,6 +373,12 @@ public class Game {
         if (isMarkedUnavailable()) {
             fields.add(UNAVAILABLE_FILE_KEY + "=" + unavailableReason.getKeyword());
         }
+        if (hasLender()) {
+            fields.add(LENDER_FILE_KEY + "=" + lender);
+        }
+        if (dueBack != null) {
+            fields.add(DUE_BACK_FILE_KEY + "=" + dueBack);
+        }
         //@@author yy261
         if (isLent()) {
             fields.add(LENT_FILE_KEY + "=" + borrower);
@@ -316,7 +397,8 @@ public class Game {
      * or {@code Chess (2 players)} when the minimum and maximum are the same and nothing else is set.
      * The rating ({@code +5/-1}) is only shown once the game has been rated.
      * An unavailable game ends with its reason, in the same style as a lent game,
-     * e.g. {@code Catan (3-4 players) (unavailable: missing pieces)}.
+     * e.g. {@code Catan (3-4 players) (unavailable: missing pieces)}, and a game someone lent or gave to the user
+     * ends with who it is from, e.g. {@code Hive (2 players) (borrowed from Bob, due 2026-11-10)}.
      */
     @Override
     public String toString() {
@@ -330,7 +412,8 @@ public class Game {
         String availability = isMarkedUnavailable()
                 ? " (unavailable: " + unavailableReason.getDescription() + ")"
                 : "";
-        return title + " (" + players + " players" + time + ")" + tagList + rating + lent + availability;
+        String from = hasLender() ? " (" + describeLender() + ")" : "";
+        return title + " (" + players + " players" + time + ")" + tagList + rating + lent + availability + from;
     }
 
     //@@author MohamedFarsat

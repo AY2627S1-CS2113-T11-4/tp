@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
 
 import seedu.gamevault.command.AddCommand;
 import seedu.gamevault.command.AvailableCommand;
+import seedu.gamevault.command.BorrowCommand;
 import seedu.gamevault.command.Command;
 import seedu.gamevault.command.DeleteCommand;
 import seedu.gamevault.command.EditCommand;
@@ -23,6 +24,7 @@ import seedu.gamevault.command.ExitCommand;
 import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.FilterTagCommand;
 import seedu.gamevault.command.FindCommand;
+import seedu.gamevault.command.GiveBackCommand;
 import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.command.LendCommand;
 import seedu.gamevault.command.ListCommand;
@@ -60,6 +62,8 @@ public class Parser {
     private static final String PLAYERS_PREFIX = "/players";
     private static final String DATE_PREFIX = "/date";
     private static final String REASON_PREFIX = "/reason";
+    private static final String FROM_PREFIX = "/from";
+    private static final String DUE_PREFIX = "/due";
     private static final String NO_TIME_VALUE = "none";
     /** Key under which {@link #splitByPrefixes} stores the text that comes before the first prefix. */
     private static final String PREAMBLE = "";
@@ -130,6 +134,10 @@ public class Parser {
             return parseUnavailable(arguments);
         case AvailableCommand.COMMAND_WORD:
             return parseAvailable(arguments);
+        case BorrowCommand.COMMAND_WORD:
+            return parseBorrow(arguments);
+        case GiveBackCommand.COMMAND_WORD:
+            return parseGiveBack(arguments);
         case RateCommand.COMMAND_WORD:
             return parseRate(arguments);
         case UnrateCommand.COMMAND_WORD:
@@ -706,6 +714,84 @@ public class Parser {
                     + " (e.g. available 2)");
         }
         return new AvailableCommand(parseIndex(indexText));
+    }
+
+    /**
+     * Builds a {@link BorrowCommand} from arguments in the form {@code INDEX /from NAME [/due YYYY-MM-DD]},
+     * e.g. {@code 2 /from Bob /due 2026-11-10}. Without /due, the game is taken to be a gift that does not
+     * have to be given back.
+     *
+     * @param today Today's date, used to reject due-back dates in the past.
+     * @throws GameVaultException If INDEX or NAME is missing or invalid, a field is repeated,
+     *     or the date is invalid or in the past.
+     */
+    static Command parseBorrow(String arguments, LocalDate today) throws GameVaultException {
+        Map<String, String> fields = splitByPrefixes(arguments, FROM_PREFIX, DUE_PREFIX);
+        String indexText = fields.get(PREAMBLE);
+        if (indexText.isEmpty()) {
+            throw new GameVaultException("INDEX is missing. Format: " + BorrowCommand.USAGE
+                    + " (e.g. borrow 2 /from Bob /due 2026-11-10)");
+        }
+        // As in parseUnavailable, "2 Bob" without /from would all be read as INDEX, so name the likely cause.
+        if (!fields.containsKey(FROM_PREFIX) && indexText.contains(" ")) {
+            throw new GameVaultException("Did you forget /from? Format: " + BorrowCommand.USAGE
+                    + " (e.g. borrow 2 /from Bob)");
+        }
+        int displayNumber = parseIndex(indexText);
+        if (fields.getOrDefault(FROM_PREFIX, "").isEmpty()) {
+            throw new GameVaultException("NAME is missing. Format: " + BorrowCommand.USAGE
+                    + " (e.g. borrow 2 /from Bob)");
+        }
+        String lender = Borrower.normalise(fields.get(FROM_PREFIX));
+        if (!Borrower.isValid(lender)) {
+            throw new GameVaultException("NAME should be " + Borrower.RULES);
+        }
+        LocalDate dueBack = fields.containsKey(DUE_PREFIX)
+                ? parseDueBack(fields.get(DUE_PREFIX), today)
+                : null;
+        return new BorrowCommand(displayNumber, lender, dueBack);
+    }
+
+    private static Command parseBorrow(String arguments) throws GameVaultException {
+        return parseBorrow(arguments, LocalDate.now());
+    }
+
+    /**
+     * Returns the due-back date in {@code text}, which must be in the form {@code YYYY-MM-DD} and not before today.
+     * Today is allowed, e.g. for a game that has to go back after tonight's session.
+     *
+     * @throws GameVaultException If the date is missing, not a real date in the form YYYY-MM-DD, or in the past.
+     */
+    private static LocalDate parseDueBack(String text, LocalDate today) throws GameVaultException {
+        String dateText = text.trim();
+        if (dateText.isEmpty()) {
+            throw new GameVaultException("DATE is missing. Format: " + BorrowCommand.USAGE);
+        }
+        LocalDate date;
+        try {
+            date = LocalDate.parse(dateText);
+        } catch (DateTimeParseException e) {
+            throw new GameVaultException("DATE should be a real date in the form YYYY-MM-DD (e.g. 2026-11-10), "
+                    + "but was '" + dateText + "'.");
+        }
+        if (date.isBefore(today)) {
+            throw new GameVaultException("DATE cannot be in the past, but was " + date + ".");
+        }
+        return date;
+    }
+
+    /**
+     * Builds a {@link GiveBackCommand} from arguments in the form {@code INDEX}, e.g. {@code 2}.
+     *
+     * @throws GameVaultException If INDEX is missing, is not a whole number, or is less than 1.
+     */
+    private static Command parseGiveBack(String arguments) throws GameVaultException {
+        String indexText = arguments.trim();
+        if (indexText.isEmpty()) {
+            throw new GameVaultException("INDEX is missing. Format: " + GiveBackCommand.USAGE
+                    + " (e.g. giveback 2)");
+        }
+        return new GiveBackCommand(parseIndex(indexText));
     }
 
     private static String parseTitle(String text, String usage) throws GameVaultException {

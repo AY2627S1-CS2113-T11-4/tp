@@ -761,6 +761,91 @@ still show lent games, with `(lent to NAME)` after each one.
 * Record when a game was lent, and a due date, so `lentout` can show overdue games first.
 * Let the user mark a game as unavailable for other reasons, such as missing pieces, with the same effect on
   `filter` and `pick`.
+
+<!-- @@author KRAZYZECTRON -->
+### Recording who lent or gave a game
+
+The `borrow` command records who a game came from, and optionally when it must be given back, e.g.
+`borrow 2 /from Bob /due 2026-11-10`. `giveback 2` removes a borrowed game once it has been given back.
+`list` shows the record after the game, e.g.
+`Hive (2 players) (borrowed from Bob, due 2026-11-10)`, and ends with a reminder of any overdue games.
+This is the opposite direction to `lend` (see [Lending games to friends](#lending-games-to-friends)).
+
+**Model.** Each `Game` has two more fields: `lender`, the person the game is from, and `dueBack`, a `LocalDate`.
+Both are `null` when not recorded, and `dueBack` is also `null` for a game that does not have to be given back,
+such as a gift. `Game#recordLender(name, dueBack)` sets both together, and `Game#getDueBack()` returns an
+`Optional`. `Game#isOverdue(today)` is true only when the due-back date is before
+`today`, so a game due back today is not overdue yet. Lender names follow the same rules as borrower names in
+`lend`, so both reuse the `Borrower` class.
+
+**Parsing.** `Parser#parseBorrow(arguments, today)` uses `splitByPrefixes(...)` to read `INDEX`, `/from` and the
+optional `/due`. Today's date is passed in (`LocalDate.now()` in normal use), as in `log`, so that the rule
+"not in the past" can be unit-tested with a fixed date. `Parser#parseGiveBack(...)` only reads `INDEX`.
+
+**Executing.** The sequence diagram below shows `borrow 2 /from Bob /due 2026-11-10`.
+
+![Sequence diagram for borrow 2 /from Bob /due 2026-11-10](images/BorrowSequenceDiagram.png)
+
+1. `BorrowCommand#execute(...)` checks that game 2 exists, then gets it from the `GameList`.
+2. It compares the game's current record with the new one. If they are the same, it reports this and changes
+   nothing, so the error case never touches the game.
+3. Otherwise it calls `Game#recordLender("Bob", 2026-11-10)` and saves with `Storage#save(...)`.
+4. It shows the game, the old record if there was one, and how to use `giveback` once the game is given back.
+
+`GiveBackCommand#execute(...)` rejects a game that has no lender, since that is most likely the wrong `INDEX`, and
+a gift (a lender but no due-back date), since there is nothing to give back. Otherwise it removes the game with
+`GameList#delete(...)` and saves, because a game that has gone back to its owner is no longer on the user's shelf.
+
+**Overdue reminder.** `ListCommand` takes today's date (again `LocalDate.now()` in normal use, and a fixed date in
+tests). After the numbered list, it adds a line for each game where `Game#isOverdue(today)` is true, using the same
+numbers as the list, so the user can run `giveback` straight away.
+
+**Storage.** The record is saved in two named fields, `from` and `due`, e.g.
+`Hive | 2 | 2 |  |  | from=Bob | due=2026-11-10`. Named fields can come in any order in a hand-edited file, so
+`GameDecoder` reads them separately (`due` through `Game#setDueBack(...)`), and only checks that `due` has a
+matching `from` once the whole line is read. Past due-back dates are accepted when loading, since a game that was
+not given back in time is simply overdue. `EditCommand` copies the record into the edited game.
+
+#### Design considerations
+
+**Aspect: Effect on suggestions**
+
+* **Alternative 1 (current choice):** Borrowed games stay available, so `filter` and `pick` still suggest them.
+  * Pros: A borrowed game is on the user's shelf, so it can be played, and borrowing a game is often done so it can
+    be played at game night.
+  * Cons: None for now. A later option could prefer borrowed games in `pick`, so they are played before going back.
+* **Alternative 2:** Leave borrowed games out, like lent games.
+  * Pros: Treats every "lending" record the same way.
+  * Cons: Hides games the user has and can play.
+
+**Aspect: What `giveback` does with the game**
+
+* **Alternative 1 (current choice):** Remove the game from the collection.
+  * Pros: The game is no longer on the shelf, so `filter` and `pick` stop suggesting it, with nothing more to do.
+  * Cons: Its play history and ratings are lost, so borrowing it again starts afresh.
+* **Alternative 2:** Keep the game, but clear the record and mark it unavailable.
+  * Pros: Keeps its history and ratings.
+  * Cons: The collection fills up with games the user does not own, and "unavailable" suggests the game is
+    the user's own but cannot be played right now.
+
+**Aspect: Where the overdue reminder is shown**
+
+* **Alternative 1 (current choice):** At the end of `list`.
+  * Pros: `list` is the command users run most often, so the reminder is seen without remembering another command.
+  * Cons: `list` depends on today's date, so it needs a constructor that tests can give a fixed date.
+* **Alternative 2:** A separate command, e.g. `overdue`.
+  * Pros: `list` stays the same.
+  * Cons: Users who forget the game is borrowed will also forget to run the command.
+
+**Aspect: Due dates in the past**
+
+The `borrow` command rejects a due-back date in the past, since it is most likely a typo, such as the wrong year.
+`GameDecoder` accepts them, as a past due-back date in the data file just means the game is overdue.
+
+#### Possible future improvements
+
+* Show overdue games in the welcome message, so they are seen as soon as GameVault starts.
+* A command that lists only borrowed games, like `lentout` does for lent games.
 <!-- @@author -->
 
 

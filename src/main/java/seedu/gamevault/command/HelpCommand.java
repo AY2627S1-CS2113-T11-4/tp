@@ -36,6 +36,8 @@ public class HelpCommand extends Command {
               lentout      Lists the games that are lent out and who has them.
               unavailable  Marks a game unavailable: unavailable INDEX /reason missing|damaged
               available    Marks a game available again: available INDEX
+              borrow       Records who lent or gave you a game: borrow INDEX /from NAME [/due YYYY-MM-DD]
+              giveback     Records that a borrowed game was given back: giveback INDEX
               help         Shows this list of commands.
               exit         Exits GameVault.""";
 

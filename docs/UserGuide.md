@@ -56,6 +56,8 @@ Here are the commands you can use:
   lentout      Lists the games that are lent out and who has them.
   unavailable  Marks a game unavailable: unavailable INDEX /reason missing|damaged
   available    Marks a game available again: available INDEX
+  borrow       Records who lent or gave you a game: borrow INDEX /from NAME [/due YYYY-MM-DD]
+  giveback     Records that a borrowed game was given back: giveback INDEX
   help         Shows this list of commands.
   exit         Exits GameVault.
 ____________________________________________________________
@@ -113,6 +115,15 @@ ____________________________________________________________
 ```
 
 If your collection is empty, GameVault shows `No games in your collection yet.` instead.
+<!-- @@author KRAZYZECTRON -->
+
+If a game you [borrowed](#recording-who-lent-or-gave-you-a-game-borrow-giveback) should already have been given back,
+`list` reminds you at the end, e.g.:
+
+```
+Overdue, please give these back:
+2. Hive - give back to Bob (was due 2026-10-25)
+```
 <!-- @@author -->
 
 ### Finding games for your group: `filter`
@@ -621,6 +632,56 @@ ____________________________________________________________
 ```
 
 If no game is lent out, GameVault shows `None of your games are lent out. Everything is on your shelf.` instead.
+<!-- @@author KRAZYZECTRON -->
+### Recording who lent or gave you a game: `borrow`, `giveback`
+
+Records who a game came from, so you know who to give a borrowed game back to, and who to thank for a gift.
+For a borrowed game you can also record when it is due back, and `list` reminds you once it is overdue.
+This is the opposite of [`lend`](#lending-a-game-to-a-friend-lend), which is for games you lend out.
+
+Format: `borrow INDEX /from NAME [/due YYYY-MM-DD]` and `giveback INDEX`
+
+* `INDEX` is the game's number in `list`, and must be a whole number of at least 1.
+* `NAME` is the person the game is from, e.g. `Bob` or `Mary Tan`. It follows the same rules as for `lend`:
+  1 to 30 characters long and cannot contain `|`. Extra spaces are removed.
+* `/due` is the day the game must be given back, in the form `YYYY-MM-DD` (e.g. `2026-11-10`). It cannot be in
+  the past. Leave it out for a game that does not have to be given back, such as a gift.
+* `/from` and `/due` can be given in either order.
+* Using `borrow` again on the same game replaces the old record, e.g. to extend a loan.
+* `giveback` is for a borrowed game you have given back. Since it is no longer on your shelf, it is **removed from
+  your collection**, along with its play history and ratings, so `filter` and `pick` stop suggesting it.
+* `giveback` only works on games borrowed with `/due`. A game recorded without `/due` is a gift, so there is
+  nothing to give back; use `delete` if you no longer have it.
+* While you have them, borrowed games are on your shelf, so `filter` and `pick` still suggest them.
+  `edit` keeps who the game is from.
+
+Examples of usage:
+
+* `borrow 2 /from Bob /due 2026-11-10` records that game 2 is borrowed from Bob until 10 November 2026.
+* `borrow 3 /from Mary Tan` records that game 3 is from Mary Tan, e.g. a gift.
+* `giveback 2` records that game 2 has been given back, and removes it from your collection.
+
+Expected output (for `borrow 2 /from Bob /due 2026-11-10`):
+
+```
+____________________________________________________________
+Recorded: Hive (2 players) (borrowed from Bob, due 2026-11-10)
+'list' will remind you if it is not given back by 2026-11-10. Use 'giveback 2' once you have given it back.
+____________________________________________________________
+```
+
+Expected output (for `giveback 2`, with 3 games in your collection before):
+
+```
+____________________________________________________________
+Given back to Bob: Hive
+It has been removed from your collection. You now have 2 game(s).
+____________________________________________________________
+```
+
+For a gift, `giveback` changes nothing and shows e.g.
+`Azul was a gift from Mary Tan, so there is nothing to give back. Use 'delete 3' if you no longer have it.`
+
 <!-- @@author -->
 
 ### Exiting the program: `exit`
@@ -666,6 +727,9 @@ Splendor | 2 | 4 | 30 |  | ratings=5/1
     as `UP/DOWN` (e.g. `5/1`). Both counts must be whole numbers of at least 0.
   * `unavailable`, which says why the game cannot be played at the moment: `missing` or `damaged`
     (e.g. `unavailable=missing`).
+  * `from`, the person who lent or gave you the game (see [`borrow`](#recording-who-lent-or-gave-you-a-game-borrow-giveback)),
+    and `due`, the day it must be given back in the form `YYYY-MM-DD` (e.g. `from=Bob | due=2026-11-10`).
+    `due` can only be given together with `from`.
 * Blank lines are ignored.
 
 If a line is not in this format, GameVault skips that line, loads the rest of your games, and tells you which
@@ -710,5 +774,7 @@ Rate | `rate INDEX up\|down`, e.g. `rate 1 up`
 Unrate | `unrate INDEX up\|down`, e.g. `unrate 2 down`
 Mark unavailable | `unavailable INDEX /reason missing\|damaged`, e.g. `unavailable 1 /reason missing`
 Mark available | `available INDEX`, e.g. `available 1`
+Borrow | `borrow INDEX /from NAME [/due YYYY-MM-DD]`, e.g. `borrow 2 /from Bob /due 2026-11-10`
+Give back | `giveback INDEX`, e.g. `giveback 2`
 Help | `help`
 Exit | `exit`

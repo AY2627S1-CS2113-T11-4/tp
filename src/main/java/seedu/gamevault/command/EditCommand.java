@@ -118,6 +118,10 @@ public class EditCommand extends Command {
         //@@author KRAZYZECTRON
         // Availability is changed with unavailable/available, so keep the game's current reason, if any.
         oldGame.getUnavailableReason().ifPresent(editedGame::markUnavailable);
+        // Who the game is from is changed with borrow/giveback, so keep that too.
+        if (oldGame.hasLender()) {
+            editedGame.recordLender(oldGame.getLender(), oldGame.getDueBack().orElse(null));
+        }
         //@@author MohamedFarsat
         // Ratings are changed with rate, not edit, so keep them too.
         editedGame.setRatings(oldGame.getThumbsUp(), oldGame.getThumbsDown());
