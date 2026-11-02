@@ -7,7 +7,7 @@ collection and quickly finds games that suit the group that turned up, by player
 
 My main areas were **the foundation of the app**, i.e. the command loop that every other feature plugs into,
 **keeping the user's data safe** when the data file is edited by hand, and the **`pick` command**, which chooses a
-random game for the group.
+random game for the group and, with **ratings**, learns which games the group enjoys.
 
 ## Summary of Contributions
 
@@ -42,8 +42,20 @@ random game for the group.
     the count of games with no play time into `GameList#countWithoutPlayTime` so both commands share it.
   * Made the random choice testable by passing a `Random` object into `PickCommand`, so JUnit tests can check
     exactly which game is picked.
-  * Merged the latest changes from `master` into the branch, keeping both `pick` and the new `edit` and play time
-    features, and added `/time` support to match `filter`.
+  * Added `/time` support to match `filter`.
+
+* **Rating games and weighted picking** (`rate INDEX up|down`, `unrate INDEX up|down`), v2.1
+  ([PR #59](https://github.com/AY2627S1-CS2113-T11-4/tp/pull/59))
+  * What it does: after playing, the group gives a game a thumbs up or a thumbs down, and `pick` then suggests
+    games rated up more often and games rated down less often. `unrate` takes back a rating given by mistake.
+  * Justification: a purely random pick ignores what the group enjoyed, so the host often has to pick again.
+    With ratings, the suggestions get better the more the group uses GameVault.
+  * Highlights: each game gets a weight of `(up + 1) / (down + 1)`, kept between 0.2 and 5, so a favourite cannot
+    crowd out every other game and a disliked game is never ruled out. The weighted choice takes a `Random` like
+    before, so tests check exactly which game is chosen at a given point. Ratings are saved as a new data-file
+    field (`ratings=UP/DOWN`), are kept when a game is edited, and counts that are invalid or too large are
+    rejected with a clear reason.
+  * Built on top of a teammate's lending feature, so lent games are left out before the weighting runs.
 
 ### Contributions to the User Guide
 
@@ -51,11 +63,16 @@ random game for the group.
   Summary.
 * Wrote the section *Editing the data file*, which explains the file format and what happens to invalid lines.
 * Wrote the section *Picking a random game*, and updated the `help` example output to match the app.
+* Wrote the sections *Rating a game after playing* and *Undoing a rating*, including a table showing how ratings
+  change a game's chance of being picked, and added the `ratings` field to *Editing the data file*.
 
 ### Contributions to the Developer Guide
 
 * Wrote the section *Picking a random game (`pick`)*, including a sequence diagram of `pick 4 /time 45`
-  (`PickSequence.puml`) and design considerations on testing random results and reusing the filtering logic.
+  (`PickSequence.puml`) and design considerations on testing random results and reusing the filtering logic
+  ([PR #60](https://github.com/AY2627S1-CS2113-T11-4/tp/pull/60)).
+* Wrote the section *Rating games and weighted picking*, including a sequence diagram of `rate 1 up`
+  (`RateSequence.puml`) and design considerations on how ratings should change the chance of being picked.
 * Added the team's v1.0 class and object diagrams to `docs/diagrams`.
 
 ### Contributions to team-based tasks
@@ -67,3 +84,5 @@ random game for the group.
 
 * Reviewed and approved [PR #15](https://github.com/AY2627S1-CS2113-T11-4/tp/pull/15) (adding a game).
 * Reviewed [PR #26](https://github.com/AY2627S1-CS2113-T11-4/tp/pull/26) (editing a game).
+* Reviewed and approved [PR #58](https://github.com/AY2627S1-CS2113-T11-4/tp/pull/58) (logging play sessions),
+  checking that the new named-field data format still loads older data files.
