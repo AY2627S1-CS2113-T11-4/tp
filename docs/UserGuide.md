@@ -338,6 +338,7 @@ Expected output:
 ```
 ____________________________________________________________
 Deleted: Codenames (4-8 players) [party]
+You now have 2 game(s) in your collection.
 ____________________________________________________________
 ```
 
