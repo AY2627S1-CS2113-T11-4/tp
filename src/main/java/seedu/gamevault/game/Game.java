@@ -217,11 +217,14 @@ public class Game {
     }
 
     /**
-     * Returns whether this game can be played tonight, i.e. whether {@code filter} and {@code pick} may suggest it.
+     * Returns whether this game can be played tonight, i.e. whether {@code filter} and {@code pick} may suggest it:
+     * it is not lent out and not marked unavailable (e.g. because pieces are missing).
      * Suggestions should use this method instead of checking each reason a game might be unavailable.
      */
     public boolean isAvailable() {
-        return !isLent();
+        //@@author KRAZYZECTRON
+        return !isLent() && !isMarkedUnavailable();
+        //@@author yy261
     }
 
     /**
@@ -312,7 +315,8 @@ public class Game {
      * {@code Catan (3-4 players, 60 min) [strategy] +5/-1 (lent to Alice)},
      * or {@code Chess (2 players)} when the minimum and maximum are the same and nothing else is set.
      * The rating ({@code +5/-1}) is only shown once the game has been rated.
-     * An unavailable game ends with its reason, e.g. {@code Catan (3-4 players) - unavailable: missing pieces}.
+     * An unavailable game ends with its reason, in the same style as a lent game,
+     * e.g. {@code Catan (3-4 players) (unavailable: missing pieces)}.
      */
     @Override
     public String toString() {
@@ -324,7 +328,7 @@ public class Game {
         String rating = isRated() ? " " + describeRatings() : "";
         String lent = isLent() ? " (lent to " + borrower + ")" : "";
         String availability = isMarkedUnavailable()
-                ? " - unavailable: " + unavailableReason.getDescription()
+                ? " (unavailable: " + unavailableReason.getDescription() + ")"
                 : "";
         return title + " (" + players + " players" + time + ")" + tagList + rating + lent + availability;
     }

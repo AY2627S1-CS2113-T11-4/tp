@@ -57,7 +57,7 @@ class UnavailableCommandTest {
 
         assertEquals(Optional.of(UnavailableReason.MISSING), games.get(0).getUnavailableReason());
         assertTrue(output.toString().contains(
-                "Marked unavailable: Catan (3-4 players, 60 min) - unavailable: missing pieces"));
+                "Marked unavailable: Catan (3-4 players, 60 min) (unavailable: missing pieces)"));
         assertTrue(output.toString().contains("Use 'available 1' once it can be played again."));
         assertEquals(List.of("Catan | 3 | 4 | 60 |  | unavailable=missing", "Codenames | 4 | 8"),
                 Files.readAllLines(dataFile, StandardCharsets.UTF_8));
@@ -126,7 +126,7 @@ class UnavailableCommandTest {
         new ListCommand().execute(games, ui, storage);
 
         assertTrue(output.toString().contains("1. Catan (3-4 players, 60 min)" + System.lineSeparator()));
-        assertTrue(output.toString().contains("2. Codenames (4-8 players) - unavailable: damaged"));
+        assertTrue(output.toString().contains("2. Codenames (4-8 players) (unavailable: damaged)"));
     }
 
     @Test
@@ -137,5 +137,36 @@ class UnavailableCommandTest {
 
         assertEquals("Catan: Seafarers", games.get(0).getTitle());
         assertEquals(Optional.of(UnavailableReason.MISSING), games.get(0).getUnavailableReason());
+    }
+
+    @Test
+    void filter_unavailableGame_leftOut() {
+        games.get(0).markUnavailable(UnavailableReason.DAMAGED);
+
+        new FilterCommand(4).execute(games, ui, storage);
+
+        assertFalse(output.toString().contains("Catan"));
+        assertTrue(output.toString().contains("Codenames (4-8 players)"));
+    }
+
+    @Test
+    void pick_onlyOtherGameUnavailable_alwaysPicksAvailableGame() {
+        games.get(1).markUnavailable(UnavailableReason.MISSING);
+
+        new PickCommand(4).execute(games, ui, storage);
+
+        assertTrue(output.toString().contains("How about: Catan (3-4 players, 60 min)"));
+        assertTrue(output.toString().contains("(picked from 1 game(s) that fit 4 players)"));
+    }
+
+    @Test
+    void available_afterMarkedUnavailable_filterShowsGameAgain() throws GameVaultException {
+        games.get(0).markUnavailable(UnavailableReason.MISSING);
+        new AvailableCommand(1).execute(games, ui, storage);
+        output.reset();
+
+        new FilterCommand(4).execute(games, ui, storage);
+
+        assertTrue(output.toString().contains("Catan (3-4 players, 60 min)"));
     }
 }

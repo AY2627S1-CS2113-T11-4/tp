@@ -2,6 +2,7 @@ package seedu.gamevault.game;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,11 @@ class UnavailableReasonTest {
     void fromKeyword_unknownOrEmpty_returnsEmpty() {
         assertEquals(Optional.empty(), UnavailableReason.fromKeyword("lent"));
         assertEquals(Optional.empty(), UnavailableReason.fromKeyword(""));
+    }
+
+    @Test
+    void keywords_everyReasonInOrder() {
+        assertEquals(List.of("missing", "damaged"), UnavailableReason.keywords());
     }
 
     @Test

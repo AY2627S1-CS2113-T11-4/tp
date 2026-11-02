@@ -124,6 +124,7 @@ Format: `filter COUNT [/time MINUTES]`
 * A game is shown if `COUNT` is within its minimum and maximum players (both inclusive).
 * If you give `/time MINUTES`, only games that take `MINUTES` or less are shown.
   Games with no play time recorded are left out, and GameVault tells you how many were left out for this reason.
+* Games that are lent out or [marked unavailable](#marking-a-game-unavailable-unavailable-available) are left out.
 * Your collection is not changed.
 
 Examples of usage: `filter 4`, `filter 4 /time 45`
@@ -227,6 +228,7 @@ Format: `pick COUNT [/time MINUTES]`
 * The game is picked only from games where `COUNT` is within its minimum and maximum players (both inclusive).
 * If you give `/time MINUTES`, the game is picked only from games that take `MINUTES` or less.
   Games with no play time recorded are not considered, and GameVault tells you how many were left out for this reason.
+* Games that are lent out or [marked unavailable](#marking-a-game-unavailable-unavailable-available) are not considered.
 * Each use may pick a different game. Your collection is not changed.
 * Games your group rated up with [`rate`](#rating-a-game-after-playing-rate) are more likely to be picked,
   and games rated down are less likely. When any of the games that fit has been rated, `pick` reminds you of this.
@@ -500,16 +502,19 @@ ____________________________________________________________
 <!-- @@author KRAZYZECTRON -->
 ### Marking a game unavailable: `unavailable`, `available`
 
-Marks a game you cannot play at the moment, for example because pieces are missing or it is damaged,
-so that `list` shows why. Mark it available again once it is back in play.
+Marks a game you cannot play at the moment, for example because pieces are missing or it is damaged.
+`filter` and `pick` then leave it out, so you are never offered a game you cannot play, and `list` shows why.
+Mark it available again once it is back in play.
 
 Format: `unavailable INDEX /reason REASON` and `available INDEX`
 
 * `INDEX` is the game's number in `list`, and must be a whole number of at least 1.
 * `REASON` is `missing` (missing pieces) or `damaged`, in any case.
 * Marking a game that is already unavailable with a different reason replaces the old reason.
-* `edit` keeps a game's unavailable reason.
-* For games you have lent to someone, use `lend` instead, which also records who has the game.
+* An unavailable game stays in your collection: `list`, `find` and `sort` still show it, with its reason after it.
+  `edit`, `tag`, `untag`, `log` and `rate` work on it as usual, and `edit` keeps its reason.
+* For games you have lent to someone, use [`lend`](#lending-a-game-to-a-friend-lend) instead,
+  which also records who has the game.
 
 Examples of usage:
 
@@ -520,13 +525,13 @@ Expected output (for `unavailable 1 /reason damaged`, when game 1 was already ma
 
 ```
 ____________________________________________________________
-Marked unavailable: Catan (3-4 players, 60 min) - unavailable: damaged
+Marked unavailable: Catan (3-4 players, 60 min) (unavailable: damaged)
 (Was: missing pieces.)
 Use 'available 1' once it can be played again.
 ____________________________________________________________
 ```
 
-`list` then shows the reason after the game, e.g. `1. Catan (3-4 players, 60 min) - unavailable: damaged`.
+`list` then shows the reason after the game, e.g. `1. Catan (3-4 players, 60 min) (unavailable: damaged)`.
 
 <!-- @@author -->
 

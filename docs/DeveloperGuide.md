@@ -152,8 +152,8 @@ The `pick` command helps a host who cannot decide what to play. It picks one ran
 group, using the format `pick COUNT [/time MINUTES]`, e.g. `pick 4 /time 45`. It is implemented by
 `Parser#parsePick` and `PickCommand`, and reuses the filtering methods of `GameList`, so `pick` and `filter` always
 agree on which games fit. The pick is weighted by the group's ratings (see
-[Rating games and weighted picking](#rating-games-and-weighted-picking)), and lent games are left out (see
-[Lending games to friends](#lending-games-to-friends)).
+[Rating games and weighted picking](#rating-games-and-weighted-picking)), and lent or unavailable games are left out
+(see [Lending games to friends](#lending-games-to-friends) and [Marking a game unavailable](#marking-a-game-unavailable)).
 
 The sequence diagram below shows what happens when the user enters `pick 4 /time 45`.
 
@@ -167,7 +167,8 @@ The sequence diagram below shows what happens when the user enters `pick 4 /time
    stores `0` to mean "no time limit".
 3. `GameVault` calls `PickCommand#execute(...)`. With a time limit, it asks the `GameList` for
    `filterAvailableByPlayersAndTime(4, 45)`. Without one, it uses `filterAvailableByPlayers(4)`. Both keep only games
-   for which `Game#isAvailable()` is true, so lent games are left out. Either way, the collection itself is not
+   for which `Game#isAvailable()` is true, so lent and unavailable games are left out. Either way, the collection
+   itself is not
    changed, so `pick` never saves to the data file.
 4. If no game matches, the message says there is nothing to pick from. Otherwise, `PickCommand#chooseWeighted(...)`
    asks each match for its `Game#getPickWeight()` and adds them up. It then takes a random point along that total
@@ -516,12 +517,14 @@ benefit to the current features.
 ### Marking a game unavailable
 
 The `unavailable` command records why a game cannot be played at the moment, e.g. `unavailable 1 /reason missing`,
-and `available 1` clears it. `list` shows the reason after the game.
+and `available 1` clears it. `filter` and `pick` leave unavailable games out, and `list` shows the reason after the
+game, e.g. `Catan (3-4 players) (unavailable: missing pieces)`, in the same style as `(lent to Alice)`.
 
 **Model.** The reasons are an enum, `UnavailableReason` (`MISSING`, `DAMAGED`). Each value holds the keyword the user
 types, which is also how it is written in the data file, and a description shown to the user (e.g. `missing pieces`).
 `UnavailableReason#fromKeyword(...)` finds a reason by keyword, ignoring case, so the parser and `GameDecoder` accept
-exactly the same words. Each `Game` has an `unavailableReason` field, which is `null` while the game is available.
+exactly the same words. `UnavailableReason#keywords()` lists every keyword, and both the `unavailable` usage line and
+the error messages are built from it, so adding a reason only needs a new enum value. Each `Game` has an `unavailableReason` field, which is `null` while the game is available.
 `Game#markUnavailable(...)` sets it, `Game#markAvailable()` clears it, and `Game#getUnavailableReason()` returns it as
 an `Optional`, so callers cannot forget the "available" case.
 
@@ -542,6 +545,11 @@ reason into an `UnavailableReason`. A missing or unknown reason is reported with
 `AvailableCommand#execute(...)` works the same way, but rejects a game that is not marked unavailable, since that is
 most likely the wrong `INDEX`.
 
+**Leaving unavailable games out of suggestions.** `Game#isAvailable()` returns
+`!isLent() && !isMarkedUnavailable()`. `filter`, `filter /tag` and `pick` already keep only games for which
+`isAvailable()` is true (see [Lending games to friends](#lending-games-to-friends)), so they leave unavailable games
+out without any change to those commands.
+
 **Storage.** The reason is saved in the named field `unavailable`, e.g. `Catan | 3 | 4 | 60 |  | unavailable=missing`,
 and read back by `GameDecoder#decodeUnavailableReason(...)`. Available games have no such field, so older data files
 still load. Because `EditCommand` builds a new `Game` when editing, it copies the old game's reason into the new one.
@@ -560,8 +568,8 @@ still load. Because `EditCommand` builds a new `Game` when editing, it copies th
 **Aspect: Lent-out games**
 
 Lent-out games are handled by the `lend` command, which also records who has the game, so `lent` is not one of the
-reasons here. Both features should leave a game out of `filter` and `pick` through one shared check,
-`Game#isAvailable()`, rather than each adding its own.
+reasons here. Both features leave a game out of `filter` and `pick` through one shared check, `Game#isAvailable()`,
+rather than each adding its own, so the suggestion commands cannot disagree about which games can be played.
 
 **Aspect: Marking an unavailable game again with a different reason**
 
@@ -576,6 +584,8 @@ reasons here. Both features should leave a game out of `filter` and `pick` throu
 
 * An optional note, e.g. which pieces are missing.
 * A way to list only the unavailable games.
+* Name unavailable games in the note that `filter` and `pick` add, as is already done for lent games
+  (`GameList#describeLeftOut(...)` currently names lent games only).
 
 <!-- @@author yy261 -->
 ### Filtering games by player count and play time

@@ -18,7 +18,7 @@ import seedu.gamevault.ui.Ui;
  */
 public class UnavailableCommand extends Command {
     public static final String COMMAND_WORD = "unavailable";
-    public static final String USAGE = "unavailable INDEX /reason " + String.join("|", reasonKeywords());
+    public static final String USAGE = "unavailable INDEX /reason " + String.join("|", UnavailableReason.keywords());
 
     private final int displayNumber;
     private final UnavailableReason reason;
@@ -60,15 +60,5 @@ public class UnavailableCommand extends Command {
         }
         message += System.lineSeparator() + "Use 'available " + displayNumber + "' once it can be played again.";
         ui.showMessage(message);
-    }
-
-    /** Returns every reason's keyword, e.g. {@code [missing, damaged]}, for the usage line. */
-    private static String[] reasonKeywords() {
-        UnavailableReason[] reasons = UnavailableReason.values();
-        String[] keywords = new String[reasons.length];
-        for (int i = 0; i < reasons.length; i++) {
-            keywords[i] = reasons[i].getKeyword();
-        }
-        return keywords;
     }
 }
