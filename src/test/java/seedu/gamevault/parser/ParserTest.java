@@ -724,4 +724,27 @@ class ParserTest {
         assertTrue(e.getMessage().startsWith("INDEX is missing."));
         assertThrows(GameVaultException.class, () -> Parser.parse("giveback zero"));
     }
+
+    //@@author Xandurs
+    @Test
+    void parse_filterWithNotPlayedIn_returnsFilterCommand() throws GameVaultException {
+        assertInstanceOf(FilterCommand.class, Parser.parse("filter 4 /notplayedin 14"));
+        assertInstanceOf(FilterCommand.class, Parser.parse("filter 4 /notplayedin 14 /time 45"));
+        assertInstanceOf(FilterCommand.class, Parser.parse("filter 4 /time 45 /notplayedin 1"));
+    }
+
+    @Test
+    void parse_filterWithInvalidNotPlayedIn_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 /notplayedin"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 /notplayedin 0"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 /notplayedin two"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 /notplayedin 7 /notplayedin 14"));
+    }
+
+    @Test
+    void parse_filterWithNotPlayedInAndTag_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> Parser.parse("filter 4 /notplayedin 14 /tag party"));
+        assertTrue(e.getMessage().contains("cannot be used together with /tag"));
+    }
 }
