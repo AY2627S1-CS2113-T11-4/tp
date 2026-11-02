@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import seedu.gamevault.exception.GameVaultException;
+import seedu.gamevault.game.Difficulty;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
 import seedu.gamevault.storage.Storage;
@@ -134,5 +135,49 @@ class EditCommandTest {
         assertTrue(games.get(0).isLent());
         assertEquals("Alice", games.get(0).getBorrower());
         assertEquals("Catan: Seafarers (3-4 players) (lent to Alice)", games.get(0).toString());
+    }
+
+    @Test
+    void execute_newDifficulty_setsItAndSaves() throws GameVaultException, IOException {
+        new EditCommand(1, null, null, null, null, Difficulty.HARD, false).execute(games, ui, storage);
+
+        assertEquals(Difficulty.HARD, games.get(0).getDifficulty());
+        assertEquals("Catan | 3 | 4 |  |  | difficulty=hard",
+                Files.readAllLines(dataFile, StandardCharsets.UTF_8).get(0));
+    }
+
+    @Test
+    void execute_difficultyNotGiven_keepsIt() throws GameVaultException {
+        games.get(0).setDifficulty(Difficulty.EASY);
+
+        new EditCommand(1, "Catan Deluxe", null, null).execute(games, ui, storage);
+
+        assertEquals(Difficulty.EASY, games.get(0).getDifficulty());
+    }
+
+    @Test
+    void execute_clearDifficulty_removesIt() throws GameVaultException {
+        games.get(0).setDifficulty(Difficulty.EASY);
+
+        new EditCommand(1, null, null, null, null, null, true).execute(games, ui, storage);
+
+        assertFalse(games.get(0).hasDifficulty());
+    }
+
+    @Test
+    void execute_clearDifficultyGameDoesNotHave_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> new EditCommand(1, null, null, null, null, null, true).execute(games, ui, storage));
+
+        assertTrue(e.getMessage().startsWith("This game has no difficulty to remove."));
+    }
+
+    @Test
+    void execute_sameDifficulty_reportsNoChanges() throws GameVaultException {
+        games.get(0).setDifficulty(Difficulty.EASY);
+
+        new EditCommand(1, null, null, null, null, Difficulty.EASY, false).execute(games, ui, storage);
+
+        assertTrue(output.toString().contains("No changes made"));
     }
 }

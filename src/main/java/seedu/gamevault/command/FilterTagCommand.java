@@ -2,6 +2,7 @@ package seedu.gamevault.command;
 
 import java.util.ArrayList;
 
+import seedu.gamevault.game.Difficulty;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
 import seedu.gamevault.game.Tag;
@@ -16,7 +17,7 @@ import seedu.gamevault.ui.Ui;
  * is handled by {@link FilterCommand}.
  */
 public class FilterTagCommand extends Command {
-    public static final String USAGE = "filter [COUNT] [/time MINUTES] /tag TAG";
+    public static final String USAGE = "filter [COUNT] [/time MINUTES] [/diff LEVEL] /tag TAG";
 
     /** Value of {@code playerCount} or {@code minutes} when the user did not give that condition. */
     private static final int NOT_GIVEN = 0;
@@ -24,6 +25,10 @@ public class FilterTagCommand extends Command {
     private final String tag;
     private final int playerCount;
     private final int minutes;
+    //@@author yy261
+    /** Level the games must be at, or null for any level. */
+    private final Difficulty difficulty;
+    //@@author KRAZYZECTRON
 
     /**
      * Creates a command that shows every game with the given tag.
@@ -42,11 +47,26 @@ public class FilterTagCommand extends Command {
      * @param minutes Time available in minutes (at least 1), or 0 for no time limit.
      */
     public FilterTagCommand(String tag, int playerCount, int minutes) {
+        this(tag, playerCount, minutes, null);
+    }
+
+    //@@author yy261
+    /**
+     * Creates a command that shows the games with the given tag that also fit the given conditions and level.
+     *
+     * @param tag Tag to look for; already normalised and checked to be valid by the parser.
+     * @param playerCount Number of players (at least 1), or 0 to ignore player counts.
+     * @param minutes Time available in minutes (at least 1), or 0 for no time limit.
+     * @param difficulty Level the games must be at, or null for any level.
+     */
+    public FilterTagCommand(String tag, int playerCount, int minutes, Difficulty difficulty) {
+        //@@author KRAZYZECTRON
         assert Tag.isValid(tag) : "Tag should be valid and normalised";
         assert playerCount >= NOT_GIVEN && minutes >= NOT_GIVEN : "Conditions should not be negative";
         this.tag = tag;
         this.playerCount = playerCount;
         this.minutes = minutes;
+        this.difficulty = difficulty;
     }
 
     @Override
@@ -90,7 +110,8 @@ public class FilterTagCommand extends Command {
     private boolean fitsConditions(Game game) {
         boolean fitsPlayers = playerCount == NOT_GIVEN || game.fitsPlayerCount(playerCount);
         boolean fitsTime = minutes == NOT_GIVEN || game.fitsTime(minutes);
-        return fitsPlayers && fitsTime;
+        boolean fitsLevel = difficulty == null || game.fitsDifficulty(difficulty);
+        return fitsPlayers && fitsTime && fitsLevel;
     }
 
     /**
@@ -103,6 +124,9 @@ public class FilterTagCommand extends Command {
         }
         if (minutes != NOT_GIVEN) {
             criteria += " in " + minutes + " minutes or less";
+        }
+        if (difficulty != null) {
+            criteria += " at " + difficulty.describe();
         }
         return criteria;
     }

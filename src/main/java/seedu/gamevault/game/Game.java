@@ -28,6 +28,8 @@ public class Game {
     public static final String DUE_BACK_FILE_KEY = "due";
     /** Name of the data-file field that holds who the game is lent to, e.g. {@code lent=Alice}. */
     public static final String LENT_FILE_KEY = "lent";
+    /** Name of the data-file field that holds a game's difficulty, e.g. {@code difficulty=easy}. */
+    public static final String DIFFICULTY_FILE_KEY = "difficulty";
     /** Name of the data-file field that holds the thumbs-up and thumbs-down counts, e.g. {@code ratings=5/1}. */
     public static final String RATINGS_FILE_KEY = "ratings";
     /** Separates the thumbs-up count from the thumbs-down count in the ratings field, e.g. {@code 5/1}. */
@@ -55,6 +57,8 @@ public class Game {
     private LocalDate dueBack;
     /** Normalised name of the person this game is lent to (see {@link Borrower}), or null if it is on the shelf. */
     private String borrower;
+    /** How hard the game is to learn and play, or null if it has not been recorded. */
+    private Difficulty difficulty;
     /** Number of times the group gave this game a thumbs up after playing it (see {@code rate}). */
     private int thumbsUp;
     /** Number of times the group gave this game a thumbs down after playing it. */
@@ -286,6 +290,42 @@ public class Game {
         return hasPlayTime() && playTime <= minutes;
     }
     /**
+     * Returns whether the user recorded how hard this game is.
+     */
+    public boolean hasDifficulty() {
+        return difficulty != null;
+    }
+
+    /**
+     * Returns how hard this game is. Only meaningful when {@link #hasDifficulty()} is true.
+     */
+    public Difficulty getDifficulty() {
+        assert hasDifficulty() : "Check hasDifficulty() before asking for the difficulty";
+        return difficulty;
+    }
+
+    /**
+     * Records how hard this game is, replacing any earlier level.
+     *
+     * @param difficulty The game's difficulty level.
+     */
+    public void setDifficulty(Difficulty difficulty) {
+        assert difficulty != null : "Difficulty should not be null";
+        this.difficulty = difficulty;
+    }
+
+    /**
+     * Returns whether this game is known to be at the given level.
+     * A game with no difficulty recorded never fits, because we cannot tell how hard it is.
+     *
+     * @param level The level to check; must not be null.
+     */
+    public boolean fitsDifficulty(Difficulty level) {
+        assert level != null : "Level to check should not be null";
+        return difficulty == level;
+    }
+
+    /**
      * Returns whether this game is lent to someone, i.e. it is not on the shelf.
      */
     public boolean isLent() {
@@ -384,6 +424,9 @@ public class Game {
         if (isLent()) {
             fields.add(LENT_FILE_KEY + "=" + borrower);
         }
+        if (hasDifficulty()) {
+            fields.add(DIFFICULTY_FILE_KEY + "=" + difficulty.getKeyword());
+        }
         //@@author MohamedFarsat
         if (isRated()) {
             fields.add(RATINGS_FILE_KEY + "=" + thumbsUp + RATINGS_FILE_SEPARATOR + thumbsDown);
@@ -407,6 +450,7 @@ public class Game {
                 ? String.valueOf(minPlayers)
                 : minPlayers + "-" + maxPlayers;
         String time = hasPlayTime() ? ", " + playTime + " min" : "";
+        String level = hasDifficulty() ? ", " + difficulty.getKeyword() : "";
         String tagList = tags.isEmpty() ? "" : " [" + String.join(", ", tags) + "]";
         String rating = isRated() ? " " + describeRatings() : "";
         String lent = isLent() ? " (lent to " + borrower + ")" : "";
@@ -414,7 +458,7 @@ public class Game {
                 ? " (unavailable: " + unavailableReason.getDescription() + ")"
                 : "";
         String from = hasLender() ? " (" + describeLender() + ")" : "";
-        return title + " (" + players + " players" + time + ")" + tagList + rating + lent + availability + from;
+        return title + " (" + players + " players" + time + level + ")" + tagList + rating + lent + availability + from;
     }
 
     //@@author MohamedFarsat

@@ -188,4 +188,60 @@ class GameListTest {
         assertEquals(System.lineSeparator() + "(Not shown because they are lent out: Love Letter (to Ben))",
                 shelf.describeLeftOut(4, 30, "shown"));
     }
+
+    @Test
+    void filterAvailable_mixOfConditions_appliesAllGiven() {
+        GameList shelf = new GameList();
+        Game easyShort = new Game("Love Letter", 2, 4, 20);
+        easyShort.setDifficulty(Difficulty.EASY);
+        Game easyLong = new Game("Splendor", 2, 4, 50);
+        easyLong.setDifficulty(Difficulty.EASY);
+        Game easyLent = new Game("Hive", 2, 4, 20);
+        easyLent.setDifficulty(Difficulty.EASY);
+        easyLent.lendTo("Alice");
+        shelf.add(easyShort);
+        shelf.add(easyLong);
+        shelf.add(easyLent);
+        shelf.add(new Game("Codenames", 2, 8));
+
+        assertEquals(3, shelf.filterAvailable(4, GameList.NO_TIME_LIMIT, null).size());
+        assertEquals(2, shelf.filterAvailable(4, GameList.NO_TIME_LIMIT, Difficulty.EASY).size());
+        ArrayList<Game> matches = shelf.filterAvailable(4, 30, Difficulty.EASY);
+        assertEquals(1, matches.size());
+        assertEquals("Love Letter", matches.get(0).getTitle());
+    }
+
+    @Test
+    void countWithoutPlayTime_withDifficulty_skipsGamesKnownToBeAtOtherLevels() {
+        GameList shelf = new GameList();
+        Game hard = new Game("Chess", 2, 4);
+        hard.setDifficulty(Difficulty.HARD);
+        Game easy = new Game("Uno", 2, 4);
+        easy.setDifficulty(Difficulty.EASY);
+        shelf.add(hard);
+        shelf.add(easy);
+        shelf.add(new Game("Codenames", 2, 8));
+
+        assertEquals(3, shelf.countWithoutPlayTime(4));
+        // Codenames has no difficulty, so it might have fitted; Chess is known not to.
+        assertEquals(2, shelf.countWithoutPlayTime(4, Difficulty.EASY));
+    }
+
+    @Test
+    void describeNoDifficulty_countsOnlyGamesThatCouldHaveFittedTheTime() {
+        GameList shelf = new GameList();
+        shelf.add(new Game("Catan", 3, 4, 60));
+        shelf.add(new Game("Love Letter", 2, 4, 20));
+        Game rated = new Game("Splendor", 2, 4, 30);
+        rated.setDifficulty(Difficulty.EASY);
+        shelf.add(rated);
+
+        assertEquals(System.lineSeparator()
+                + "(2 game(s) for 4 players were left out because they have no difficulty recorded.)",
+                shelf.describeNoDifficulty(4, GameList.NO_TIME_LIMIT, "left out"));
+        assertEquals(System.lineSeparator()
+                + "(1 game(s) for 4 players were not considered because they have no difficulty recorded.)",
+                shelf.describeNoDifficulty(4, 30, "not considered"));
+        assertEquals("", shelf.describeNoDifficulty(9, GameList.NO_TIME_LIMIT, "left out"));
+    }
 }

@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import seedu.gamevault.exception.GameVaultException;
+import seedu.gamevault.game.Difficulty;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
 import seedu.gamevault.storage.Storage;
@@ -187,5 +188,20 @@ class TagCommandTest {
         String printed = output.toString();
         assertTrue(printed.contains("No games tagged 'strategy'."));
         assertTrue(printed.contains("(Not shown because they are lent out: Catan (to Alice))"));
+    }
+
+    @Test
+    void filterByTag_withDifficulty_showsOnlyTaggedGamesAtThatLevel() {
+        games.get(0).addTag("party");
+        games.get(0).setDifficulty(Difficulty.HARD);
+        games.get(1).addTag("party");
+        games.get(1).setDifficulty(Difficulty.EASY);
+
+        new FilterTagCommand("party", 0, 0, Difficulty.EASY).execute(games, ui, storage);
+
+        String printed = output.toString();
+        assertTrue(printed.contains("Games tagged 'party' at easy difficulty:"));
+        assertTrue(printed.contains("  Codenames"));
+        assertFalse(printed.contains("  Catan"));
     }
 }

@@ -3,6 +3,7 @@ package seedu.gamevault.command;
 import java.util.ArrayList;
 import java.util.Random;
 
+import seedu.gamevault.game.Difficulty;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
 import seedu.gamevault.storage.Storage;
@@ -15,13 +16,15 @@ import seedu.gamevault.ui.Ui;
  */
 public class PickCommand extends Command {
     public static final String COMMAND_WORD = "pick";
-    public static final String USAGE = "pick COUNT [/time MINUTES]";
+    public static final String USAGE = "pick COUNT [/time MINUTES] [/diff LEVEL]";
 
     /** Value of {@code minutes} when the user did not give a time limit. */
     private static final int NO_TIME_LIMIT = GameList.NO_TIME_LIMIT;
 
     private final int playerCount;
     private final int minutes;
+    /** Level the game must be at, or null for any level. */
+    private final Difficulty difficulty;
     /** Source of randomness; passed in so tests can control which game is picked. */
     private final Random random;
 
@@ -42,7 +45,18 @@ public class PickCommand extends Command {
      * @param minutes Time available in minutes; already checked to be at least 1, or 0 for no limit.
      */
     public PickCommand(int playerCount, int minutes) {
-        this(playerCount, minutes, new Random());
+        this(playerCount, minutes, (Difficulty) null);
+    }
+
+    /**
+     * Creates a command that picks a random game fitting the given number of players, time limit and level.
+     *
+     * @param playerCount Number of players tonight; already checked to be at least 1.
+     * @param minutes Time available in minutes; already checked to be at least 1, or 0 for no limit.
+     * @param difficulty Level the game must be at, or null for any level.
+     */
+    public PickCommand(int playerCount, int minutes, Difficulty difficulty) {
+        this(playerCount, minutes, difficulty, new Random());
     }
 
     /**
@@ -53,21 +67,33 @@ public class PickCommand extends Command {
      * @param random Source of randomness used to choose the game.
      */
     PickCommand(int playerCount, int minutes, Random random) {
+        this(playerCount, minutes, null, random);
+    }
+
+    /**
+     * Creates a command for a given level that uses the given {@link Random}, for the same reason.
+     *
+     * @param playerCount Number of players tonight; already checked to be at least 1.
+     * @param minutes Time available in minutes, or 0 for no limit.
+     * @param difficulty Level the game must be at, or null for any level.
+     * @param random Source of randomness used to choose the game.
+     */
+    PickCommand(int playerCount, int minutes, Difficulty difficulty, Random random) {
         assert playerCount >= 1 : "Player count should be at least 1";
         assert minutes >= NO_TIME_LIMIT : "Time available should not be negative";
         assert random != null : "Random should not be null";
         this.playerCount = playerCount;
         this.minutes = minutes;
+        this.difficulty = difficulty;
         this.random = random;
     }
 
     @Override
     public void execute(GameList games, Ui ui, Storage storage) {
         boolean hasTimeLimit = minutes != NO_TIME_LIMIT;
-        ArrayList<Game> matches = hasTimeLimit
-                ? games.filterAvailableByPlayersAndTime(playerCount, minutes)
-                : games.filterAvailableByPlayers(playerCount);
-        String criteria = describeCriteria(playerCount, minutes);
+        ArrayList<Game> matches = games.filterAvailable(playerCount, minutes, difficulty);
+        String criteria = describeCriteria(playerCount, minutes)
+                + (difficulty == null ? "" : " at " + difficulty.describe());
 
         StringBuilder message = new StringBuilder();
         if (matches.isEmpty()) {
@@ -84,14 +110,17 @@ public class PickCommand extends Command {
         }
 
         // Like filter, explain games left out only because they have no play time recorded.
-        int untimedCount = hasTimeLimit ? games.countWithoutPlayTime(playerCount) : 0;
+        int untimedCount = hasTimeLimit ? games.countWithoutPlayTime(playerCount, difficulty) : 0;
         if (untimedCount > 0) {
             message.append(System.lineSeparator())
                     .append("(").append(untimedCount).append(" game(s) for ").append(playerCount)
                     .append(" players were not considered because they have no play time recorded.)");
         }
         //@@author yy261
-        message.append(games.describeLeftOut(playerCount, minutes, "considered"));
+        if (difficulty != null) {
+            message.append(games.describeNoDifficulty(playerCount, minutes, "not considered"));
+        }
+        message.append(games.describeLeftOut(playerCount, minutes, difficulty, "considered"));
         //@@author
         ui.showMessage(message.toString());
     }

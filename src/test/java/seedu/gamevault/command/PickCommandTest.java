@@ -12,6 +12,7 @@ import java.util.Random;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import seedu.gamevault.game.Difficulty;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
 import seedu.gamevault.storage.Storage;
@@ -269,5 +270,37 @@ class PickCommandTest {
         String printed = output.toString();
         assertTrue(printed.contains("No games fit 3 players, so there is nothing to pick from."));
         assertTrue(printed.contains("Catan (to Alice), Codenames (to Ben), Love Letter (to Cara)"));
+    }
+
+    @Test
+    void execute_withDifficulty_picksOnlyAtThatLevel() {
+        GameList shelf = new GameList();
+        Game catan = new Game("Catan", 3, 4, 60);
+        catan.setDifficulty(Difficulty.MEDIUM);
+        shelf.add(catan);
+        Game loveLetter = new Game("Love Letter", 2, 4, 20);
+        loveLetter.setDifficulty(Difficulty.EASY);
+        shelf.add(loveLetter);
+        Game splendor = new Game("Splendor", 2, 4, 30);
+        splendor.setDifficulty(Difficulty.EASY);
+        shelf.add(splendor);
+        shelf.add(new Game("Codenames", 2, 8));
+
+        new PickCommand(4, NO_LIMIT, Difficulty.EASY, alwaysReturning(1, 2))
+                .execute(shelf, ui, new Storage("unused.txt"));
+
+        String printed = output.toString();
+        assertTrue(printed.contains("How about: Splendor (2-4 players, 30 min, easy)"));
+        assertTrue(printed.contains("(picked from 2 game(s) that fit 4 players at easy difficulty)"));
+        assertTrue(printed.contains("(1 game(s) for 4 players were not considered because they have no difficulty"));
+    }
+
+    @Test
+    void execute_noGamesAtDifficulty_saysNothingToPick() {
+        new PickCommand(4, NO_LIMIT, Difficulty.HARD, alwaysReturning(0, 1))
+                .execute(games, ui, new Storage("unused.txt"));
+
+        assertTrue(output.toString().contains(
+                "No games fit 4 players at hard difficulty, so there is nothing to pick from."));
     }
 }
