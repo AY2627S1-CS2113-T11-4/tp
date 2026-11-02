@@ -1,5 +1,6 @@
 package seedu.gamevault.command;
 
+import java.time.LocalDate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -25,6 +26,10 @@ public class SortCommand extends Command {
     private static final Logger logger = Logger.getLogger(SortCommand.class.getName());
 
     private final SortOrder order;
+    //@@author Xandurs
+    /** Today's date, used to show how long ago each game was last played. */
+    private final LocalDate today;
+    //@@author SwaggyDaddy67
 
     /**
      * Creates a command that sorts the collection in the given order.
@@ -32,9 +37,21 @@ public class SortCommand extends Command {
      * @param order Order to sort the games in.
      */
     public SortCommand(SortOrder order) {
-        assert order != null : "Sort order should not be null";
-        this.order = order;
+        //@@author Xandurs
+        this(order, LocalDate.now());
     }
+
+    /**
+     * Creates a command like {@link #SortCommand(SortOrder)}, treating {@code today} as today's date,
+     * so that tests can check the "last played" part of the output with a fixed date.
+     */
+    SortCommand(SortOrder order, LocalDate today) {
+        assert order != null : "Sort order should not be null";
+        assert today != null : "Today's date should not be null";
+        this.order = order;
+        this.today = today;
+    }
+    //@@author SwaggyDaddy67
 
     @Override
     public void execute(GameList games, Ui ui, Storage storage) throws GameVaultException {
@@ -49,7 +66,9 @@ public class SortCommand extends Command {
         storage.save(games);
         logger.log(Level.FINE, "Sorted {0} game(s) by {1}", new Object[]{games.size(), order.getKeyword()});
 
-        ui.showMessage(getHeader(order) + ListCommand.formatNumberedList(games.getGames()));
+        //@@author Xandurs
+        ui.showMessage(getHeader(order) + ListCommand.formatNumberedListWithLastPlayed(games.getGames(), today));
+        //@@author SwaggyDaddy67
     }
 
     /**

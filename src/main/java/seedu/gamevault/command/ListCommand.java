@@ -54,34 +54,24 @@ public class ListCommand extends Command {
         }
 
         //@@author Xandurs
-        ui.showMessage(LIST_HEADER + formatNumberedListWithLastPlayed(gamesToShow) + formatOverdue(gamesToShow));
-        //@@author SwaggyDaddy67
+        ui.showMessage(LIST_HEADER + formatNumberedListWithLastPlayed(gamesToShow, today)
+                + formatOverdue(gamesToShow));
+        
     }
 
-    /**
-     * Returns the games numbered from 1, one per line (e.g. {@code 1. Catan (3-4 players)}),
-     * with each line starting with a line separator so it can follow a header line directly.
-     * Shared with {@link SortCommand}, which shows the collection in the same way after sorting it.
-     *
-     * @param gamesToShow Games to number, in the order they should be shown.
-     * @return The numbered lines, or an empty string if there are no games.
-     */
-    static String formatNumberedList(List<Game> gamesToShow) {
-        StringBuilder lines = new StringBuilder();
-        for (int i = 0; i < gamesToShow.size(); i++) {
-            int displayNumber = i + 1; // Users count from 1, while the list counts from 0.
-            lines.append(System.lineSeparator())
-                    .append(displayNumber).append(". ").append(gamesToShow.get(i));
-        }
-        return lines.toString();
-    }
     //@@author Xandurs
     /**
-     * Returns the games numbered from 1 like {@link #formatNumberedList}, with when each one was last played
-     * added to the end of its line, e.g. {@code 1. Catan (3-4 players) - last played 3 days ago},
-     * so the user can avoid games the group played recently.
+     * Returns the games numbered from 1, one per line, with when each one was last played at the end,
+     * e.g. {@code 1. Catan (3-4 players) - last played 3 days ago}, so the user can avoid games the group
+     * played recently. Each line starts with a line separator so it can follow a header line directly.
+     * Shared with {@link SortCommand}, so the collection looks the same before and after sorting.
+     *
+     * @param gamesToShow Games to number, in the order they should be shown.
+     * @param today Today's date, used to work out how long ago each game was played.
+     * @return The numbered lines, or an empty string if there are no games.
      */
-    private String formatNumberedListWithLastPlayed(List<Game> gamesToShow) {
+    static String formatNumberedListWithLastPlayed(List<Game> gamesToShow, LocalDate today) {
+        assert today != null : "Today's date should not be null";
         StringBuilder lines = new StringBuilder();
         for (int i = 0; i < gamesToShow.size(); i++) {
             int displayNumber = i + 1; // Users count from 1, while the list counts from 0.
@@ -92,6 +82,7 @@ public class ListCommand extends Command {
         }
         return lines.toString();
     }
+    
     //@@author KRAZYZECTRON
     /**
      * Returns a reminder listing the overdue borrowed games with their numbers from {@code list},

@@ -111,7 +111,8 @@ themselves, not on the order they were in before, so sorting twice gives the sam
    lists the valid choices. The list comes from `SortOrder#describeKeywords`, so it stays correct if an order is added.
 2. `SortCommand#execute` passes the order's comparator to `GameList#sort`, which uses the stable `List#sort`.
 3. The new order is saved with `Storage#save`, so `list` keeps showing it after the app restarts.
-4. The sorted games are shown numbered from 1, using `ListCommand#formatNumberedList`, which `list` also uses.
+4. The sorted games are shown numbered from 1, using `ListCommand#formatNumberedListWithLastPlayed`, which `list`
+   also uses, so each game shows when it was last played.
    An empty collection is not sorted or saved; a message is shown instead.
 
 **Adding a new order** only needs a new `SortOrder` value with its keyword, description and comparator.
@@ -444,10 +445,11 @@ sessions recorded by `log`, so nothing new is saved to the data file.
 * `describeLastPlayed(today)` turns the number into words: `last played today`, `last played 1 day ago`,
   `last played N days ago` or `never played`.
 
-**Listing.** `ListCommand` already stores `today` (used for overdue borrowed games). Its new
-`formatNumberedListWithLastPlayed(...)` adds ` - ` and `Game#describeLastPlayed(today)` to the end of each line.
-`ListCommand#formatNumberedList(...)` is left unchanged because `SortCommand` also uses it, and the sorted view
-does not need the extra detail.
+**Listing.** `ListCommand` already stores `today` (used for overdue borrowed games). Its static
+`formatNumberedListWithLastPlayed(games, today)` numbers the games from 1 and adds ` - ` and
+`Game#describeLastPlayed(today)` to the end of each line. `SortCommand` shows the sorted collection with the same
+method, so the games look the same before and after `sort`. Like `ListCommand`, `SortCommand` takes today's date
+through a package-private constructor, so tests can use a fixed date.
 
 **Filtering.** `Parser#parseFilter(...)` reads the optional `/notplayedin DAYS` with `splitByPrefixes(...)` and
 checks it with `parsePositiveNumber(...)`, then creates `FilterCommand(count, minutes, notPlayedInDays)`.
@@ -458,7 +460,11 @@ exactly as before. In `FilterCommand#execute(...)`:
 2. If there is a day limit, `removeRecentlyPlayed(matches)` removes every game for which
    `Game#wasPlayedWithin(notPlayedInDays, today)` is true, and returns how many were removed.
 3. The criteria line says `not played in the last N day(s)`, and if any games were removed, a note says how many
-   were hidden, so the user knows why a game they expected is missing.
+were left out, worded like the other notes, so the user knows why a game they expected is missing.
+4. The notes about games with no play time (`countUntimedNotRecentlyPlayed(...)`) and lent games
+   (`findLentNotRecentlyPlayed(...)`) skip games for which `isRecentlyPlayed(...)` is true. Otherwise a game
+   played yesterday that is lent out would be named as if it would have been shown.
+
 
 #### Design considerations
 

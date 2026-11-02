@@ -191,7 +191,8 @@ ____________________________________________________________
 * Today counts as 0 days ago. For example, with `/notplayedin 14`, a game last played 13 days ago is hidden, but a
   game last played 14 days ago is shown.
 * Games that have never been played are always shown.
-* GameVault tells you how many games were hidden for this reason.
+* GameVault tells you how many games were left out for this reason. The notes about games with no play time
+  and games that are lent out only mention games that `/notplayedin` would not have left out anyway.
 * `/notplayedin` can be combined with `/time` and `/diff`, in any order, but not with `/tag` (yet).
 * When a game was played comes from the sessions you recorded with [`log`](#logging-a-play-session-log).
 
@@ -202,7 +203,7 @@ ____________________________________________________________
 Games that fit 4 players not played in the last 14 day(s):
   Azul (2-4 players)
   Hive (2-4 players)
-(1 game(s) were hidden because they were played in the last 14 day(s).)
+(1 game(s) for 4 players were left out because they were played in the last 14 day(s).)
 ____________________________________________________________
 ```
 
@@ -451,6 +452,7 @@ Format: `sort title`, `sort players` or `sort time`
 * The new order is saved, so `list` shows it from now on. **The numbers next to each game change to match**,
   so check the new numbers before using `delete`, `edit` or `tag`.
 * Games added later go to the end of the list. Run `sort` again to put them in place.
+* Like `list`, each game ends with when it was last played.
 
 Example of usage: `sort time`
 
@@ -459,9 +461,9 @@ Expected output:
 ```
 ____________________________________________________________
 Sorted your collection by play time (shortest first, games with no play time last):
-1. Love Letter (2-4 players, 20 min)
-2. Catan (3-4 players, 60 min)
-3. Codenames (4-8 players)
+1. Love Letter (2-4 players, 20 min) - last played 2 days ago
+2. Catan (3-4 players, 60 min) - never played
+3. Codenames (4-8 players) - last played today
 ____________________________________________________________
 ```
 

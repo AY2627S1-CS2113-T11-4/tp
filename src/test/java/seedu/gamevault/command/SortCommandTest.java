@@ -11,6 +11,7 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.io.TempDir;
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
+import seedu.gamevault.game.PlaySession;
 import seedu.gamevault.game.SortOrder;
 import seedu.gamevault.storage.Storage;
 import seedu.gamevault.ui.Ui;
@@ -66,9 +68,9 @@ class SortCommandTest {
         new SortCommand(SortOrder.TIME).execute(games, ui, storage);
 
         String expected = SortCommand.getHeader(SortOrder.TIME) + System.lineSeparator()
-                + "1. Love Letter (2-4 players, 20 min)" + System.lineSeparator()
-                + "2. Catan (3-4 players, 60 min)" + System.lineSeparator()
-                + "3. Codenames (4-8 players)";
+                + "1. Love Letter (2-4 players, 20 min) - never played" + System.lineSeparator()
+                + "2. Catan (3-4 players, 60 min) - never played" + System.lineSeparator()
+                + "3. Codenames (4-8 players) - never played";
         assertTrue(output.toString().contains(expected));
     }
 
@@ -96,7 +98,18 @@ class SortCommandTest {
 
         assertEquals(firstResult, titlesInOrder());
     }
+    //@@author Xandurs
+    @Test
+    void execute_playedGame_showsLastPlayedLikeList() throws GameVaultException {
+        games.get(1).addSession(new PlaySession(LocalDate.of(2026, 10, 30), 4)); // Catan
 
+        new SortCommand(SortOrder.TITLE, LocalDate.of(2026, 11, 2)).execute(games, ui, storage);
+
+        assertTrue(output.toString().contains("1. Catan (3-4 players, 60 min) - last played 3 days ago"));
+        assertTrue(output.toString().contains("2. Codenames (4-8 players) - never played"));
+    }
+
+    //@@author SwaggyDaddy67
     @Test
     void isExit_returnsFalse() {
         assertFalse(new SortCommand(SortOrder.TITLE).isExit());

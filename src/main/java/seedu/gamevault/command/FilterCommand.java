@@ -2,6 +2,7 @@ package seedu.gamevault.command;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.List;
 
 import seedu.gamevault.game.Difficulty;
 import seedu.gamevault.game.Game;
@@ -152,13 +153,15 @@ public class FilterCommand extends Command {
         }
         //@@author Xandurs
         if (recentlyPlayedCount > 0) {
+            // Worded like the other notes, e.g. "(2 game(s) for 4 players were left out because ...)".
             message.append(System.lineSeparator())
                     .append("(").append(recentlyPlayedCount)
-                    .append(" game(s) were hidden because they were played in the last ")
+                    .append(" game(s) for ").append(playerCount)
+                    .append(" players were left out because they were played in the last ")
                     .append(notPlayedInDays).append(" day(s).)");
         }
+        message.append(GameList.describeLeftOut(findLentNotRecentlyPlayed(games, hasTimeLimit), "shown"));
         //@@author yy261
-        message.append(games.describeLeftOut(playerCount, minutes, difficulty, "shown"));
         ui.showMessage(message.toString());
     }
 
@@ -172,8 +175,50 @@ public class FilterCommand extends Command {
      */
     private int removeRecentlyPlayed(ArrayList<Game> matches) {
         int countBefore = matches.size();
-        matches.removeIf(game -> game.wasPlayedWithin(notPlayedInDays, today));
+        matches.removeIf(this::isRecentlyPlayed);
         return countBefore - matches.size();
+    }
+
+    /**
+     * Returns whether {@code game} is left out by {@code /notplayedin}, i.e. there is a day limit
+     * and the game was played within it. Without a day limit, no game counts as recently played.
+     */
+    private boolean isRecentlyPlayed(Game game) {
+        return notPlayedInDays != NO_DAYS_LIMIT && game.wasPlayedWithin(notPlayedInDays, today);
+    }
+
+    /**
+     * Returns the lent games that would otherwise have been shown, for the note that names them.
+     * Like the matches, they must fit the player count, the time limit and the level.
+     * Games that {@code /notplayedin} would hide anyway are not included, so the note never suggests
+     * that a recently played game would have been shown if it were not lent out.
+     *
+     * @param hasTimeLimit Whether the user gave {@code /time}, so the lent games must also fit the time.
+     */
+    private List<Game> findLentNotRecentlyPlayed(GameList games, boolean hasTimeLimit) {
+        ArrayList<Game> lentGames = hasTimeLimit
+                ? games.findLentFitting(playerCount, minutes)
+                : games.findLentFitting(playerCount);
+        lentGames.removeIf(game -> difficulty != null && !game.fitsDifficulty(difficulty));
+        lentGames.removeIf(this::isRecentlyPlayed);
+        return lentGames;
+    }
+
+    /**
+     * Returns how many available games fit the player count but have no play time recorded, leaving out
+     * games that {@code /notplayedin} would hide anyway, so the note about them only counts games
+     * that a time limit really left out. As in {@link GameList#countWithoutPlayTime(int, Difficulty)},
+     * a game with no difficulty recorded still counts, since it might be at the level.
+     */
+    private int countUntimedNotRecentlyPlayed(GameList games) {
+        int untimedCount = 0;
+        for (Game game : games.filterAvailableByPlayers(playerCount)) {
+            boolean mayFitLevel = difficulty == null || !game.hasDifficulty() || game.fitsDifficulty(difficulty);
+            if (!game.hasPlayTime() && mayFitLevel && !isRecentlyPlayed(game)) {
+                untimedCount++;
+            }
+        }
+        return untimedCount;
     }
 
     //@@author yy261
@@ -182,7 +227,9 @@ public class FilterCommand extends Command {
      * their play time was never recorded, so they know why a game they expected is missing.
      */
     private void appendUntimedNote(StringBuilder message, GameList games) {
-        int untimedCount = games.countWithoutPlayTime(playerCount, difficulty);
+        //@@author Xandurs
+        int untimedCount = countUntimedNotRecentlyPlayed(games);
+        //@@author yy261
         if (untimedCount > 0) {
             message.append(System.lineSeparator())
                     .append("(").append(untimedCount)
