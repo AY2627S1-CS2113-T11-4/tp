@@ -105,6 +105,12 @@ public class EditCommand extends Command {
         for (String tag : oldGame.getTags()) {
             editedGame.addTag(tag);
         }
+        //@@author yy261
+        // Lending cannot be changed with edit either (use lend/return), so keep the game lent if it was.
+        if (oldGame.isLent()) {
+            editedGame.lendTo(oldGame.getBorrower());
+        }
+        //@@author Xandurs
         // Play history is not something edit changes either, so keep every logged session.
         for (PlaySession session : oldGame.getSessions()) {
             editedGame.addSession(session);
@@ -112,6 +118,9 @@ public class EditCommand extends Command {
         //@@author KRAZYZECTRON
         // Availability is changed with unavailable/available, so keep the game's current reason, if any.
         oldGame.getUnavailableReason().ifPresent(editedGame::markUnavailable);
+        //@@author MohamedFarsat
+        // Ratings are changed with rate, not edit, so keep them too.
+        editedGame.setRatings(oldGame.getThumbsUp(), oldGame.getThumbsDown());
         //@@author Xandurs
 
         if (editedGame.toFileString().equals(oldGame.toFileString())) {

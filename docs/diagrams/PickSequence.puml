@@ -1,0 +1,82 @@
+@startuml
+' Picking a random game for the command: pick 4 /time 45
+hide footbox
+skinparam sequenceReferenceBackgroundColor #FFFFFF
+
+participant ":GameVault" as GV
+participant "Parser" as P <<class>>
+participant ":PickCommand" as PC
+participant ":GameList" as GL
+participant "game:Game" as G
+participant ":Random" as R
+participant ":Ui" as UI
+
+activate GV
+GV -> P : parse("pick 4 /time 45")
+activate P
+P -> P : parsePick("4 /time 45")
+activate P
+P -> P : splitByPrefixes(...)
+P -> P : parsePositiveNumber(...)
+create PC
+P -> PC : new PickCommand(4, 45)
+activate PC
+PC --> P
+deactivate PC
+P --> P : command
+deactivate P
+P --> GV : command
+deactivate P
+
+GV -> PC : execute(games, ui, storage)
+activate PC
+alt has time limit
+  PC -> GL : filterAvailableByPlayersAndTime(4, 45)
+  activate GL
+  GL --> PC : matches
+  deactivate GL
+else no time limit
+  PC -> GL : filterAvailableByPlayers(4)
+  activate GL
+  GL --> PC : matches
+  deactivate GL
+end
+
+alt matches is empty
+  PC -> PC : build "nothing to pick from" message
+else at least one match
+  PC -> PC : chooseWeighted(matches)
+  activate PC
+  loop each game in matches
+    PC -> G : getPickWeight()
+    activate G
+    G --> PC : weight
+    deactivate G
+  end
+  PC -> R : nextDouble()
+  activate R
+  R --> PC : fraction
+  deactivate R
+  PC --> PC : pickedGame
+  deactivate PC
+end
+
+opt has time limit
+  PC -> GL : countWithoutPlayTime(4)
+  activate GL
+  GL --> PC : untimedCount
+  deactivate GL
+end
+
+PC -> GL : describeLeftOut(4, 45, "considered")
+activate GL
+GL --> PC : lentNote
+deactivate GL
+
+PC -> UI : showMessage(message)
+activate UI
+UI --> PC
+deactivate UI
+PC --> GV
+deactivate PC
+@enduml

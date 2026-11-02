@@ -18,7 +18,7 @@ public class PickCommand extends Command {
     public static final String USAGE = "pick COUNT [/time MINUTES]";
 
     /** Value of {@code minutes} when the user did not give a time limit. */
-    private static final int NO_TIME_LIMIT = 0;
+    private static final int NO_TIME_LIMIT = GameList.NO_TIME_LIMIT;
 
     private final int playerCount;
     private final int minutes;
@@ -65,18 +65,22 @@ public class PickCommand extends Command {
     public void execute(GameList games, Ui ui, Storage storage) {
         boolean hasTimeLimit = minutes != NO_TIME_LIMIT;
         ArrayList<Game> matches = hasTimeLimit
-                ? games.filterByPlayersAndTime(playerCount, minutes)
-                : games.filterByPlayers(playerCount);
+                ? games.filterAvailableByPlayersAndTime(playerCount, minutes)
+                : games.filterAvailableByPlayers(playerCount);
         String criteria = describeCriteria(playerCount, minutes);
 
         StringBuilder message = new StringBuilder();
         if (matches.isEmpty()) {
             message.append(getNoMatchMessage(criteria));
         } else {
-            Game pickedGame = matches.get(random.nextInt(matches.size()));
+            Game pickedGame = chooseWeighted(matches);
             message.append("How about: ").append(pickedGame).append(System.lineSeparator())
                     .append("(picked from ").append(matches.size()).append(" game(s) that fit ")
                     .append(criteria).append(")");
+            if (hasWeightedGame(matches)) {
+                message.append(System.lineSeparator())
+                        .append("(Games rated up were more likely to be picked, and games rated down less likely.)");
+            }
         }
 
         // Like filter, explain games left out only because they have no play time recorded.
@@ -86,8 +90,54 @@ public class PickCommand extends Command {
                     .append("(").append(untimedCount).append(" game(s) for ").append(playerCount)
                     .append(" players were not considered because they have no play time recorded.)");
         }
+        //@@author yy261
+        message.append(games.describeLeftOut(playerCount, minutes, "considered"));
+        //@@author
         ui.showMessage(message.toString());
     }
+
+    //@@author MohamedFarsat
+    /**
+     * Returns one of the matches at random, where each game's chance is proportional to its
+     * {@link Game#getPickWeight()}, so games the group rated up come up more often.
+     * Think of the weights as lengths laid end to end: a random point along the total length
+     * lands inside one game's length, and longer lengths are more likely to be hit.
+     *
+     * @param matches Games to choose from; must not be empty.
+     */
+    private Game chooseWeighted(ArrayList<Game> matches) {
+        assert !matches.isEmpty() : "There should be at least one game to choose from";
+        double totalWeight = 0;
+        for (Game game : matches) {
+            totalWeight += game.getPickWeight();
+        }
+
+        double point = random.nextDouble() * totalWeight;
+        for (Game game : matches) {
+            point -= game.getPickWeight();
+            if (point < 0) {
+                return game;
+            }
+        }
+        // Rounding errors can leave the point just past the end, in which case it belongs to the last game.
+        return matches.get(matches.size() - 1);
+    }
+
+    /**
+     * Returns whether the ratings changed any game's chance of being picked, i.e. some match has a weight other
+     * than 1. A game rated e.g. +2/-2 is rated but still has weight 1, so on its own it does not count.
+     * Comparing doubles with {@code !=} is safe here, as equal counts always give exactly 1.0.
+     */
+    private static boolean hasWeightedGame(ArrayList<Game> matches) {
+        for (Game game : matches) {
+            if (game.getPickWeight() != 1.0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    //@@author
 
     /**
      * Returns a description of what the picked game must fit, e.g. {@code 4 players in 45 minutes or less}.

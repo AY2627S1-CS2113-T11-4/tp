@@ -99,4 +99,94 @@ class GameTest {
         assertEquals("Catan | 3 | 4 | 60 | strategy", timed.toFileString());
         assertEquals("Codenames | 4 | 8 |  | party,word", untimed.toFileString());
     }
+
+    //@@author MohamedFarsat
+    @Test
+    void newGame_notRated_hasWeightOneAndNoRatingShown() {
+        Game game = new Game("Catan", 3, 4);
+        assertFalse(game.isRated());
+        assertEquals(1.0, game.getPickWeight());
+        assertEquals("Catan (3-4 players)", game.toString());
+        assertEquals("Catan | 3 | 4", game.toFileString());
+    }
+
+    @Test
+    void addRating_upAndDown_countsAddUpAndAreShown() {
+        Game game = new Game("Catan", 3, 4, 60);
+        game.addRating(Thumb.UP);
+        game.addRating(Thumb.UP);
+        game.addRating(Thumb.DOWN);
+        assertTrue(game.isRated());
+        assertEquals("+2/-1", game.describeRatings());
+        assertEquals("Catan (3-4 players, 60 min) +2/-1", game.toString());
+    }
+
+    @Test
+    void getPickWeight_variousRatings_isUpPlusOneOverDownPlusOne() {
+        Game game = new Game("Catan", 3, 4);
+        game.setRatings(3, 0);
+        assertEquals(4.0, game.getPickWeight());
+        game.setRatings(0, 3);
+        assertEquals(0.25, game.getPickWeight());
+        game.setRatings(2, 2);
+        assertEquals(1.0, game.getPickWeight());
+    }
+
+    @Test
+    void toFileString_ratedGame_writesRatingsField() {
+        Game game = new Game("Catan", 3, 4, 60);
+        game.addTag("strategy");
+        game.setRatings(5, 1);
+        assertEquals("Catan | 3 | 4 | 60 | strategy | ratings=5/1", game.toFileString());
+    }
+
+    @Test
+    void toString_ratedAndLentGame_showsRatingBeforeBorrower() {
+        Game game = new Game("Catan", 3, 4);
+        game.addTag("strategy");
+        game.setRatings(1, 0);
+        game.lendTo("Alice");
+        assertEquals("Catan (3-4 players) [strategy] +1/-0 (lent to Alice)", game.toString());
+    }
+
+    @Test
+    void getPickWeight_extremeRatings_keptBetweenLimits() {
+        Game game = new Game("Catan", 3, 4);
+        game.setRatings(30, 0); // (30 + 1) / 1 = 31 without the limit.
+        assertEquals(Game.MAX_PICK_WEIGHT, game.getPickWeight());
+        game.setRatings(4, 0); // Exactly 5, so not changed.
+        assertEquals(5.0, game.getPickWeight());
+        game.setRatings(0, 30);
+        assertEquals(Game.MIN_PICK_WEIGHT, game.getPickWeight());
+    }
+
+    @Test
+    void removeRating_ratedGame_removesOneOfThatKindOnly() {
+        Game game = new Game("Catan", 3, 4);
+        game.setRatings(2, 1);
+        assertTrue(game.canRemoveRating(Thumb.DOWN));
+        game.removeRating(Thumb.DOWN);
+        assertEquals("+2/-0", game.describeRatings());
+        assertFalse(game.canRemoveRating(Thumb.DOWN));
+        assertTrue(game.canRemoveRating(Thumb.UP));
+    }
+
+    @Test
+    void canAddRating_countAtLimit_returnsFalseOnlyForThatKind() {
+        Game game = new Game("Catan", 3, 4);
+        assertTrue(game.canAddRating(Thumb.UP));
+        game.setRatings(Integer.MAX_VALUE, 0);
+        assertFalse(game.canAddRating(Thumb.UP));
+        assertTrue(game.canAddRating(Thumb.DOWN));
+        assertEquals(Integer.MAX_VALUE, game.getRatingCount(Thumb.UP));
+        assertEquals(0, game.getRatingCount(Thumb.DOWN));
+    }
+
+    @Test
+    void thumbFromKeyword_anyCaseAndSpaces_findsThumb() {
+        assertEquals(Thumb.UP, Thumb.fromKeyword(" UP ").orElseThrow());
+        assertEquals(Thumb.DOWN, Thumb.fromKeyword("Down").orElseThrow());
+        assertTrue(Thumb.fromKeyword("sideways").isEmpty());
+        assertTrue(Thumb.fromKeyword("").isEmpty());
+    }
 }
