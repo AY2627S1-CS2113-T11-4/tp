@@ -3,10 +3,12 @@ package seedu.gamevault.storage;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Borrower;
+import seedu.gamevault.game.Difficulty;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.PlaySession;
 import seedu.gamevault.game.Tag;
@@ -117,6 +119,9 @@ public class GameDecoder {
         case Game.LENT_FILE_KEY:
             decodeBorrower(value, game);
             break;
+        case Game.DIFFICULTY_FILE_KEY:
+            decodeDifficulty(value, game);
+            break;
         default:
             throw new GameVaultException("unknown field '" + key + "'");
         }
@@ -152,6 +157,20 @@ public class GameDecoder {
         }
     }
     //@@author yy261
+    /**
+     * Sets the game's difficulty to the level in a {@code difficulty} field, e.g. {@code easy}.
+     *
+     * @throws GameVaultException If the value is not one of the {@link Difficulty} keywords.
+     */
+    private static void decodeDifficulty(String value, Game game) throws GameVaultException {
+        Optional<Difficulty> difficulty = Difficulty.fromKeyword(value);
+        if (difficulty.isEmpty()) {
+            throw new GameVaultException("difficulty is '" + value + "', but should be "
+                    + Difficulty.KEYWORDS_IN_WORDS);
+        }
+        game.setDifficulty(difficulty.get());
+    }
+
     /**
      * Marks the game as lent to the person named in a {@code lent} field, e.g. {@code lent=Alice}.
      *
