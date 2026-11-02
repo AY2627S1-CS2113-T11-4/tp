@@ -470,7 +470,7 @@ leaves the class except through the data file, where a missing field is used ins
 ### Lending games to friends
 
 Hosts often lend games to friends, and a game that is lent out cannot be played tonight. The `lend`, `return` and
-`lent` commands record who has which game, and `filter` and `pick` leave lent games out of their suggestions.
+`lentout` commands record who has which game, and `filter` and `pick` leave lent games out of their suggestions.
 
 The state diagram below shows the two states a game can be in, and which commands move it between them.
 
@@ -480,9 +480,9 @@ The state diagram below shows the two states a game can be in, and which command
 the shelf. Like tags, lending is changed in place through `Game#lendTo(...)` and `Game#markReturned()`, and read
 through `Game#isLent()` and `Game#getBorrower()`. The rules for a name (1 to 30 characters, no `|`) are kept in the
 small `Borrower` class, so that `Parser` and `GameDecoder` accept exactly the same names, in the same way that `Tag`
-holds the rules for tags. In the data file, the borrower is an optional sixth field, e.g.
-`Hive | 2 | 2 |  |  | Alice`. `Game#toFileString()` leaves earlier optional fields blank so each field keeps its
-position, and drops unset fields from the end, so a game that is not lent is saved exactly as before.
+holds the rules for tags. In the data file, the borrower is saved as a named field, e.g.
+`Hive | 2 | 2 |  |  | lent=Alice`, which `Game#getNamedFileFields()` writes and `GameDecoder#decodeNamedField(...)`
+reads. A game that is not lent has no `lent` field, so it is saved exactly as before.
 
 **Lending a game.** The sequence diagram below shows what happens when the user enters `lend 2 /to Alice`.
 
@@ -500,14 +500,18 @@ position, and drops unset fields from the end, so a game that is not lent is sav
    and `Ui` confirms the change.
 
 `ReturnCommand` works the same way in reverse: it checks that the game is lent, calls `Game#markReturned()` and saves.
-`LentCommand` goes through the list and shows each lent game with its number from `list`, so the user can use that
+`ListLentCommand` goes through the list and shows each lent game with its number from `list`, so the user can use that
 number with `return` straight away.
 
-**Leaving lent games out of suggestions.** `GameList#filterByPlayers(...)` skips lent games, so `filter`, `pick` and
-`GameList#countWithoutPlayTime(...)` all ignore them in one place. `FilterTagCommand` skips them in its own loop.
-To explain why a game is missing, these commands also ask `GameList#findLentFitting(...)` for the lent games that
-*would* have matched, and append a note built by `LentCommand#describeLeftOut(...)`, e.g.
-`(Not shown because they are lent out: Catan (to Alice))`. A lent game that would not have matched anyway
+**Leaving lent games out of suggestions.** `Game#isAvailable()` is the one check for whether a game can be
+suggested. `filter`, `pick` and `GameList#countWithoutPlayTime(...)` use `GameList#filterAvailableByPlayers(...)` and
+`GameList#filterAvailableByPlayersAndTime(...)`, which keep only available games. `FilterTagCommand` calls
+`Game#isAvailable()` in its own loop. `GameList#filterByPlayers(...)` still returns every game that fits, for
+features that need all games for a group size.
+To explain why a game is missing, `filter` and `pick` append the note from
+`GameList#describeLeftOut(count, minutes, verb)`, which looks up the lent games that *would* have matched, e.g.
+`(Not shown because they are lent out: Catan (to Alice))`. `FilterTagCommand` matches by tag, so it collects its own
+list and passes it to `GameList#describeLeftOut(lentGames, verb)`. A lent game that would not have matched anyway
 (e.g. one that takes too long) is not mentioned. `EditCommand` builds a new `Game`, so it copies the borrower to the
 edited game, just as it copies the tags.
 
@@ -533,13 +537,15 @@ edited game, just as it copies the tags.
 
 **Aspect: Where lent games are skipped**
 
-Skipping lent games inside `GameList#filterByPlayers(...)`, instead of in each command, means `filter`, `pick` and the
-count of untimed games cannot disagree about which games are available. `list`, `find` and `sort` use the whole
-list, so they still show lent games, with `(lent to NAME)` after each one.
+Skipping lent games inside the `GameList#filterAvailable...` methods, instead of in each command, means `filter`,
+`pick` and the count of untimed games cannot disagree about which games are available. A new reason for a game to be
+unavailable only needs a change to `Game#isAvailable()`. Keeping `GameList#filterByPlayers(...)` general means
+other features can still find every game for a group size. `list`, `find` and `sort` use the whole list, so they
+still show lent games, with `(lent to NAME)` after each one.
 
 #### Possible future improvements
 
-* Record when a game was lent, and a due date, so `lent` can show overdue games first.
+* Record when a game was lent, and a due date, so `lentout` can show overdue games first.
 * Let the user mark a game as unavailable for other reasons, such as missing pieces, with the same effect on
   `filter` and `pick`.
 <!-- @@author -->

@@ -51,7 +51,7 @@ Here are the commands you can use:
   sort    Sorts your collection: sort title|players|time
   lend    Records that a game is lent out: lend INDEX /to NAME
   return  Records that a lent game is back: return INDEX
-  lent    Lists the games that are lent out and who has them.
+  lentout Lists the games that are lent out and who has them.
   help    Shows this list of commands.
   exit    Exits GameVault.
 ____________________________________________________________
@@ -478,7 +478,7 @@ Records that a lent game is back on your shelf, so `filter` and `pick` can sugge
 
 Format: `return INDEX`
 
-* `INDEX` is the number shown next to the game in `list` or `lent`.
+* `INDEX` is the number shown next to the game in `list` or `lentout`.
 
 Example of usage: `return 2`
 
@@ -492,13 +492,13 @@ ____________________________________________________________
 ```
 
 If the game is not lent out, GameVault shows
-`Love Letter is not lent to anyone. Use 'lent' to see which games are lent out.` and changes nothing.
+`Love Letter is not lent to anyone. Use 'lentout' to see which games are lent out.` and changes nothing.
 
-### Seeing which games are lent out: `lent`
+### Seeing which games are lent out: `lentout`
 
 Shows every game that is lent out and who has it, so you know which games to ask for back.
 
-Format: `lent`
+Format: `lentout`
 
 * The numbers are the same as in `list`, so you can use them with `return` straight away.
 
@@ -591,7 +591,7 @@ List tags | `tags`
 Sort | `sort title`, `sort players` or `sort time`, e.g. `sort time`
 Lend | `lend INDEX /to NAME`, e.g. `lend 2 /to Alice`
 Return | `return INDEX`, e.g. `return 2`
-List lent games | `lent`
+List lent games | `lentout`
 Log | `log INDEX /players COUNT [/date YYYY-MM-DD]`, e.g. `log 1 /players 4 /date 2026-10-30`
 Help | `help`
 Exit | `exit`
