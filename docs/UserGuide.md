@@ -49,6 +49,8 @@ Here are the commands you can use:
                [/diff LEVEL|none]
   tag          Adds tags to a game: tag INDEX TAG [MORE_TAGS]...
   log          Logs that a game was played: log INDEX /players COUNT [/date YYYY-MM-DD]
+  history      Shows when a game was played: history INDEX
+  unplayed     Lists the games that have never been played.
   rate         Gives a game a thumbs up or down after playing: rate INDEX up|down
   unrate       Removes a thumbs up or down given by mistake: unrate INDEX up|down
   untag        Removes tags from a game: untag INDEX TAG [MORE_TAGS]...
@@ -498,6 +500,61 @@ Catan has now been played 2 times.
 ____________________________________________________________
 ```
 
+<!-- @@author SwaggyDaddy67 -->
+### Viewing a game's play history: `history`
+
+Shows every session logged for a game with [`log`](#logging-a-play-session-log), so you can see how often and how
+recently your group has played it.
+
+Format: `history INDEX`
+
+* `INDEX` is the game's number in `list`, and must be a whole number of at least 1.
+* Sessions are shown oldest first, each with the date and how many people played.
+* The last line gives the total number of times the game was played and the date it was last played.
+* If the game has no sessions logged, GameVault says it has never been played and shows the format of `log`.
+* Your collection is not changed.
+
+Example of usage: `history 1`, after logging Catan on 1 June 2026 with 3 players and on 30 October 2026 with 4
+
+Expected output:
+
+```
+____________________________________________________________
+Play history of Catan (oldest first):
+  2026-06-01 (3 players)
+  2026-10-30 (4 players)
+Played 2 times in total, most recently on 2026-10-30.
+____________________________________________________________
+```
+
+If there is no game with that number, GameVault shows an error such as
+`There is no game numbered 9. Use 'list' to see the current numbering.`
+
+### Listing games you have never played: `unplayed`
+
+Shows the games that have no sessions logged, so games that keep being passed over get a fair chance.
+
+Format: `unplayed`
+
+* Each game is shown with its number from `list`, so you can use it with `log` or `history` straight away.
+* The last line says how many of your games have never been played.
+* If every game has been played at least once, GameVault says so instead.
+* Anything typed after `unplayed` (e.g. `unplayed all`) is reported as an error.
+* Your collection is not changed.
+
+Example of usage: `unplayed`
+
+Expected output, when only Catan has been played:
+
+```
+____________________________________________________________
+Games you have never played:
+2. Codenames (4-8 players)
+3. Hive (2 players)
+2 of your 3 game(s) have never been played.
+____________________________________________________________
+```
+
 <!-- @@author MohamedFarsat -->
 ### Rating a game after playing: `rate`
 
@@ -823,6 +880,8 @@ Lend | `lend INDEX /to NAME`, e.g. `lend 2 /to Alice`
 Return | `return INDEX`, e.g. `return 2`
 List lent games | `lentout`
 Log | `log INDEX /players COUNT [/date YYYY-MM-DD]`, e.g. `log 1 /players 4 /date 2026-10-30`
+History | `history INDEX`, e.g. `history 1`
+Unplayed | `unplayed`
 Rate | `rate INDEX up\|down`, e.g. `rate 1 up`
 Unrate | `unrate INDEX up\|down`, e.g. `unrate 2 down`
 Mark unavailable | `unavailable INDEX /reason missing\|damaged`, e.g. `unavailable 1 /reason missing`
