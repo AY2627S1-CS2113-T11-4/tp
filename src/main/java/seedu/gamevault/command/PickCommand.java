@@ -18,7 +18,7 @@ public class PickCommand extends Command {
     public static final String USAGE = "pick COUNT [/time MINUTES]";
 
     /** Value of {@code minutes} when the user did not give a time limit. */
-    private static final int NO_TIME_LIMIT = 0;
+    private static final int NO_TIME_LIMIT = GameList.NO_TIME_LIMIT;
 
     private final int playerCount;
     private final int minutes;
@@ -65,8 +65,8 @@ public class PickCommand extends Command {
     public void execute(GameList games, Ui ui, Storage storage) {
         boolean hasTimeLimit = minutes != NO_TIME_LIMIT;
         ArrayList<Game> matches = hasTimeLimit
-                ? games.filterByPlayersAndTime(playerCount, minutes)
-                : games.filterByPlayers(playerCount);
+                ? games.filterAvailableByPlayersAndTime(playerCount, minutes)
+                : games.filterAvailableByPlayers(playerCount);
         String criteria = describeCriteria(playerCount, minutes);
 
         StringBuilder message = new StringBuilder();
@@ -86,6 +86,9 @@ public class PickCommand extends Command {
                     .append("(").append(untimedCount).append(" game(s) for ").append(playerCount)
                     .append(" players were not considered because they have no play time recorded.)");
         }
+        //@@author yy261
+        message.append(games.describeLeftOut(playerCount, minutes, "considered"));
+        //@@author
         ui.showMessage(message.toString());
     }
 

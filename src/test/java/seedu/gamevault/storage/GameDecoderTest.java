@@ -47,7 +47,7 @@ class GameDecoderTest {
         assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan"));
         assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan | 3"));
         assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan | 3 |"));
-        assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan | 3 | 4 | 60 | party | 5"));
+        assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan | 3 | 4 | 60 | party | Alice | 5"));
         assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan, 3, 4"));
     }
 
@@ -135,6 +135,44 @@ class GameDecoderTest {
         Game original = new Game("Codenames", 4, 8);
         original.addTag("party");
         original.addTag("co-op");
+        assertEquals(original.toString(), GameDecoder.decodeLine(original.toFileString()).toString());
+    }
+
+    //@@author yy261
+    @Test
+    void decodeLine_withBorrower_returnsLentGame() throws GameVaultException {
+        Game game = GameDecoder.decodeLine("Hive | 2 | 2 |  |  | lent=  Mary   Tan ");
+        assertTrue(game.isLent());
+        // The name is normalised in the same way as when it is typed with 'lend'.
+        assertEquals("Mary Tan", game.getBorrower());
+        assertFalse(game.hasPlayTime());
+        assertTrue(game.getTags().isEmpty());
+    }
+
+    @Test
+    void decodeLine_noLentField_returnsGameOnShelf() throws GameVaultException {
+        assertFalse(GameDecoder.decodeLine("Catan | 3 | 4 | 60 | strategy").isLent());
+    }
+
+    @Test
+    void decodeLine_blankLentField_throwsException() {
+        assertThrows(GameVaultException.class,
+                () -> GameDecoder.decodeLine("Catan | 3 | 4 | 60 | strategy | lent="));
+    }
+
+    @Test
+    void decodeLine_borrowerTooLong_throwsExceptionNamingField() {
+        String longName = "a".repeat(31);
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> GameDecoder.decodeLine("Hive | 2 | 2 |  |  | lent=" + longName));
+        assertTrue(e.getMessage().startsWith("lent is '" + longName + "'"));
+    }
+
+    @Test
+    void decodeLine_toFileStringOfLentGame_decodesToSameGame() throws GameVaultException {
+        Game original = new Game("Catan", 3, 4, 60);
+        original.addTag("strategy");
+        original.lendTo("Alice");
         assertEquals(original.toString(), GameDecoder.decodeLine(original.toFileString()).toString());
     }
 }

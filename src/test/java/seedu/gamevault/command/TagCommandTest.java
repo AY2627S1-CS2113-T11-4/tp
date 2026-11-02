@@ -175,4 +175,17 @@ class TagCommandTest {
         assertFalse(new ListTagsCommand().isExit());
         assertFalse(new FilterTagCommand("party").isExit());
     }
+
+    //@@author yy261
+    @Test
+    void filterByTag_lentGameWithTag_leavesItOutAndSaysWhoHasIt() {
+        games.get(0).addTag("strategy");
+        games.get(0).lendTo("Alice");
+
+        new FilterTagCommand("strategy").execute(games, ui, storage);
+
+        String printed = output.toString();
+        assertTrue(printed.contains("No games tagged 'strategy'."));
+        assertTrue(printed.contains("(Not shown because they are lent out: Catan (to Alice))"));
+    }
 }
