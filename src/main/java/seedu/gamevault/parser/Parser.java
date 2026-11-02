@@ -42,6 +42,7 @@ import seedu.gamevault.command.UntagCommand;
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Borrower;
 import seedu.gamevault.game.Game;
+import seedu.gamevault.game.GameList;
 import seedu.gamevault.game.SortOrder;
 import seedu.gamevault.game.Tag;
 import seedu.gamevault.game.Thumb;
@@ -61,6 +62,7 @@ public class Parser {
     private static final String TO_PREFIX = "/to";
     private static final String PLAYERS_PREFIX = "/players";
     private static final String DATE_PREFIX = "/date";
+    private static final String NOT_PLAYED_IN_PREFIX = "/notplayedin";
     private static final String REASON_PREFIX = "/reason";
     private static final String FROM_PREFIX = "/from";
     private static final String DUE_PREFIX = "/due";
@@ -203,25 +205,36 @@ public class Parser {
 
     //@@author yy261
     /**
-     * Builds a {@link FilterCommand} from arguments in the form {@code COUNT [/time MINUTES]},
-     * e.g. {@code 4} or {@code 4 /time 45}, or a {@link FilterTagCommand} from arguments in the form
+     * Builds a {@link FilterCommand} from arguments in the form
+     * {@code COUNT [/time MINUTES] [/notplayedin DAYS]}, e.g. {@code 4}, {@code 4 /time 45} or
+     * {@code 4 /notplayedin 14}, or a {@link FilterTagCommand} from arguments in the form
      * {@code [COUNT] [/time MINUTES] /tag TAG}, e.g. {@code /tag party} or {@code 6 /tag party}.
      *
      * @throws GameVaultException If COUNT is missing, a number is not a whole number or is less than 1,
-     *     /time is repeated, or the /tag form is invalid.
+     *     a prefix is repeated, /notplayedin is used with /tag, or the /tag form is invalid.
      */
     private static Command parseFilter(String arguments) throws GameVaultException {
-        Map<String, String> fields = splitByPrefixes(arguments, TIME_PREFIX, TAG_PREFIX);
+        Map<String, String> fields = splitByPrefixes(arguments, TIME_PREFIX, TAG_PREFIX, NOT_PLAYED_IN_PREFIX);
+        //@@author Xandurs
+        if (fields.containsKey(TAG_PREFIX) && fields.containsKey(NOT_PLAYED_IN_PREFIX)) {
+            throw new GameVaultException(NOT_PLAYED_IN_PREFIX + " cannot be used together with /tag yet. Format: "
+                    + FilterCommand.USAGE + " (e.g. filter 4 /notplayedin 14)");
+        }
+        //@@author yy261
         if (fields.containsKey(TAG_PREFIX)) {
             return parseFilterByTag(fields);
         }
         int playerCount = parsePositiveNumber(fields.get(PREAMBLE), "COUNT", FilterCommand.USAGE);
-        if (!fields.containsKey(TIME_PREFIX)) {
-            return new FilterCommand(playerCount);
-        }
-        int minutes = parsePositiveNumber(fields.get(TIME_PREFIX), "MINUTES", FilterCommand.USAGE);
-        return new FilterCommand(playerCount, minutes);
+        //@@author Xandurs
+        int minutes = fields.containsKey(TIME_PREFIX)
+                ? parsePositiveNumber(fields.get(TIME_PREFIX), "MINUTES", FilterCommand.USAGE)
+                : GameList.NO_TIME_LIMIT;
+        int notPlayedInDays = fields.containsKey(NOT_PLAYED_IN_PREFIX)
+                ? parsePositiveNumber(fields.get(NOT_PLAYED_IN_PREFIX), "DAYS", FilterCommand.USAGE)
+                : FilterCommand.NO_DAYS_LIMIT;
+        return new FilterCommand(playerCount, minutes, notPlayedInDays);
     }
+    //@@author yy261
 
     /**
      * Splits arguments such as {@code Catan /min 3 /max 4} into the text before the first prefix
