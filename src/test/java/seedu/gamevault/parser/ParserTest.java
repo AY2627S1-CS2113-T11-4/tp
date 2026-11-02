@@ -574,6 +574,8 @@ class ParserTest {
         assertTrue(e.getMessage().startsWith("Please say why with /reason missing or damaged."));
         e = assertThrows(GameVaultException.class, () -> Parser.parse("unavailable 2 /reason"));
         assertTrue(e.getMessage().startsWith("Please say why with /reason"));
+        e = assertThrows(GameVaultException.class, () -> Parser.parse("unavailable 2 missing"));
+        assertTrue(e.getMessage().startsWith("Did you forget /reason?"));
     }
 
     @Test

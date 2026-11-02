@@ -16,28 +16,28 @@ public class HelpCommand extends Command {
      */
     static final String HELP_MESSAGE = """
             Here are the commands you can use:
-              add     Adds a game: add TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]
-              list    Lists all games in your collection.
-              find    Finds games by title: find KEYWORD
-              filter  Shows games that fit a player count: filter COUNT [/time MINUTES]
-                      or games with a tag: filter [COUNT] [/time MINUTES] /tag TAG
-              pick    Picks a random game that fits a player count: pick COUNT [/time MINUTES]
-              delete  Deletes a game: delete INDEX
-              edit    Edits a game: edit INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES|none]
-              tag     Adds tags to a game: tag INDEX TAG [MORE_TAGS]...
-              log     Logs that a game was played: log INDEX /players COUNT [/date YYYY-MM-DD]
-              rate    Gives a game a thumbs up or down after playing: rate INDEX up|down
-              unrate  Removes a thumbs up or down given by mistake: unrate INDEX up|down
-              untag   Removes tags from a game: untag INDEX TAG [MORE_TAGS]...
-              tags    Lists all tags in use and how many games have each.
-              sort    Sorts your collection: sort title|players|time
-              lend    Records that a game is lent out: lend INDEX /to NAME
-              return  Records that a lent game is back: return INDEX
-              lentout Lists the games that are lent out and who has them.
+              add          Adds a game: add TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]
+              list         Lists all games in your collection.
+              find         Finds games by title: find KEYWORD
+              filter       Shows games that fit a player count: filter COUNT [/time MINUTES]
+                           or games with a tag: filter [COUNT] [/time MINUTES] /tag TAG
+              pick         Picks a random game that fits a player count: pick COUNT [/time MINUTES]
+              delete       Deletes a game: delete INDEX
+              edit         Edits a game: edit INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES|none]
+              tag          Adds tags to a game: tag INDEX TAG [MORE_TAGS]...
+              log          Logs that a game was played: log INDEX /players COUNT [/date YYYY-MM-DD]
+              rate         Gives a game a thumbs up or down after playing: rate INDEX up|down
+              unrate       Removes a thumbs up or down given by mistake: unrate INDEX up|down
+              untag        Removes tags from a game: untag INDEX TAG [MORE_TAGS]...
+              tags         Lists all tags in use and how many games have each.
+              sort         Sorts your collection: sort title|players|time
+              lend         Records that a game is lent out: lend INDEX /to NAME
+              return       Records that a lent game is back: return INDEX
+              lentout      Lists the games that are lent out and who has them.
               unavailable  Marks a game unavailable: unavailable INDEX /reason missing|damaged
               available    Marks a game available again: available INDEX
-              help    Shows this list of commands.
-              exit    Exits GameVault.""";
+              help         Shows this list of commands.
+              exit         Exits GameVault.""";
 
     @Override
     public void execute(GameList games, Ui ui, Storage storage) {

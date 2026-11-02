@@ -674,6 +674,11 @@ public class Parser {
             throw new GameVaultException("INDEX is missing. Format: " + UnavailableCommand.USAGE
                     + " (e.g. unavailable 2 /reason missing)");
         }
+        // Without /reason, "2 missing" would all be read as INDEX, so point out the likely cause instead.
+        if (!fields.containsKey(REASON_PREFIX) && indexText.contains(" ")) {
+            throw new GameVaultException("Did you forget /reason? Format: " + UnavailableCommand.USAGE
+                    + " (e.g. unavailable 2 /reason missing)");
+        }
         int displayNumber = parseIndex(indexText);
 
         String reasonText = fields.getOrDefault(REASON_PREFIX, "");
