@@ -166,8 +166,9 @@ The sequence diagram below shows what happens when the user enters `pick 4 /time
 2. `parsePick` creates a `PickCommand(4, 45)`. If `/time` is not given, it uses `PickCommand(4)` instead, which
    stores `0` to mean "no time limit".
 3. `GameVault` calls `PickCommand#execute(...)`. With a time limit, it asks the `GameList` for
-   `filterByPlayersAndTime(4, 45)`. Without one, it uses `filterByPlayers(4)`. Both skip lent games. Either way, the
-   collection itself is not changed, so `pick` never saves to the data file.
+   `filterAvailableByPlayersAndTime(4, 45)`. Without one, it uses `filterAvailableByPlayers(4)`. Both keep only games
+   for which `Game#isAvailable()` is true, so lent games are left out. Either way, the collection itself is not
+   changed, so `pick` never saves to the data file.
 4. If no game matches, the message says there is nothing to pick from. Otherwise, `PickCommand#chooseWeighted(...)`
    asks each match for its `Game#getPickWeight()` and adds them up. It then takes a random point along that total
    (`Random#nextDouble()` times the total) and picks the game whose share the point falls in, so games rated up are
@@ -175,9 +176,9 @@ The sequence diagram below shows what happens when the user enters `pick 4 /time
 5. Only with a time limit, `PickCommand` also calls `GameList#countWithoutPlayTime(4)`. Games with no play time
    recorded cannot be known to fit in 45 minutes, so they are left out, and the message says how many were left
    out. This matches what `filter` does.
-6. `PickCommand` calls `GameList#findLentFitting(4, 45)` (or `findLentFitting(4)` without a time limit) for the lent
-   games that would otherwise have fitted, and `LentCommand#describeLeftOut(...)` turns them into a note such as
-   `(Not considered because they are lent out: Catan (to Alice))`.
+6. `PickCommand` calls `GameList#describeLeftOut(4, 45, "considered")`, which finds the lent games that would
+   otherwise have fitted and turns them into a note such as
+   `(Not considered because they are lent out: Catan (to Alice))`, or an empty string if there are none.
 7. `PickCommand` shows the result through `Ui#showMessage(...)`, e.g.
    `How about: Love Letter (2-4 players, 20 min)`.
 
@@ -198,8 +199,8 @@ The sequence diagram below shows what happens when the user enters `pick 4 /time
 
 **Aspect: Where the filtering logic lives**
 
-* **Alternative 1 (current choice):** Reuse `GameList#filterByPlayers(...)` and
-  `GameList#filterByPlayersAndTime(...)`, which `filter` also uses.
+* **Alternative 1 (current choice):** Reuse `GameList#filterAvailableByPlayers(...)` and
+  `GameList#filterAvailableByPlayersAndTime(...)`, which `filter` also uses.
   * Pros: `pick` and `filter` cannot disagree. A game shown by `filter 4 /time 45` is exactly a game that
     `pick 4 /time 45` can choose, and a fix to the filtering rules applies to both commands.
   * Cons: `pick` depends on how `filter` defines "fits", so the two cannot easily use different rules later.

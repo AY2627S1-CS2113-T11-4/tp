@@ -9,7 +9,6 @@ participant ":PickCommand" as PC
 participant ":GameList" as GL
 participant "game:Game" as G
 participant ":Random" as R
-participant "LentCommand" as LC <<class>>
 participant ":Ui" as UI
 
 activate GV
@@ -32,12 +31,12 @@ deactivate P
 GV -> PC : execute(games, ui, storage)
 activate PC
 alt has time limit
-  PC -> GL : filterByPlayersAndTime(4, 45)
+  PC -> GL : filterAvailableByPlayersAndTime(4, 45)
   activate GL
   GL --> PC : matches
   deactivate GL
 else no time limit
-  PC -> GL : filterByPlayers(4)
+  PC -> GL : filterAvailableByPlayers(4)
   activate GL
   GL --> PC : matches
   deactivate GL
@@ -69,14 +68,10 @@ opt has time limit
   deactivate GL
 end
 
-PC -> GL : findLentFitting(...)
+PC -> GL : describeLeftOut(4, 45, "considered")
 activate GL
-GL --> PC : lentGames
+GL --> PC : lentNote
 deactivate GL
-PC -> LC : describeLeftOut(lentGames, "considered")
-activate LC
-LC --> PC : note
-deactivate LC
 
 PC -> UI : showMessage(message)
 activate UI
