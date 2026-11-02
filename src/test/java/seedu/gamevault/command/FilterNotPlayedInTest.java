@@ -45,7 +45,11 @@ class FilterNotPlayedInTest {
     }
 
     private String execute(int notPlayedInDays) {
-        new FilterCommand(4, 0, notPlayedInDays, TODAY).execute(games, ui, new Storage("unused.txt"));
+        return execute(0, notPlayedInDays);
+    }
+
+    private String execute(int minutes, int notPlayedInDays) {
+        new FilterCommand(4, minutes, notPlayedInDays, TODAY).execute(games, ui, new Storage("unused.txt"));
         return output.toString();
     }
 
@@ -55,7 +59,8 @@ class FilterNotPlayedInTest {
         assertFalse(printed.contains("Catan"));
         assertTrue(printed.contains("Azul"));
         assertTrue(printed.contains("Hive"));
-        assertTrue(printed.contains("1 game(s) were hidden because they were played in the last 14 day(s)."));
+        assertTrue(printed.contains(
+                "1 game(s) for 4 players were left out because they were played in the last 14 day(s)."));
     }
 
     @Test
@@ -64,7 +69,7 @@ class FilterNotPlayedInTest {
         assertTrue(printed.contains("Catan"));
         assertTrue(printed.contains("Azul"));
         assertTrue(printed.contains("Hive"));
-        assertFalse(printed.contains("were hidden"));
+        assertFalse(printed.contains("were played in the last"));
     }
 
     @Test
@@ -73,11 +78,38 @@ class FilterNotPlayedInTest {
         assertFalse(printed.contains("Catan"));
         assertFalse(printed.contains("Azul"));
         assertTrue(printed.contains("Hive"));
-        assertTrue(printed.contains("2 game(s) were hidden"));
+        assertTrue(printed.contains("2 game(s) for 4 players were left out because they were played"));
     }
 
     @Test
     void execute_notPlayedIn_criteriaMentionDays() {
         assertTrue(execute(14).contains("not played in the last 14 day(s)"));
+    }
+
+    @Test
+    void execute_timeLimit_untimedNoteSkipsRecentlyPlayedGames() {
+        // None of the games has a play time. Catan was played 3 days ago, so /notplayedin 14 hides it anyway,
+        // and only Azul and Hive are counted as left out by /time.
+        String printed = execute(45, 14);
+        assertTrue(printed.contains("(2 game(s) for 4 players were left out because they have no play time"));
+
+        output.reset();
+        // Without /notplayedin, all three untimed games are counted, as before.
+        printed = execute(45, FilterCommand.NO_DAYS_LIMIT);
+        assertTrue(printed.contains("(3 game(s) for 4 players were left out because they have no play time"));
+    }
+
+    @Test
+    void execute_lentGames_noteSkipsRecentlyPlayedGames() {
+        Game lentRecently = gamePlayedOn("Ticket to Ride", LocalDate.of(2026, 11, 1));
+        lentRecently.lendTo("Alice");
+        Game lentLongAgo = gamePlayedOn("Splendor", LocalDate.of(2026, 9, 1));
+        lentLongAgo.lendTo("Ben");
+        games.add(lentRecently);
+        games.add(lentLongAgo);
+
+        String printed = execute(14);
+        assertTrue(printed.contains("Splendor (to Ben)"));
+        assertFalse(printed.contains("Ticket to Ride"));
     }
 }
