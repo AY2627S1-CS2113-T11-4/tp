@@ -47,8 +47,8 @@ class ListCommandTest {
         new ListCommand().execute(games, ui, new Storage("unused.txt"));
 
         String expected = ListCommand.LIST_HEADER + System.lineSeparator()
-                + "1. Catan (3-4 players)" + System.lineSeparator()
-                + "2. Chess (2 players)";
+                + "1. Catan (3-4 players) - never played" + System.lineSeparator()
+                + "2. Chess (2 players) - never played";
         String printed = output.toString();
         assertTrue(printed.contains(expected));
         assertFalse(printed.contains(ListCommand.EMPTY_MESSAGE));

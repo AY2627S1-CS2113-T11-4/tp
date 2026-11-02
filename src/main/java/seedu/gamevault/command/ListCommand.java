@@ -13,6 +13,7 @@ import seedu.gamevault.ui.Ui;
  * Shows every game in the collection, numbered from 1 in the order they were added.
  * These numbers are the ones other commands, such as {@code delete}, refer to.
  * Borrowed games that should already have been given back are listed again at the end as a reminder.
+ * Each game also shows when it was last played, e.g. {@code last played 3 days ago} or {@code never played}.
  */
 public class ListCommand extends Command {
     public static final String COMMAND_WORD = "list";
@@ -52,8 +53,8 @@ public class ListCommand extends Command {
             return;
         }
 
-        //@@author KRAZYZECTRON
-        ui.showMessage(LIST_HEADER + formatNumberedList(gamesToShow) + formatOverdue(gamesToShow));
+        //@@author Xandurs
+        ui.showMessage(LIST_HEADER + formatNumberedListWithLastPlayed(gamesToShow) + formatOverdue(gamesToShow));
         //@@author SwaggyDaddy67
     }
 
@@ -74,7 +75,23 @@ public class ListCommand extends Command {
         }
         return lines.toString();
     }
-
+    //@@author Xandurs
+    /**
+     * Returns the games numbered from 1 like {@link #formatNumberedList}, with when each one was last played
+     * added to the end of its line, e.g. {@code 1. Catan (3-4 players) - last played 3 days ago},
+     * so the user can avoid games the group played recently.
+     */
+    private String formatNumberedListWithLastPlayed(List<Game> gamesToShow) {
+        StringBuilder lines = new StringBuilder();
+        for (int i = 0; i < gamesToShow.size(); i++) {
+            int displayNumber = i + 1; // Users count from 1, while the list counts from 0.
+            Game game = gamesToShow.get(i);
+            lines.append(System.lineSeparator())
+                    .append(displayNumber).append(". ").append(game)
+                    .append(" - ").append(game.describeLastPlayed(today));
+        }
+        return lines.toString();
+    }
     //@@author KRAZYZECTRON
     /**
      * Returns a reminder listing the overdue borrowed games with their numbers from {@code list},
