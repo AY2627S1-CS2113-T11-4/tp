@@ -472,7 +472,7 @@ Not rated (`+0/-0`) | 1 | Equally likely
 
 The limits mean a long-time favourite is picked more often, but cannot crowd out every other game, and a game with
 many thumbs down is picked less often, but is never ruled out, so your group still gets the occasional surprise.
-Ratings do not change `filter`, which always shows every game that fits.
+Ratings only affect `pick`: `filter` shows the same games whether or not they are rated.
 
 ### Undoing a rating: `unrate`
 
