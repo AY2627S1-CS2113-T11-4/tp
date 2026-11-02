@@ -697,6 +697,8 @@ class ParserTest {
         assertTrue(e.getMessage().startsWith("NAME is missing."));
         e = assertThrows(GameVaultException.class, () -> Parser.parseBorrow("1 /from Bob /due", TODAY));
         assertTrue(e.getMessage().startsWith("DATE is missing."));
+        e = assertThrows(GameVaultException.class, () -> Parser.parseBorrow("2 Bob", TODAY));
+        assertTrue(e.getMessage().startsWith("Did you forget /from?"));
     }
 
     @Test

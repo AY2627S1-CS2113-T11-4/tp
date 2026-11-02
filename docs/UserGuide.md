@@ -648,15 +648,18 @@ Format: `borrow INDEX /from NAME [/due YYYY-MM-DD]` and `giveback INDEX`
   the past. Leave it out for a game that does not have to be given back, such as a gift.
 * `/from` and `/due` can be given in either order.
 * Using `borrow` again on the same game replaces the old record, e.g. to extend a loan.
-* `giveback` forgets who the game is from, e.g. once you have given it back. The game stays in your collection,
-  so you keep its play history and ratings. Use `delete` if you want to remove it as well.
-* Borrowed games are on your shelf, so `filter` and `pick` still suggest them. `edit` keeps who the game is from.
+* `giveback` is for a borrowed game you have given back. Since it is no longer on your shelf, it is **removed from
+  your collection**, along with its play history and ratings, so `filter` and `pick` stop suggesting it.
+* `giveback` only works on games borrowed with `/due`. A game recorded without `/due` is a gift, so there is
+  nothing to give back; use `delete` if you no longer have it.
+* While you have them, borrowed games are on your shelf, so `filter` and `pick` still suggest them.
+  `edit` keeps who the game is from.
 
 Examples of usage:
 
 * `borrow 2 /from Bob /due 2026-11-10` records that game 2 is borrowed from Bob until 10 November 2026.
 * `borrow 3 /from Mary Tan` records that game 3 is from Mary Tan, e.g. a gift.
-* `giveback 2` records that game 2 has been given back.
+* `giveback 2` records that game 2 has been given back, and removes it from your collection.
 
 Expected output (for `borrow 2 /from Bob /due 2026-11-10`):
 
@@ -667,14 +670,17 @@ Recorded: Hive (2 players) (borrowed from Bob, due 2026-11-10)
 ____________________________________________________________
 ```
 
-Expected output (for `giveback 2`):
+Expected output (for `giveback 2`, with 3 games in your collection before):
 
 ```
 ____________________________________________________________
 Given back to Bob: Hive
-It stays in your collection. Use 'delete 2' if you want to remove it.
+It has been removed from your collection. You now have 2 game(s).
 ____________________________________________________________
 ```
+
+For a gift, `giveback` changes nothing and shows e.g.
+`Azul was a gift from Mary Tan, so there is nothing to give back. Use 'delete 3' if you no longer have it.`
 
 <!-- @@author -->
 

@@ -104,17 +104,16 @@ class BorrowCommandTest {
     }
 
     @Test
-    void giveBack_borrowedGame_clearsLenderButKeepsGame() throws GameVaultException, IOException {
+    void giveBack_borrowedGame_removesItFromCollection() throws GameVaultException, IOException {
         games.get(1).recordLender("Bob", DUE);
 
         new GiveBackCommand(2).execute(games, ui, storage);
 
-        assertFalse(games.get(1).hasLender());
-        assertEquals(Optional.empty(), games.get(1).getDueBack());
-        assertEquals(2, games.size());
+        assertEquals(1, games.size());
+        assertEquals("Catan", games.get(0).getTitle());
         assertTrue(output.toString().contains("Given back to Bob: Hive"));
-        assertEquals(List.of("Catan | 3 | 4 | 60", "Hive | 2 | 2"),
-                Files.readAllLines(dataFile, StandardCharsets.UTF_8));
+        assertTrue(output.toString().contains("It has been removed from your collection. You now have 1 game(s)."));
+        assertEquals(List.of("Catan | 3 | 4 | 60"), Files.readAllLines(dataFile, StandardCharsets.UTF_8));
     }
 
     @Test
@@ -122,8 +121,33 @@ class BorrowCommandTest {
         GameVaultException e = assertThrows(GameVaultException.class, () ->
                 new GiveBackCommand(1).execute(games, ui, storage));
 
-        assertEquals("Catan is not recorded as being from anyone.", e.getMessage());
+        assertEquals("Catan is not borrowed from anyone.", e.getMessage());
         assertFalse(Files.exists(dataFile));
+    }
+
+    @Test
+    void giveBack_gift_throwsExceptionAndKeepsGame() {
+        games.get(1).recordLender("Bob", null);
+
+        GameVaultException e = assertThrows(GameVaultException.class, () ->
+                new GiveBackCommand(2).execute(games, ui, storage));
+
+        assertEquals("Hive was a gift from Bob, so there is nothing to give back. "
+                + "Use 'delete 2' if you no longer have it.", e.getMessage());
+        assertEquals(2, games.size());
+        assertTrue(games.get(1).hasLender());
+        assertFalse(Files.exists(dataFile));
+    }
+
+    @Test
+    void giveBack_afterwards_pickNoLongerSuggestsGame() throws GameVaultException {
+        games.get(1).recordLender("Bob", DUE);
+        new GiveBackCommand(2).execute(games, ui, storage);
+        output.reset();
+
+        new PickCommand(2).execute(games, ui, storage);
+
+        assertFalse(output.toString().contains("Hive"));
     }
 
     @Test

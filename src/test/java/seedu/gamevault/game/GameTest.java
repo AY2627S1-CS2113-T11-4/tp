@@ -233,8 +233,7 @@ class GameTest {
     void borrowedGame_isStillAvailable() {
         Game game = new Game("Hive", 2, 2);
         game.recordLender("Bob", LocalDate.of(2026, 11, 10));
+        assertTrue(game.hasLender());
         assertTrue(game.isAvailable());
-        game.clearLender();
-        assertFalse(game.hasLender());
     }
 }

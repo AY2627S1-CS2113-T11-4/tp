@@ -244,16 +244,6 @@ public class Game {
     }
 
     /**
-     * Forgets who lent or gave this game, e.g. once it has been given back.
-     * Callers must check {@link #hasLender()} first.
-     */
-    public void clearLender() {
-        assert hasLender() : "Game should have a lender before it is cleared";
-        lender = null;
-        dueBack = null;
-    }
-
-    /**
      * Returns whether this game should already have been given back, i.e. its due-back date is before today.
      * A game due back today is not overdue yet.
      *

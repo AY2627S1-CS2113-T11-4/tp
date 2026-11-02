@@ -732,6 +732,11 @@ public class Parser {
             throw new GameVaultException("INDEX is missing. Format: " + BorrowCommand.USAGE
                     + " (e.g. borrow 2 /from Bob /due 2026-11-10)");
         }
+        // As in parseUnavailable, "2 Bob" without /from would all be read as INDEX, so name the likely cause.
+        if (!fields.containsKey(FROM_PREFIX) && indexText.contains(" ")) {
+            throw new GameVaultException("Did you forget /from? Format: " + BorrowCommand.USAGE
+                    + " (e.g. borrow 2 /from Bob)");
+        }
         int displayNumber = parseIndex(indexText);
         if (fields.getOrDefault(FROM_PREFIX, "").isEmpty()) {
             throw new GameVaultException("NAME is missing. Format: " + BorrowCommand.USAGE

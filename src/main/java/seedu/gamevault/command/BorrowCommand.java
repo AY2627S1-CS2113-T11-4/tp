@@ -1,6 +1,9 @@
 package seedu.gamevault.command;
 
 import java.time.LocalDate;
+import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Borrower;
@@ -22,6 +25,8 @@ import seedu.gamevault.ui.Ui;
 public class BorrowCommand extends Command {
     public static final String COMMAND_WORD = "borrow";
     public static final String USAGE = "borrow INDEX /from NAME [/due YYYY-MM-DD]";
+
+    private static final Logger logger = Logger.getLogger(BorrowCommand.class.getName());
 
     private final int displayNumber;
     private final String lender;
@@ -54,13 +59,14 @@ public class BorrowCommand extends Command {
 
         Game game = games.get(displayNumber - 1); // The list shows games from 1, while GameList counts from 0.
         String oldRecord = game.hasLender() ? game.describeLender() : null;
-        game.recordLender(lender, dueBack);
-        if (game.describeLender().equals(oldRecord)) {
+        if (isSameRecord(game)) {
             // Nothing would change, so tell the user instead of rewriting the data file.
             throw new GameVaultException(game.getTitle() + " is already recorded as " + oldRecord + ".");
         }
 
+        game.recordLender(lender, dueBack);
         storage.save(games);
+        logger.log(Level.FINE, "Recorded " + game.getTitle() + " as " + game.describeLender());
         String message = "Recorded: " + game;
         if (oldRecord != null) {
             message += System.lineSeparator() + "(Was: " + oldRecord + ".)";
@@ -70,5 +76,14 @@ public class BorrowCommand extends Command {
                     + ". Use 'giveback " + displayNumber + "' once you have given it back.";
         }
         ui.showMessage(message);
+    }
+
+    /**
+     * Returns whether the game is already recorded as being from the same person with the same due-back date,
+     * so that recording it again would change nothing.
+     */
+    private boolean isSameRecord(Game game) {
+        return game.hasLender() && game.getLender().equals(lender)
+                && Objects.equals(game.getDueBack().orElse(null), dueBack);
     }
 }

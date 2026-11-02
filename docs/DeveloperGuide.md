@@ -766,14 +766,15 @@ still show lent games, with `(lent to NAME)` after each one.
 ### Recording who lent or gave a game
 
 The `borrow` command records who a game came from, and optionally when it must be given back, e.g.
-`borrow 2 /from Bob /due 2026-11-10`. `giveback 2` clears the record. `list` shows the record after the game, e.g.
+`borrow 2 /from Bob /due 2026-11-10`. `giveback 2` removes a borrowed game once it has been given back.
+`list` shows the record after the game, e.g.
 `Hive (2 players) (borrowed from Bob, due 2026-11-10)`, and ends with a reminder of any overdue games.
 This is the opposite direction to `lend` (see [Lending games to friends](#lending-games-to-friends)).
 
 **Model.** Each `Game` has two more fields: `lender`, the person the game is from, and `dueBack`, a `LocalDate`.
 Both are `null` when not recorded, and `dueBack` is also `null` for a game that does not have to be given back,
-such as a gift. `Game#recordLender(name, dueBack)` sets both together, `Game#clearLender()` clears both, and
-`Game#getDueBack()` returns an `Optional`. `Game#isOverdue(today)` is true only when the due-back date is before
+such as a gift. `Game#recordLender(name, dueBack)` sets both together, and `Game#getDueBack()` returns an
+`Optional`. `Game#isOverdue(today)` is true only when the due-back date is before
 `today`, so a game due back today is not overdue yet. Lender names follow the same rules as borrower names in
 `lend`, so both reuse the `Borrower` class.
 
@@ -786,12 +787,14 @@ optional `/due`. Today's date is passed in (`LocalDate.now()` in normal use), as
 ![Sequence diagram for borrow 2 /from Bob /due 2026-11-10](images/BorrowSequenceDiagram.png)
 
 1. `BorrowCommand#execute(...)` checks that game 2 exists, then gets it from the `GameList`.
-2. It remembers the game's old record, if any, and calls `Game#recordLender("Bob", 2026-11-10)`.
-3. If the record is unchanged, it reports this and saves nothing. Otherwise it saves with `Storage#save(...)`.
-4. It shows the game, the old record if there was one, and how to clear the record once the game is given back.
+2. It compares the game's current record with the new one. If they are the same, it reports this and changes
+   nothing, so the error case never touches the game.
+3. Otherwise it calls `Game#recordLender("Bob", 2026-11-10)` and saves with `Storage#save(...)`.
+4. It shows the game, the old record if there was one, and how to use `giveback` once the game is given back.
 
-`GiveBackCommand#execute(...)` rejects a game that has no lender, since that is most likely the wrong `INDEX`,
-and otherwise calls `Game#clearLender()` and saves.
+`GiveBackCommand#execute(...)` rejects a game that has no lender, since that is most likely the wrong `INDEX`, and
+a gift (a lender but no due-back date), since there is nothing to give back. Otherwise it removes the game with
+`GameList#delete(...)` and saves, because a game that has gone back to its owner is no longer on the user's shelf.
 
 **Overdue reminder.** `ListCommand` takes today's date (again `LocalDate.now()` in normal use, and a fixed date in
 tests). After the numbered list, it adds a line for each game where `Game#isOverdue(today)` is true, using the same
@@ -814,6 +817,16 @@ not given back in time is simply overdue. `EditCommand` copies the record into t
 * **Alternative 2:** Leave borrowed games out, like lent games.
   * Pros: Treats every "lending" record the same way.
   * Cons: Hides games the user has and can play.
+
+**Aspect: What `giveback` does with the game**
+
+* **Alternative 1 (current choice):** Remove the game from the collection.
+  * Pros: The game is no longer on the shelf, so `filter` and `pick` stop suggesting it, with nothing more to do.
+  * Cons: Its play history and ratings are lost, so borrowing it again starts afresh.
+* **Alternative 2:** Keep the game, but clear the record and mark it unavailable.
+  * Pros: Keeps its history and ratings.
+  * Cons: The collection fills up with games the user does not own, and "unavailable" suggests the game is
+    the user's own but cannot be played right now.
 
 **Aspect: Where the overdue reminder is shown**
 
