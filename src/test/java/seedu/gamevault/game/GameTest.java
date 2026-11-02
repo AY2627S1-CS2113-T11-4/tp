@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -211,5 +212,29 @@ class GameTest {
         game.lendTo("Alice");
         game.markUnavailable(UnavailableReason.DAMAGED);
         assertEquals("Catan (3-4 players) (lent to Alice) (unavailable: damaged)", game.toString());
+    }
+
+    @Test
+    void isOverdue_onlyAfterDueDate() {
+        Game game = new Game("Hive", 2, 2);
+        LocalDate due = LocalDate.of(2026, 11, 10);
+        assertFalse(game.isOverdue(due.plusDays(30)));
+
+        game.recordLender("Bob", due);
+        assertFalse(game.isOverdue(due.minusDays(1)));
+        assertFalse(game.isOverdue(due));
+        assertTrue(game.isOverdue(due.plusDays(1)));
+
+        game.recordLender("Bob", null);
+        assertFalse(game.isOverdue(due.plusDays(30)));
+    }
+
+    @Test
+    void borrowedGame_isStillAvailable() {
+        Game game = new Game("Hive", 2, 2);
+        game.recordLender("Bob", LocalDate.of(2026, 11, 10));
+        assertTrue(game.isAvailable());
+        game.clearLender();
+        assertFalse(game.hasLender());
     }
 }

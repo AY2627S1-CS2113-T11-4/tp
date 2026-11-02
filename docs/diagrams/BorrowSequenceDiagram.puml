@@ -1,0 +1,52 @@
+@startuml
+' Sequence diagram for "borrow 2 /from Bob /due 2026-11-10" -- GameVault borrow feature
+hide footbox
+skinparam sequenceMessageAlign center
+
+participant ":GameVault" as GV
+participant "<<class>>\nParser" as P
+participant "b:BorrowCommand" as B
+participant ":GameList" as GL
+participant "g:Game" as G
+participant ":Storage" as S
+participant ":Ui" as UI
+
+GV -> P : parse("borrow 2 /from Bob /due 2026-11-10")
+activate P
+P -> P : parseBorrow("2 /from Bob /due 2026-11-10", today)
+activate P
+P -> P : parseDueBack("2026-11-10", today)
+create B
+P -> B : new BorrowCommand(2, "Bob", 2026-11-10)
+activate B
+B --> P
+deactivate B
+deactivate P
+P --> GV : b
+deactivate P
+
+GV -> B : execute(games, ui, storage)
+activate B
+B -> GL : get(1)
+activate GL
+GL --> B : g
+deactivate GL
+
+B -> G : recordLender("Bob", 2026-11-10)
+activate G
+G --> B
+deactivate G
+
+B -> S : save(games)
+activate S
+S --> B
+deactivate S
+
+B -> UI : showMessage("Recorded: ...")
+activate UI
+UI --> B
+deactivate UI
+B --> GV
+deactivate B
+destroy B
+@enduml

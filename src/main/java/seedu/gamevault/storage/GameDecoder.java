@@ -28,6 +28,8 @@ import seedu.gamevault.game.UnavailableReason;
  * The {@code sessions} field holds the play sessions, each written as {@code DATE@PLAYERS}
  * (DATE in {@code YYYY-MM-DD} form) and separated by {@code ;}.
  * The {@code unavailable} field holds why a game cannot be played at the moment, e.g. {@code unavailable=missing}.
+ * The {@code from} field holds who lent or gave the game to the user, e.g. {@code from=Bob}, and the optional
+ * {@code due} field holds when it must be given back, e.g. {@code due=2026-11-10}; {@code due} needs {@code from}.
  * The {@code lent} field holds the name of the person the game is lent to, e.g. {@code lent=Alice}.
  * The {@code ratings} field holds the thumbs-up and thumbs-down counts as {@code UP/DOWN}, e.g. {@code ratings=5/1}.
  * Users may edit the data file by hand, so every part of the line is checked and a
@@ -77,6 +79,13 @@ public class GameDecoder {
         Game game = new Game(title, minPlayers, maxPlayers, playTime);
         decodeTags(fields, game);
         decodeNamedFields(fields, game);
+        //@@author KRAZYZECTRON
+        // Named fields can come in any order, so 'due' can only be checked against 'from' once all are read.
+        if (game.getDueBack().isPresent() && !game.hasLender()) {
+            throw new GameVaultException("the field '" + Game.DUE_BACK_FILE_KEY + "' needs a '"
+                    + Game.LENDER_FILE_KEY + "' field saying who the game is from");
+        }
+        //@@author
         return game;
     }
 
@@ -120,6 +129,12 @@ public class GameDecoder {
             break;
         case Game.UNAVAILABLE_FILE_KEY:
             decodeUnavailableReason(value, game);
+            break;
+        case Game.LENDER_FILE_KEY:
+            decodeLender(value, game);
+            break;
+        case Game.DUE_BACK_FILE_KEY:
+            decodeDueBack(value, game);
             break;
         case Game.LENT_FILE_KEY:
             decodeBorrower(value, game);
@@ -226,6 +241,34 @@ public class GameDecoder {
                     + UnavailableReason.describeKeywords());
         }
         game.markUnavailable(reason.get());
+    }
+
+    /**
+     * Records who the game is from, as named in a {@code from} field, e.g. {@code from=Bob}.
+     * Any due-back date already read from a {@code due} field is kept.
+     *
+     * @throws GameVaultException If the name does not follow {@link Borrower#RULES}.
+     */
+    private static void decodeLender(String value, Game game) throws GameVaultException {
+        String name = Borrower.normalise(value);
+        if (!Borrower.isValid(name)) {
+            throw new GameVaultException("from is '" + name + "', but a name should be " + Borrower.RULES);
+        }
+        game.recordLender(name, game.getDueBack().orElse(null));
+    }
+
+    /**
+     * Sets the due-back date in a {@code due} field, e.g. {@code due=2026-11-10}. Past dates are accepted,
+     * since a game that was not given back on time is simply overdue.
+     *
+     * @throws GameVaultException If the date is not a real date in the form {@code YYYY-MM-DD}.
+     */
+    private static void decodeDueBack(String value, Game game) throws GameVaultException {
+        try {
+            game.setDueBack(LocalDate.parse(value));
+        } catch (DateTimeParseException e) {
+            throw new GameVaultException("due is '" + value + "', but it should be a date in the form YYYY-MM-DD");
+        }
     }
 
     /**

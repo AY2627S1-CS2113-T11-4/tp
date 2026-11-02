@@ -249,4 +249,48 @@ class GameDecoderTest {
         assertEquals(original.toString(), decoded.toString());
         assertEquals(original.toFileString(), decoded.toFileString());
     }
+
+    //@@author KRAZYZECTRON
+    @Test
+    void decodeLine_fromAndDueInEitherOrder_returnsBorrowedGame() throws GameVaultException {
+        Game game = GameDecoder.decodeLine("Hive | 2 | 2 |  |  | due=2026-11-10 | from=  Mary   Tan ");
+        assertEquals("Mary Tan", game.getLender());
+        assertEquals(Optional.of(LocalDate.of(2026, 11, 10)), game.getDueBack());
+
+        Game gift = GameDecoder.decodeLine("Hive | 2 | 2 |  |  | from=Bob");
+        assertEquals("Bob", gift.getLender());
+        assertEquals(Optional.empty(), gift.getDueBack());
+    }
+
+    @Test
+    void decodeLine_pastDueDate_acceptedAsOverdue() throws GameVaultException {
+        Game game = GameDecoder.decodeLine("Hive | 2 | 2 |  |  | from=Bob | due=2020-01-01");
+        assertTrue(game.isOverdue(LocalDate.of(2026, 11, 2)));
+    }
+
+    @Test
+    void decodeLine_invalidFromOrDue_throwsExceptionNamingField() {
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> GameDecoder.decodeLine("Hive | 2 | 2 |  |  | due=2026-11-10"));
+        assertEquals("the field 'due' needs a 'from' field saying who the game is from", e.getMessage());
+        e = assertThrows(GameVaultException.class,
+                () -> GameDecoder.decodeLine("Hive | 2 | 2 |  |  | from=Bob | due=soon"));
+        assertTrue(e.getMessage().startsWith("due is 'soon'"));
+        e = assertThrows(GameVaultException.class,
+                () -> GameDecoder.decodeLine("Hive | 2 | 2 |  |  | from="));
+        assertTrue(e.getMessage().startsWith("from is ''"));
+    }
+
+    @Test
+    void decodeLine_toFileStringOfBorrowedGame_decodesToSameGame() throws GameVaultException {
+        Game original = new Game("Catan", 3, 4, 60);
+        original.addTag("strategy");
+        original.lendTo("Alice");
+        original.recordLender("Bob", LocalDate.of(2026, 11, 10));
+
+        Game decoded = GameDecoder.decodeLine(original.toFileString());
+
+        assertEquals(original.toFileString(), decoded.toFileString());
+        assertEquals(original.toString(), decoded.toString());
+    }
 }
