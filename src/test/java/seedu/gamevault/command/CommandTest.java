@@ -110,4 +110,51 @@ class CommandTest {
         // Only Codenames fits 4 players; Werewolf is not counted because it needs at least 8.
         assertTrue(printed.contains("(1 game(s) for 4 players were left out"));
     }
+
+    @Test
+    void filterCommand_lentGameFits_leavesItOutAndSaysWhoHasIt() {
+        GameList games = new GameList();
+        games.add(new Game("Catan", 3, 4, 60));
+        games.add(new Game("Codenames", 2, 8));
+        games.add(new Game("Love Letter", 2, 4, 20));
+        games.get(1).lendTo("Ben");
+
+        new FilterCommand(4).execute(games, ui, new Storage("unused.txt"));
+
+        String printed = output.toString();
+        assertTrue(printed.contains("Games that fit 4 players:"));
+        assertTrue(printed.contains("  Catan (3-4 players, 60 min)"));
+        assertFalse(printed.contains("  Codenames"));
+        assertTrue(printed.contains("(Not shown because they are lent out: Codenames (to Ben))"));
+    }
+
+    @Test
+    void filterCommand_lentGamesAndTimeLimit_mentionsOnlyThoseThatFitInTime() {
+        GameList games = new GameList();
+        games.add(new Game("Catan", 3, 4, 60));
+        games.add(new Game("Codenames", 2, 8));
+        games.add(new Game("Love Letter", 2, 4, 20));
+        games.get(0).lendTo("Alice");
+        games.get(2).lendTo("Ben");
+
+        new FilterCommand(4, 30).execute(games, ui, new Storage("unused.txt"));
+
+        String printed = output.toString();
+        // Catan takes 60 minutes, so it would not have been shown anyway and is not mentioned.
+        assertTrue(printed.contains("(Not shown because they are lent out: Love Letter (to Ben))"));
+        assertFalse(printed.contains("Catan (to Alice)"));
+        assertTrue(printed.contains("(1 game(s) for 4 players were left out because they have no play time"));
+    }
+
+    @Test
+    void filterCommand_noLentGames_addsNoNote() {
+        GameList games = new GameList();
+        games.add(new Game("Catan", 3, 4, 60));
+        games.add(new Game("Codenames", 2, 8));
+        games.add(new Game("Love Letter", 2, 4, 20));
+
+        new FilterCommand(4).execute(games, ui, new Storage("unused.txt"));
+
+        assertFalse(output.toString().contains("lent out"));
+    }
 }

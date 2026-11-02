@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import seedu.gamevault.exception.GameVaultException;
+import seedu.gamevault.game.Borrower;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.PlaySession;
 import seedu.gamevault.game.Tag;
@@ -24,6 +25,7 @@ import seedu.gamevault.game.Tag;
  * {@code Game#toFileString()} and a matching case in {@link #decodeNamedField}.
  * The {@code sessions} field holds the play sessions, each written as {@code DATE@PLAYERS}
  * (DATE in {@code YYYY-MM-DD} form) and separated by {@code ;}.
+ * The {@code lent} field holds the name of the person the game is lent to, e.g. {@code lent=Alice}.
  * Users may edit the data file by hand, so every part of the line is checked and a
  * specific reason is given when something is wrong.</p>
  */
@@ -112,6 +114,9 @@ public class GameDecoder {
         case Game.SESSIONS_FILE_KEY:
             decodeSessions(value, game);
             break;
+        case Game.LENT_FILE_KEY:
+            decodeBorrower(value, game);
+            break;
         default:
             throw new GameVaultException("unknown field '" + key + "'");
         }
@@ -145,6 +150,19 @@ public class GameDecoder {
             int playerCount = parsePositiveNumber(parts[1], "PLAYERS in session '" + sessionText + "'");
             game.addSession(new PlaySession(date, playerCount));
         }
+    }
+    //@@author yy261
+    /**
+     * Marks the game as lent to the person named in a {@code lent} field, e.g. {@code lent=Alice}.
+     *
+     * @throws GameVaultException If the name does not follow {@link Borrower#RULES}.
+     */
+    private static void decodeBorrower(String value, Game game) throws GameVaultException {
+        String name = Borrower.normalise(value);
+        if (!Borrower.isValid(name)) {
+            throw new GameVaultException("lent is '" + name + "', but a name should be " + Borrower.RULES);
+        }
+        game.lendTo(name);
     }
 
     //@@author KRAZYZECTRON

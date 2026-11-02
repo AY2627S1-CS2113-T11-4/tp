@@ -116,4 +116,76 @@ class GameListTest {
         assertEquals(Map.of("family", 2, "strategy", 1), games.countTags());
         assertEquals("family", games.countTags().firstKey());
     }
+
+    //@@author yy261
+    @Test
+    void filterAvailableByPlayersAndFindLentFitting_lentGames_splitBetweenTheTwo() {
+        GameList shelf = new GameList();
+        shelf.add(new Game("Catan", 3, 4, 60));
+        shelf.add(new Game("Love Letter", 2, 4, 20));
+        shelf.add(new Game("Codenames", 2, 8));
+        shelf.get(0).lendTo("Alice");
+        shelf.get(1).lendTo("Ben");
+
+        // The plain filter still includes every game, for features that need all games for a group size.
+        assertEquals(3, shelf.filterByPlayers(4).size());
+
+        ArrayList<Game> available = shelf.filterAvailableByPlayers(4);
+        assertEquals(1, available.size());
+        assertEquals("Codenames", available.get(0).getTitle());
+
+        assertEquals(2, shelf.findLentFitting(4).size());
+        // Only Love Letter is short enough; Catan takes 60 minutes.
+        ArrayList<Game> lentInTime = shelf.findLentFitting(4, 30);
+        assertEquals(1, lentInTime.size());
+        assertEquals("Love Letter", lentInTime.get(0).getTitle());
+        assertTrue(shelf.findLentFitting(9).isEmpty());
+    }
+
+    @Test
+    void countWithoutPlayTime_lentUntimedGame_notCounted() {
+        GameList shelf = new GameList();
+        shelf.add(new Game("Codenames", 2, 8));
+        shelf.add(new Game("Werewolf", 4, 18));
+        shelf.get(1).lendTo("Alice");
+
+        assertEquals(1, shelf.countWithoutPlayTime(4));
+    }
+
+    @Test
+    void filterAvailableByPlayersAndTime_lentGameInTime_leftOut() {
+        GameList shelf = new GameList();
+        shelf.add(new Game("Love Letter", 2, 4, 20));
+        shelf.add(new Game("Splendor", 2, 4, 30));
+        shelf.add(new Game("Catan", 3, 4, 60));
+        shelf.get(0).lendTo("Alice");
+
+        // The plain time filter still includes the lent game.
+        assertEquals(2, shelf.filterByPlayersAndTime(4, 45).size());
+        ArrayList<Game> available = shelf.filterAvailableByPlayersAndTime(4, 45);
+        assertEquals(1, available.size());
+        assertEquals("Splendor", available.get(0).getTitle());
+    }
+
+    @Test
+    void describeLeftOut_noMatchingLentGames_returnsEmptyString() {
+        assertEquals("", games.describeLeftOut(4, GameList.NO_TIME_LIMIT, "shown"));
+        assertEquals("", GameList.describeLeftOut(new ArrayList<>(), "shown"));
+    }
+
+    @Test
+    void describeLeftOut_lentGames_namesThemOnANewLineWithBorrowers() {
+        GameList shelf = new GameList();
+        shelf.add(new Game("Catan", 3, 4, 60));
+        shelf.add(new Game("Love Letter", 2, 4, 20));
+        shelf.get(0).lendTo("Alice");
+        shelf.get(1).lendTo("Ben");
+
+        assertEquals(System.lineSeparator()
+                + "(Not considered because they are lent out: Catan (to Alice), Love Letter (to Ben))",
+                shelf.describeLeftOut(4, GameList.NO_TIME_LIMIT, "considered"));
+        // With a time limit, a game that takes too long would not have matched, so it is not named.
+        assertEquals(System.lineSeparator() + "(Not shown because they are lent out: Love Letter (to Ben))",
+                shelf.describeLeftOut(4, 30, "shown"));
+    }
 }
