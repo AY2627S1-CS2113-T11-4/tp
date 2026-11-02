@@ -168,6 +168,14 @@ public class Game {
     }
 
     /**
+     * Returns whether this game can be played tonight, i.e. whether {@code filter} and {@code pick} may suggest it.
+     * Suggestions should use this method instead of checking each reason a game might be unavailable.
+     */
+    public boolean isAvailable() {
+        return !isLent();
+    }
+
+    /**
      * Returns the name of the person this game is lent to.
      * Only meaningful when {@link #isLent()} is true.
      */
@@ -238,10 +246,10 @@ public class Game {
         if (isLent()) {
             fields.add(LENT_FILE_KEY + "=" + borrower);
         }
-        //@@ author Xandurs
+        //@@author Xandurs
         return fields;
     }
-    //@@ author
+    //@@author
     /**
      * Returns this game as it is shown to the user, e.g.
      * {@code Catan (3-4 players, 60 min) [strategy] (lent to Alice)},

@@ -18,7 +18,7 @@ public class FilterCommand extends Command {
     public static final String USAGE = "filter COUNT [/time MINUTES]";
 
     /** Value of {@code minutes} when the user did not give a time limit. */
-    private static final int NO_TIME_LIMIT = 0;
+    private static final int NO_TIME_LIMIT = GameList.NO_TIME_LIMIT;
 
     private final int playerCount;
     private final int minutes;
@@ -50,8 +50,8 @@ public class FilterCommand extends Command {
     public void execute(GameList games, Ui ui, Storage storage) {
         boolean hasTimeLimit = minutes != NO_TIME_LIMIT;
         ArrayList<Game> matches = hasTimeLimit
-                ? games.filterByPlayersAndTime(playerCount, minutes)
-                : games.filterByPlayers(playerCount);
+                ? games.filterAvailableByPlayersAndTime(playerCount, minutes)
+                : games.filterAvailableByPlayers(playerCount);
         String criteria = playerCount + " players" + (hasTimeLimit ? " in " + minutes + " minutes or less" : "");
 
         StringBuilder message = new StringBuilder();
@@ -67,10 +67,7 @@ public class FilterCommand extends Command {
         if (hasTimeLimit) {
             appendUntimedNote(message, games);
         }
-        ArrayList<Game> lentGames = hasTimeLimit
-                ? games.findLentFitting(playerCount, minutes)
-                : games.findLentFitting(playerCount);
-        message.append(LentCommand.describeLeftOut(lentGames, "shown"));
+        message.append(games.describeLeftOut(playerCount, minutes, "shown"));
         ui.showMessage(message.toString());
     }
 

@@ -31,7 +31,7 @@ public class HelpCommand extends Command {
               sort    Sorts your collection: sort title|players|time
               lend    Records that a game is lent out: lend INDEX /to NAME
               return  Records that a lent game is back: return INDEX
-              lent    Lists the games that are lent out and who has them.
+              lentout Lists the games that are lent out and who has them.
               help    Shows this list of commands.
               exit    Exits GameVault.""";
 

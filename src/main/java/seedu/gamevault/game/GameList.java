@@ -13,6 +13,9 @@ import java.util.TreeMap;
  * are added in issues #7 to #10.</p>
  */
 public class GameList {
+    /** Value of {@code minutes} in {@link #describeLeftOut(int, int, String)} when there is no time limit. */
+    public static final int NO_TIME_LIMIT = 0;
+
     private final ArrayList<Game> games;
 
     /**
@@ -89,9 +92,9 @@ public class GameList {
 
     //@@author yy261
     /**
-     * Returns the games on the shelf that can be played by the given number of players, in their original order.
-     * Games that are lent out are left out, since they cannot be played tonight (see {@link #findLentFitting}).
-     * The collection itself is not changed.
+     * Returns the games that can be played by the given number of players, in their original order.
+     * This includes games that are not available tonight; suggestions should use
+     * {@link #filterAvailableByPlayers} instead. The collection itself is not changed.
      *
      * @param count Number of players to check; must be at least 1.
      * @return A new list of the matching games; empty if none match.
@@ -99,7 +102,43 @@ public class GameList {
     public ArrayList<Game> filterByPlayers(int count) {
         ArrayList<Game> matches = new ArrayList<>();
         for (Game game : games) {
-            if (!game.isLent() && game.fitsPlayerCount(count)) {
+            if (game.fitsPlayerCount(count)) {
+                matches.add(game);
+            }
+        }
+        return matches;
+    }
+
+    /**
+     * Returns the available games that can be played by the given number of players, in their original order.
+     * The collection itself is not changed.
+     *
+     * @param count Number of players to check; must be at least 1.
+     * @return A new list of the matching games; empty if none match.
+     */
+    public ArrayList<Game> filterAvailableByPlayers(int count) {
+        return keepAvailable(filterByPlayers(count));
+    }
+
+    /**
+     * Returns the available games that can be played by the given number of players and are known to take
+     * at most the given number of minutes, in their original order. The collection itself is not changed.
+     *
+     * @param count Number of players to check; must be at least 1.
+     * @param minutes Time available; must be at least 1.
+     * @return A new list of the matching games; empty if none match.
+     */
+    public ArrayList<Game> filterAvailableByPlayersAndTime(int count, int minutes) {
+        return keepAvailable(filterByPlayersAndTime(count, minutes));
+    }
+
+    /**
+     * Returns the games in {@code candidates} that are available, in the same order.
+     */
+    private static ArrayList<Game> keepAvailable(List<Game> candidates) {
+        ArrayList<Game> matches = new ArrayList<>();
+        for (Game game : candidates) {
+            if (game.isAvailable()) {
                 matches.add(game);
             }
         }
@@ -139,6 +178,46 @@ public class GameList {
             }
         }
         return matches;
+    }
+
+    /**
+     * Returns a note naming the lent games that would otherwise fit the given conditions, or an empty string
+     * if there are none, so that {@code filter} and {@code pick} can tell the user why a game is missing.
+     *
+     * @param count Number of players to check; must be at least 1.
+     * @param minutes Time available, or {@link #NO_TIME_LIMIT}.
+     * @param verb What did not happen to the games, e.g. {@code "shown"} or {@code "considered"}.
+     * @return The note, starting on a new line, or an empty string.
+     */
+    public String describeLeftOut(int count, int minutes, String verb) {
+        List<Game> lentGames = minutes == NO_TIME_LIMIT ? findLentFitting(count) : findLentFitting(count, minutes);
+        return describeLeftOut(lentGames, verb);
+    }
+
+    /**
+     * Returns a note naming the given lent games, e.g.
+     * {@code (Not shown because they are lent out: Catan (to Alice), Hive (to Ben))},
+     * or an empty string if there are none. This version is for commands that do not match games by
+     * player count alone, such as {@code filter /tag}.
+     *
+     * @param lentGames Games that would have matched, but are lent out.
+     * @param verb What did not happen to the games, e.g. {@code "shown"} or {@code "considered"}.
+     * @return The note, starting on a new line, or an empty string.
+     */
+    public static String describeLeftOut(List<Game> lentGames, String verb) {
+        if (lentGames.isEmpty()) {
+            return "";
+        }
+        StringBuilder note = new StringBuilder(System.lineSeparator())
+                .append("(Not ").append(verb).append(" because they are lent out: ");
+        for (int i = 0; i < lentGames.size(); i++) {
+            Game game = lentGames.get(i);
+            if (i > 0) {
+                note.append(", ");
+            }
+            note.append(game.getTitle()).append(" (to ").append(game.getBorrower()).append(")");
+        }
+        return note.append(")").toString();
     }
     //@@author Xandurs
     /**
@@ -187,7 +266,7 @@ public class GameList {
 
     //@@author
     /**
-     * Returns how many games on the shelf fit the given number of players but have no play time recorded.
+     * Returns how many available games fit the given number of players but have no play time recorded.
      * These are the games that a time limit leaves out, so commands can tell the user about them.
      *
      * @param count Number of players to check; must be at least 1.
@@ -195,7 +274,7 @@ public class GameList {
      */
     public int countWithoutPlayTime(int count) {
         int untimedCount = 0;
-        for (Game game : filterByPlayers(count)) {
+        for (Game game : filterAvailableByPlayers(count)) {
             if (!game.hasPlayTime()) {
                 untimedCount++;
             }

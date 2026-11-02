@@ -26,8 +26,8 @@ import seedu.gamevault.command.FilterTagCommand;
 import seedu.gamevault.command.FindCommand;
 import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.command.LendCommand;
-import seedu.gamevault.command.LentCommand;
 import seedu.gamevault.command.ListCommand;
+import seedu.gamevault.command.ListLentCommand;
 import seedu.gamevault.command.ListTagsCommand;
 import seedu.gamevault.command.LogCommand;
 import seedu.gamevault.command.TagCommand;
@@ -465,9 +465,9 @@ class ParserTest {
     }
 
     @Test
-    void parse_lent_returnsLentCommandAndRejectsArguments() throws GameVaultException {
-        assertInstanceOf(LentCommand.class, Parser.parse("lent"));
-        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("lent 2"));
+    void parse_lentout_returnsListLentCommandAndRejectsArguments() throws GameVaultException {
+        assertInstanceOf(ListLentCommand.class, Parser.parse("lentout"));
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("lentout 2"));
         assertTrue(e.getMessage().contains("does not take any arguments"));
     }
     //@@author Xandurs

@@ -123,4 +123,16 @@ class EditCommandTest {
 
         assertEquals("Catan (3-6 players) [strategy]", games.get(0).toString());
     }
+
+    //@@author yy261
+    @Test
+    void execute_lentGame_staysLentToSamePerson() throws GameVaultException {
+        games.get(0).lendTo("Alice");
+
+        new EditCommand(1, "Catan: Seafarers", null, null).execute(games, ui, storage);
+
+        assertTrue(games.get(0).isLent());
+        assertEquals("Alice", games.get(0).getBorrower());
+        assertEquals("Catan: Seafarers (3-4 players) (lent to Alice)", games.get(0).toString());
+    }
 }
