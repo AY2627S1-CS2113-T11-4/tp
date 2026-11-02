@@ -6,7 +6,8 @@ GameVault is a command-line app for people who host game nights for friends or C
 collection and quickly finds games that suit the group that turned up, by player count, play time and tags.
 
 My main area was **working with the collection once games are in it**: viewing it (`list`), removing games
-(`delete`), locating a game by its title (`find`) and reordering the whole collection (`sort`).
+(`delete`), locating a game by its title (`find`), reordering the whole collection (`sort`), and looking back at
+what the group has played (`history`, `unplayed`).
 
 ## Summary of Contributions
 
@@ -20,8 +21,8 @@ My main area was **working with the collection once games are in it**: viewing i
   * What it does: shows every game numbered from 1. These numbers are the `INDEX` that `delete`, `edit` and `tag`
     use, so `list` is how users refer to a game.
   * Extra text after the command (e.g. `list all`) is reported as an error instead of being ignored.
-  * Later moved the numbering into a shared `ListCommand#formatNumberedList`, so `list` and `sort` print the
-    collection the same way without duplicating the loop.
+  * Moved the numbering into a shared helper in `ListCommand`, so `list` and `sort` print the collection the same
+    way without duplicating the loop. A teammate later extended this helper to show when each game was last played.
 
 * **Deleting a game** (`delete INDEX`), v1.0 ([PR #19](https://github.com/AY2627S1-CS2113-T11-4/tp/pull/19))
   * What it does: removes a game by its number in `list` and saves the change to the data file.
@@ -47,29 +48,42 @@ My main area was **working with the collection once games are in it**: viewing i
   * Handled the edge cases: games with no play time go last when sorting by time, ties are broken by title so
     sorting twice always gives the same result, and an empty collection is neither sorted nor saved.
 
-* **Testing**: wrote 44 JUnit tests for these features (`ListCommandTest`, `DeleteCommandTest`, `FindCommandTest`,
-  `SortCommandTest`, `SortOrderTest`, and the matching `ParserTest` and `GameListTest` cases), including checks that
-  `delete` and `sort` save the right content to the data file.
+* **Viewing play history and never-played games** (`history INDEX`, `unplayed`), v2.1
+  ([PR #67](https://github.com/AY2627S1-CS2113-T11-4/tp/pull/67))
+  * What it does: `history` lists every session logged for a game, oldest first, followed by how many times it was
+    played and when it was last played. `unplayed` lists the games with no sessions, so games that keep being passed
+    over get a fair chance.
+  * Built on the play sessions recorded by `log`, so it needed no change to the data file. `history` reuses
+    `Parser#parseIndex`, so its errors match `delete` and `edit`.
+  * `unplayed` keeps each game's number from `list`, as `find` does, so the number can go straight to `log` or
+    `history`. It has separate messages for an empty collection and for when every game has been played.
+
+* **Testing**: wrote 61 JUnit tests for these features (`ListCommandTest`, `DeleteCommandTest`, `FindCommandTest`,
+  `SortCommandTest`, `SortOrderTest`, `HistoryCommandTest`, `UnplayedCommandTest`, and the matching `ParserTest` and
+  `GameListTest` cases), including checks that `delete` and `sort` save the right content to the data file and that
+  `history` does not.
 
 ### Contributions to the User Guide
 
-* Wrote the sections *Listing all games*, *Deleting a game*, *Finding games by title* and
-  *Sorting your collection*, each with the format, examples, expected output and error cases, taken from the
-  running app.
-* Added the `list`, `delete`, `find` and `sort` rows to the Command Summary, and the `find` and `sort` lines to the
-  `help` output.
+* Wrote the sections *Listing all games*, *Deleting a game*, *Finding games by title*, *Sorting your collection*,
+  *Viewing a game's play history* and *Listing games you have never played*, each with the format, examples,
+  expected output and error cases, taken from the running app.
+* Added the `list`, `delete`, `find`, `sort`, `history` and `unplayed` rows to the Command Summary, and the
+  matching lines to the `help` output.
 
 ### Contributions to the Developer Guide
 
 * Wrote the *Find feature* and *Sort feature* sections
-  ([PR #46](https://github.com/AY2627S1-CS2113-T11-4/tp/pull/46)), including three UML diagrams:
+  ([PR #46](https://github.com/AY2627S1-CS2113-T11-4/tp/pull/46)) and the *Play history and unplayed games* section
+  ([PR #67](https://github.com/AY2627S1-CS2113-T11-4/tp/pull/67)), including four UML diagrams:
   * a sequence diagram of `find mono` (`FindSequenceDiagram.puml`)
   * a class diagram of the sort feature (`SortClassDiagram.puml`)
   * a sequence diagram of `sort time` (`SortSequenceDiagram.puml`)
+  * a sequence diagram of `history 1` (`HistorySequenceDiagram.puml`)
 * Described the design alternatives for each feature: how search results are numbered, where the search happens,
-  the matching rule, reordering the collection versus showing a sorted copy, and an enum versus a `switch` for the
-  sort orders.
-* Added the `find` and `sort` user stories, replacing the template's placeholder row.
+  the matching rule, reordering the collection versus showing a sorted copy, an enum versus a `switch` for the
+  sort orders, how unplayed games are numbered, and the order of sessions in `history`.
+* Added the `find`, `sort`, `history` and `unplayed` user stories, replacing the template's placeholder row.
 
 ### Contributions to team-based tasks
 
@@ -93,3 +107,6 @@ My main area was **working with the collection once games are in it**: viewing i
 * Reviewed and approved [PR #33](https://github.com/AY2627S1-CS2113-T11-4/tp/pull/33) (tag extras): found by running
   the app that `filter COUNT /time MINUTES /tag TAG` left out games with no play time without saying so, while `filter`
   and `pick` both report them, and suggested folding `FilterTagCommand` into `FilterCommand` to remove the duplication.
+* Reviewed [PR #65](https://github.com/AY2627S1-CS2113-T11-4/tp/pull/65) (difficulty levels) after building and
+  running it: found that the `/tag` form of `filter` left out games with no difficulty without a note, unlike the
+  other form, and pointed out a UG bullet that did not list the new `/diff` option.
