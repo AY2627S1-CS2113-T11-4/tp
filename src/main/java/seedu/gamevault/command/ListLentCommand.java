@@ -12,8 +12,8 @@ import seedu.gamevault.ui.Ui;
  * Shows every game that is lent out and who has it, so the host knows which games to ask for back.
  * Games are numbered as in {@code list}, so the number can be used straight away with {@code return}.
  */
-public class LentCommand extends Command {
-    public static final String COMMAND_WORD = "lent";
+public class ListLentCommand extends Command {
+    public static final String COMMAND_WORD = "lentout";
 
     static final String NONE_LENT_MESSAGE = "None of your games are lent out. Everything is on your shelf.";
 
@@ -38,30 +38,5 @@ public class LentCommand extends Command {
             return;
         }
         ui.showMessage(lentCount + " game(s) are lent out:" + message);
-    }
-
-    /**
-     * Returns a note naming the games that were left out of a suggestion because they are lent out,
-     * e.g. {@code (Not shown because they are lent out: Catan (to Alice), Hive (to Ben))},
-     * or an empty string if there are none. Used by {@code filter} and {@code pick}, so that the user knows
-     * why a game they expected is missing.
-     *
-     * @param lentGames Games that would have matched, but are lent out.
-     * @param verb How the games were left out, e.g. {@code "shown"} or {@code "considered"}.
-     */
-    static String describeLeftOut(List<Game> lentGames, String verb) {
-        if (lentGames.isEmpty()) {
-            return "";
-        }
-        StringBuilder note = new StringBuilder(System.lineSeparator())
-                .append("(Not ").append(verb).append(" because they are lent out: ");
-        for (int i = 0; i < lentGames.size(); i++) {
-            Game game = lentGames.get(i);
-            if (i > 0) {
-                note.append(", ");
-            }
-            note.append(game.getTitle()).append(" (to ").append(game.getBorrower()).append(")");
-        }
-        return note.append(")").toString();
     }
 }

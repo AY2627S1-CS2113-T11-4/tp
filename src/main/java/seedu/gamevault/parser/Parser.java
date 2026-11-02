@@ -24,8 +24,8 @@ import seedu.gamevault.command.FilterTagCommand;
 import seedu.gamevault.command.FindCommand;
 import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.command.LendCommand;
-import seedu.gamevault.command.LentCommand;
 import seedu.gamevault.command.ListCommand;
+import seedu.gamevault.command.ListLentCommand;
 import seedu.gamevault.command.ListTagsCommand;
 import seedu.gamevault.command.LogCommand;
 import seedu.gamevault.command.PickCommand;
@@ -117,9 +117,9 @@ public class Parser {
             return parseLend(arguments);
         case ReturnCommand.COMMAND_WORD:
             return parseReturn(arguments);
-        case LentCommand.COMMAND_WORD:
+        case ListLentCommand.COMMAND_WORD:
             checkNoArguments(commandWord, arguments);
-            return new LentCommand();
+            return new ListLentCommand();
         case LogCommand.COMMAND_WORD:
             return parseLog(arguments);
         case RateCommand.COMMAND_WORD:

@@ -234,4 +234,40 @@ class PickCommandTest {
         executePick(4, alwaysLandingAt(0.75)); // 0.75 * 7 = 5.25, just past Catan's 0-5.
         assertTrue(output.toString().contains("How about: Codenames"));
     }
+
+    //@@author yy261
+    @Test
+    void execute_someGamesLent_picksOnlyFromAvailableGames() {
+        GameList shelf = new GameList();
+        shelf.add(new Game("Catan", 3, 4, 60));
+        shelf.add(new Game("Codenames", 2, 8));
+        shelf.add(new Game("Love Letter", 2, 4, 20));
+        shelf.get(0).lendTo("Alice");
+        shelf.get(1).lendTo("Ben");
+
+        new PickCommand(4, NO_LIMIT, alwaysReturning(0, 1)).execute(shelf, ui, new Storage("unused.txt"));
+
+        String printed = output.toString();
+        assertTrue(printed.contains("How about: Love Letter (2-4 players, 20 min)"));
+        assertTrue(printed.contains("(picked from 1 game(s) that fit 4 players)"));
+        assertTrue(printed.contains(
+                "(Not considered because they are lent out: Catan (to Alice), Codenames (to Ben))"));
+    }
+
+    @Test
+    void execute_everyFittingGameLent_saysNothingToPickAndWhy() {
+        GameList shelf = new GameList();
+        shelf.add(new Game("Catan", 3, 4, 60));
+        shelf.add(new Game("Codenames", 2, 8));
+        shelf.add(new Game("Love Letter", 2, 4, 20));
+        shelf.get(0).lendTo("Alice");
+        shelf.get(1).lendTo("Ben");
+        shelf.get(2).lendTo("Cara");
+
+        new PickCommand(3, NO_LIMIT, alwaysLandingAt(0)).execute(shelf, ui, new Storage("unused.txt"));
+
+        String printed = output.toString();
+        assertTrue(printed.contains("No games fit 3 players, so there is nothing to pick from."));
+        assertTrue(printed.contains("Catan (to Alice), Codenames (to Ben), Love Letter (to Cara)"));
+    }
 }

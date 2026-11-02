@@ -58,17 +58,18 @@ public class FilterTagCommand extends Command {
                 continue;
             }
             //@@author yy261
-            // As in FilterCommand, a game that is lent out is not on the shelf, so it is listed separately.
+            // As in FilterCommand, only available games are shown, and lent games are named in a note.
+            if (game.isAvailable()) {
+                matches.add(game);
+            }
             if (game.isLent()) {
                 lentGames.add(game);
-            } else {
-                matches.add(game);
             }
             //@@author KRAZYZECTRON
         }
 
         String criteria = describeCriteria();
-        String lentNote = LentCommand.describeLeftOut(lentGames, "shown");
+        String lentNote = GameList.describeLeftOut(lentGames, "shown");
         if (matches.isEmpty()) {
             ui.showMessage("No games " + criteria + "." + lentNote);
             return;

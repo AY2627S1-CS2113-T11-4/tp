@@ -38,11 +38,13 @@ class BorrowerTest {
 
         game.lendTo("Alice");
         assertTrue(game.isLent());
+        assertFalse(game.isAvailable());
         assertEquals("Alice", game.getBorrower());
         assertEquals("Hive (2 players) (lent to Alice)", game.toString());
 
         game.markReturned();
         assertFalse(game.isLent());
+        assertTrue(game.isAvailable());
         assertEquals("Hive (2 players)", game.toString());
     }
 

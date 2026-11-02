@@ -37,7 +37,7 @@ public class ReturnCommand extends Command {
         if (!game.isLent()) {
             // Most likely the wrong INDEX, so point the user to the list of lent games.
             throw new GameVaultException(game.getTitle() + " is not lent to anyone."
-                    + " Use '" + LentCommand.COMMAND_WORD + "' to see which games are lent out.");
+                    + " Use '" + ListLentCommand.COMMAND_WORD + "' to see which games are lent out.");
         }
 
         String borrower = game.getBorrower();
