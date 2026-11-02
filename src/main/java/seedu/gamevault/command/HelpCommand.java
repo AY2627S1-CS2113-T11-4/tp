@@ -29,6 +29,8 @@ public class HelpCommand extends Command {
                            [/diff LEVEL|none]
               tag          Adds tags to a game: tag INDEX TAG [MORE_TAGS]...
               log          Logs that a game was played: log INDEX /players COUNT [/date YYYY-MM-DD]
+              history      Shows when a game was played: history INDEX
+              unplayed     Lists the games that have never been played.
               rate         Gives a game a thumbs up or down after playing: rate INDEX up|down
               unrate       Removes a thumbs up or down given by mistake: unrate INDEX up|down
               untag        Removes tags from a game: untag INDEX TAG [MORE_TAGS]...
