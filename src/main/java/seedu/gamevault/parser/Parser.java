@@ -15,6 +15,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import seedu.gamevault.command.AddCommand;
+import seedu.gamevault.command.AvailableCommand;
+import seedu.gamevault.command.BorrowCommand;
 import seedu.gamevault.command.Command;
 import seedu.gamevault.command.DeleteCommand;
 import seedu.gamevault.command.EditCommand;
@@ -22,6 +24,7 @@ import seedu.gamevault.command.ExitCommand;
 import seedu.gamevault.command.FilterCommand;
 import seedu.gamevault.command.FilterTagCommand;
 import seedu.gamevault.command.FindCommand;
+import seedu.gamevault.command.GiveBackCommand;
 import seedu.gamevault.command.HelpCommand;
 import seedu.gamevault.command.LendCommand;
 import seedu.gamevault.command.ListCommand;
@@ -29,9 +32,12 @@ import seedu.gamevault.command.ListLentCommand;
 import seedu.gamevault.command.ListTagsCommand;
 import seedu.gamevault.command.LogCommand;
 import seedu.gamevault.command.PickCommand;
+import seedu.gamevault.command.RateCommand;
 import seedu.gamevault.command.ReturnCommand;
 import seedu.gamevault.command.SortCommand;
 import seedu.gamevault.command.TagCommand;
+import seedu.gamevault.command.UnavailableCommand;
+import seedu.gamevault.command.UnrateCommand;
 import seedu.gamevault.command.UntagCommand;
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Borrower;
@@ -40,6 +46,8 @@ import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
 import seedu.gamevault.game.SortOrder;
 import seedu.gamevault.game.Tag;
+import seedu.gamevault.game.Thumb;
+import seedu.gamevault.game.UnavailableReason;
 
 /**
  * Turns a line typed by the user into the matching {@link Command}.
@@ -57,6 +65,10 @@ public class Parser {
     private static final String NO_DIFFICULTY_VALUE = "none";
     private static final String PLAYERS_PREFIX = "/players";
     private static final String DATE_PREFIX = "/date";
+    private static final String NOT_PLAYED_IN_PREFIX = "/notplayedin";
+    private static final String REASON_PREFIX = "/reason";
+    private static final String FROM_PREFIX = "/from";
+    private static final String DUE_PREFIX = "/due";
     private static final String NO_TIME_VALUE = "none";
     /** Key under which {@link #splitByPrefixes} stores the text that comes before the first prefix. */
     private static final String PREAMBLE = "";
@@ -123,6 +135,18 @@ public class Parser {
             return new ListLentCommand();
         case LogCommand.COMMAND_WORD:
             return parseLog(arguments);
+        case UnavailableCommand.COMMAND_WORD:
+            return parseUnavailable(arguments);
+        case AvailableCommand.COMMAND_WORD:
+            return parseAvailable(arguments);
+        case BorrowCommand.COMMAND_WORD:
+            return parseBorrow(arguments);
+        case GiveBackCommand.COMMAND_WORD:
+            return parseGiveBack(arguments);
+        case RateCommand.COMMAND_WORD:
+            return parseRate(arguments);
+        case UnrateCommand.COMMAND_WORD:
+            return parseUnrate(arguments);
         default:
             throw new GameVaultException("Unknown command '" + parts[0]
                     + "'. Type 'help' to see all commands.");
@@ -189,23 +213,38 @@ public class Parser {
 
     //@@author yy261
     /**
-     * Builds a {@link FilterCommand} from arguments in the form {@code COUNT [/time MINUTES] [/diff LEVEL]},
-     * e.g. {@code 4} or {@code 4 /time 45 /diff easy}, or a {@link FilterTagCommand} from arguments in the form
-     * {@code [COUNT] [/time MINUTES] [/diff LEVEL] /tag TAG}, e.g. {@code /tag party} or {@code 6 /tag party}.
+     * Builds a {@link FilterCommand} from arguments in the form
+     * {@code COUNT [/time MINUTES] [/diff LEVEL] [/notplayedin DAYS]}, e.g. {@code 4},
+     * {@code 4 /time 45 /diff easy} or {@code 4 /notplayedin 14}, or a {@link FilterTagCommand} from arguments
+     * in the form {@code [COUNT] [/time MINUTES] [/diff LEVEL] /tag TAG}, e.g. {@code /tag party} or
+     * {@code 6 /tag party}.
      *
      * @throws GameVaultException If COUNT is missing, a number is not a whole number or is less than 1,
-     *     a prefix is repeated, LEVEL is invalid, or the /tag form is invalid.
+     *     a prefix is repeated, LEVEL is invalid, /notplayedin is used with /tag, or the /tag form is invalid.
      */
     private static Command parseFilter(String arguments) throws GameVaultException {
-        Map<String, String> fields = splitByPrefixes(arguments, TIME_PREFIX, TAG_PREFIX, DIFF_PREFIX);
+        Map<String, String> fields = splitByPrefixes(arguments, TIME_PREFIX, TAG_PREFIX, DIFF_PREFIX,
+                NOT_PLAYED_IN_PREFIX);
+        //@@author Xandurs
+        if (fields.containsKey(TAG_PREFIX) && fields.containsKey(NOT_PLAYED_IN_PREFIX)) {
+            throw new GameVaultException(NOT_PLAYED_IN_PREFIX + " cannot be used together with /tag yet. Format: "
+                    + FilterCommand.USAGE + " (e.g. filter 4 /notplayedin 14)");
+        }
+        //@@author yy261
         if (fields.containsKey(TAG_PREFIX)) {
             return parseFilterByTag(fields);
         }
         int playerCount = parsePositiveNumber(fields.get(PREAMBLE), "COUNT", FilterCommand.USAGE);
+        //@@author Xandurs
         int minutes = fields.containsKey(TIME_PREFIX)
                 ? parsePositiveNumber(fields.get(TIME_PREFIX), "MINUTES", FilterCommand.USAGE)
                 : GameList.NO_TIME_LIMIT;
-        return new FilterCommand(playerCount, minutes, parseOptionalDifficulty(fields, FilterCommand.USAGE));
+        int notPlayedInDays = fields.containsKey(NOT_PLAYED_IN_PREFIX)
+                ? parsePositiveNumber(fields.get(NOT_PLAYED_IN_PREFIX), "DAYS", FilterCommand.USAGE)
+                : FilterCommand.NO_DAYS_LIMIT;
+        //@@author yy261
+        return new FilterCommand(playerCount, minutes, parseOptionalDifficulty(fields, FilterCommand.USAGE),
+                notPlayedInDays);
     }
 
     /**
@@ -238,6 +277,7 @@ public class Parser {
         }
         return difficulty.get();
     }
+    //@@author yy261
 
     /**
      * Splits arguments such as {@code Catan /min 3 /max 4} into the text before the first prefix
@@ -308,6 +348,65 @@ public class Parser {
                     + " (e.g. return 2)");
         }
         return new ReturnCommand(parseIndex(indexText));
+    }
+
+    //@@author MohamedFarsat
+    /**
+     * Builds a {@link RateCommand} from arguments in the form {@code INDEX up|down}, e.g. {@code 2 up}.
+     *
+     * @throws GameVaultException If INDEX or the rating is missing or invalid, or there are extra words.
+     */
+    private static Command parseRate(String arguments) throws GameVaultException {
+        RatingArguments rating = parseRatingArguments(arguments, RateCommand.USAGE, "rate 2 up");
+        return new RateCommand(rating.displayNumber(), rating.thumb());
+    }
+
+    /**
+     * Builds an {@link UnrateCommand} from arguments in the form {@code INDEX up|down}, e.g. {@code 2 down}.
+     *
+     * @throws GameVaultException If INDEX or the rating is missing or invalid, or there are extra words.
+     */
+    private static Command parseUnrate(String arguments) throws GameVaultException {
+        RatingArguments rating = parseRatingArguments(arguments, UnrateCommand.USAGE, "unrate 2 down");
+        return new UnrateCommand(rating.displayNumber(), rating.thumb());
+    }
+
+    /**
+     * The two parts of the arguments of {@code rate} and {@code unrate}.
+     * A record is a short way to write a class that only holds some values.
+     */
+    private record RatingArguments(int displayNumber, Thumb thumb) {
+    }
+
+    /**
+     * Reads arguments in the form {@code INDEX up|down}, which {@code rate} and {@code unrate} share.
+     * {@code up} and {@code down} are not case-sensitive, so {@code 2 UP} works too.
+     *
+     * @param usage Format of the command, shown in error messages.
+     * @param example A valid use of the command, shown in error messages.
+     * @throws GameVaultException If INDEX or the rating is missing or invalid, or there are extra words.
+     */
+    private static RatingArguments parseRatingArguments(String arguments, String usage, String example)
+            throws GameVaultException {
+        String formatHint = " Format: " + usage + " (e.g. " + example + ")";
+        if (arguments.isBlank()) {
+            throw new GameVaultException("INDEX and up/down are missing." + formatHint);
+        }
+        String[] parts = arguments.trim().split("\\s+");
+        if (parts.length == 1) {
+            throw new GameVaultException("Please say 'up' or 'down' after INDEX." + formatHint);
+        }
+        if (parts.length > 2) {
+            throw new GameVaultException("Too many words: expected only INDEX and up/down." + formatHint);
+        }
+
+        int displayNumber = parseIndex(parts[0]);
+        Optional<Thumb> thumb = Thumb.fromKeyword(parts[1]);
+        if (thumb.isEmpty()) {
+            throw new GameVaultException("The rating should be 'up' or 'down', but was '" + parts[1] + "'."
+                    + formatHint);
+        }
+        return new RatingArguments(displayNumber, thumb.get());
     }
 
     //@@author SwaggyDaddy67
@@ -631,6 +730,136 @@ public class Parser {
         return tag;
     }
 
+    /**
+     * Builds an {@link UnavailableCommand} from arguments in the form {@code INDEX /reason REASON},
+     * e.g. {@code 2 /reason missing}. REASON is one of the {@link UnavailableReason} keywords, in any case.
+     *
+     * @throws GameVaultException If INDEX or REASON is missing or invalid, or /reason is repeated.
+     */
+    private static Command parseUnavailable(String arguments) throws GameVaultException {
+        Map<String, String> fields = splitByPrefixes(arguments, REASON_PREFIX);
+        String indexText = fields.get(PREAMBLE);
+        if (indexText.isEmpty()) {
+            throw new GameVaultException("INDEX is missing. Format: " + UnavailableCommand.USAGE
+                    + " (e.g. unavailable 2 /reason missing)");
+        }
+        // Without /reason, "2 missing" would all be read as INDEX, so point out the likely cause instead.
+        if (!fields.containsKey(REASON_PREFIX) && indexText.contains(" ")) {
+            throw new GameVaultException("Did you forget /reason? Format: " + UnavailableCommand.USAGE
+                    + " (e.g. unavailable 2 /reason missing)");
+        }
+        int displayNumber = parseIndex(indexText);
+
+        String reasonText = fields.getOrDefault(REASON_PREFIX, "");
+        if (reasonText.isEmpty()) {
+            throw new GameVaultException("Please say why with /reason " + UnavailableReason.describeKeywords()
+                    + ". Format: " + UnavailableCommand.USAGE);
+        }
+        Optional<UnavailableReason> reason = UnavailableReason.fromKeyword(reasonText);
+        if (reason.isEmpty()) {
+            throw new GameVaultException("REASON should be " + UnavailableReason.describeKeywords()
+                    + ", but was '" + reasonText + "'.");
+        }
+        return new UnavailableCommand(displayNumber, reason.get());
+    }
+
+    /**
+     * Builds an {@link AvailableCommand} from arguments in the form {@code INDEX}, e.g. {@code 2}.
+     *
+     * @throws GameVaultException If INDEX is missing, is not a whole number, or is less than 1.
+     */
+    private static Command parseAvailable(String arguments) throws GameVaultException {
+        String indexText = arguments.trim();
+        if (indexText.isEmpty()) {
+            throw new GameVaultException("INDEX is missing. Format: " + AvailableCommand.USAGE
+                    + " (e.g. available 2)");
+        }
+        return new AvailableCommand(parseIndex(indexText));
+    }
+
+    /**
+     * Builds a {@link BorrowCommand} from arguments in the form {@code INDEX /from NAME [/due YYYY-MM-DD]},
+     * e.g. {@code 2 /from Bob /due 2026-11-10}. Without /due, the game is taken to be a gift that does not
+     * have to be given back.
+     *
+     * @param today Today's date, used to reject due-back dates in the past.
+     * @throws GameVaultException If INDEX or NAME is missing or invalid, a field is repeated,
+     *     or the date is invalid or in the past.
+     */
+    static Command parseBorrow(String arguments, LocalDate today) throws GameVaultException {
+        Map<String, String> fields = splitByPrefixes(arguments, FROM_PREFIX, DUE_PREFIX);
+        String indexText = fields.get(PREAMBLE);
+        if (indexText.isEmpty()) {
+            throw new GameVaultException("INDEX is missing. Format: " + BorrowCommand.USAGE
+                    + " (e.g. borrow 2 /from Bob /due 2026-11-10)");
+        }
+        // As in parseUnavailable, "2 Bob" without /from would all be read as INDEX, so name the likely cause.
+        if (!fields.containsKey(FROM_PREFIX) && indexText.contains(" ")) {
+            throw new GameVaultException("Did you forget /from? Format: " + BorrowCommand.USAGE
+                    + " (e.g. borrow 2 /from Bob)");
+        }
+        int displayNumber = parseIndex(indexText);
+        if (fields.getOrDefault(FROM_PREFIX, "").isEmpty()) {
+            throw new GameVaultException("NAME is missing. Format: " + BorrowCommand.USAGE
+                    + " (e.g. borrow 2 /from Bob)");
+        }
+        String lender = Borrower.normalise(fields.get(FROM_PREFIX));
+        if (!Borrower.isValid(lender)) {
+            throw new GameVaultException("NAME should be " + Borrower.RULES);
+        }
+        LocalDate dueBack = fields.containsKey(DUE_PREFIX)
+                ? parseDueBack(fields.get(DUE_PREFIX), today)
+                : null;
+        return new BorrowCommand(displayNumber, lender, dueBack);
+    }
+
+    private static Command parseBorrow(String arguments) throws GameVaultException {
+        return parseBorrow(arguments, LocalDate.now());
+    }
+
+    /**
+     * Returns the due-back date in {@code text}, which must be in the form {@code YYYY-MM-DD} and not before today.
+     * Today is allowed, e.g. for a game that has to go back after tonight's session.
+     *
+     * @throws GameVaultException If the date is missing, not a real date in the form YYYY-MM-DD, or in the past.
+     */
+    private static LocalDate parseDueBack(String text, LocalDate today) throws GameVaultException {
+        String dateText = text.trim();
+        if (dateText.isEmpty()) {
+            throw new GameVaultException("DATE is missing. Format: " + BorrowCommand.USAGE);
+        }
+        LocalDate date;
+        try {
+            date = LocalDate.parse(dateText);
+        } catch (DateTimeParseException e) {
+            throw new GameVaultException("DATE should be a real date in the form YYYY-MM-DD (e.g. 2026-11-10), "
+                    + "but was '" + dateText + "'.");
+        }
+        if (date.isBefore(today)) {
+            throw new GameVaultException("DATE cannot be in the past, but was " + date + ".");
+        }
+        return date;
+    }
+
+    /**
+     * Builds a {@link GiveBackCommand} from arguments in the form {@code INDEX}, e.g. {@code 2}.
+     *
+     * @throws GameVaultException If INDEX is missing, is not a whole number, or is less than 1.
+     */
+    private static Command parseGiveBack(String arguments) throws GameVaultException {
+        String indexText = arguments.trim();
+        if (indexText.isEmpty()) {
+            throw new GameVaultException("INDEX is missing. Format: " + GiveBackCommand.USAGE
+                    + " (e.g. giveback 2)");
+        }
+        return new GiveBackCommand(parseIndex(indexText));
+    }
+    //@@author Xandurs
+    /**
+     * Returns the trimmed title, which must not be empty or contain '|'
+     * 
+     * @param usage Format of the command being parsed, shown when the title is missing
+     */
     private static String parseTitle(String text, String usage) throws GameVaultException {
         String title = text.trim();
         if (title.isEmpty()) {

@@ -12,6 +12,7 @@ import seedu.gamevault.game.Difficulty;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.PlaySession;
 import seedu.gamevault.game.Tag;
+import seedu.gamevault.game.UnavailableReason;
 
 /**
  * Converts one line of the data file back into a {@link Game}, checking that the line is valid.
@@ -27,7 +28,11 @@ import seedu.gamevault.game.Tag;
  * {@code Game#toFileString()} and a matching case in {@link #decodeNamedField}.
  * The {@code sessions} field holds the play sessions, each written as {@code DATE@PLAYERS}
  * (DATE in {@code YYYY-MM-DD} form) and separated by {@code ;}.
+ * The {@code unavailable} field holds why a game cannot be played at the moment, e.g. {@code unavailable=missing}.
+ * The {@code from} field holds who lent or gave the game to the user, e.g. {@code from=Bob}, and the optional
+ * {@code due} field holds when it must be given back, e.g. {@code due=2026-11-10}; {@code due} needs {@code from}.
  * The {@code lent} field holds the name of the person the game is lent to, e.g. {@code lent=Alice}.
+ * The {@code ratings} field holds the thumbs-up and thumbs-down counts as {@code UP/DOWN}, e.g. {@code ratings=5/1}.
  * Users may edit the data file by hand, so every part of the line is checked and a
  * specific reason is given when something is wrong.</p>
  */
@@ -75,6 +80,13 @@ public class GameDecoder {
         Game game = new Game(title, minPlayers, maxPlayers, playTime);
         decodeTags(fields, game);
         decodeNamedFields(fields, game);
+        //@@author KRAZYZECTRON
+        // Named fields can come in any order, so 'due' can only be checked against 'from' once all are read.
+        if (game.getDueBack().isPresent() && !game.hasLender()) {
+            throw new GameVaultException("the field '" + Game.DUE_BACK_FILE_KEY + "' needs a '"
+                    + Game.LENDER_FILE_KEY + "' field saying who the game is from");
+        }
+        //@@author
         return game;
     }
 
@@ -116,11 +128,23 @@ public class GameDecoder {
         case Game.SESSIONS_FILE_KEY:
             decodeSessions(value, game);
             break;
+        case Game.UNAVAILABLE_FILE_KEY:
+            decodeUnavailableReason(value, game);
+            break;
+        case Game.LENDER_FILE_KEY:
+            decodeLender(value, game);
+            break;
+        case Game.DUE_BACK_FILE_KEY:
+            decodeDueBack(value, game);
+            break;
         case Game.LENT_FILE_KEY:
             decodeBorrower(value, game);
             break;
         case Game.DIFFICULTY_FILE_KEY:
             decodeDifficulty(value, game);
+            break;
+        case Game.RATINGS_FILE_KEY:
+            decodeRatings(value, game);
             break;
         default:
             throw new GameVaultException("unknown field '" + key + "'");
@@ -184,7 +208,87 @@ public class GameDecoder {
         game.lendTo(name);
     }
 
+    //@@author MohamedFarsat
+    /**
+     * Sets the game's thumbs-up and thumbs-down counts from a {@code ratings} field, e.g. {@code ratings=5/1}.
+     *
+     * @throws GameVaultException If the value is not two whole numbers of at least 0 separated by {@code /}.
+     */
+    private static void decodeRatings(String value, Game game) throws GameVaultException {
+        String[] parts = value.split(Game.RATINGS_FILE_SEPARATOR, -1);
+        if (parts.length != 2) {
+            throw new GameVaultException("ratings '" + value + "' should be in the form UP"
+                    + Game.RATINGS_FILE_SEPARATOR + "DOWN, e.g. 5" + Game.RATINGS_FILE_SEPARATOR + "1");
+        }
+        int thumbsUp = parseCount(parts[0], "UP in ratings");
+        int thumbsDown = parseCount(parts[1], "DOWN in ratings");
+        game.setRatings(thumbsUp, thumbsDown);
+    }
+
+    /**
+     * Returns the whole number in {@code text}, which may be 0 (unlike {@link #parsePositiveNumber}),
+     * e.g. for a game that has never had a thumbs down.
+     *
+     * @param fieldName Name of the field, used in the error message.
+     * @throws GameVaultException If the text is not a whole number, or is negative.
+     */
+    private static int parseCount(String text, String fieldName) throws GameVaultException {
+        String trimmedText = text.trim();
+        int count;
+        try {
+            count = Integer.parseInt(trimmedText);
+        } catch (NumberFormatException e) {
+            throw new GameVaultException(fieldName + " should be a whole number, but was '" + trimmedText + "'");
+        }
+        if (count < 0) {
+            throw new GameVaultException(fieldName + " should not be negative, but was " + count);
+        }
+        return count;
+    }
+
     //@@author KRAZYZECTRON
+    /**
+     * Marks the game unavailable for the reason in an {@code unavailable} field, e.g. {@code missing}.
+     *
+     * @throws GameVaultException If the value is not one of the {@link UnavailableReason} keywords.
+     */
+    private static void decodeUnavailableReason(String value, Game game) throws GameVaultException {
+        Optional<UnavailableReason> reason = UnavailableReason.fromKeyword(value);
+        if (reason.isEmpty()) {
+            throw new GameVaultException("unavailable reason '" + value + "' should be "
+                    + UnavailableReason.describeKeywords());
+        }
+        game.markUnavailable(reason.get());
+    }
+
+    /**
+     * Records who the game is from, as named in a {@code from} field, e.g. {@code from=Bob}.
+     * Any due-back date already read from a {@code due} field is kept.
+     *
+     * @throws GameVaultException If the name does not follow {@link Borrower#RULES}.
+     */
+    private static void decodeLender(String value, Game game) throws GameVaultException {
+        String name = Borrower.normalise(value);
+        if (!Borrower.isValid(name)) {
+            throw new GameVaultException("from is '" + name + "', but a name should be " + Borrower.RULES);
+        }
+        game.recordLender(name, game.getDueBack().orElse(null));
+    }
+
+    /**
+     * Sets the due-back date in a {@code due} field, e.g. {@code due=2026-11-10}. Past dates are accepted,
+     * since a game that was not given back on time is simply overdue.
+     *
+     * @throws GameVaultException If the date is not a real date in the form {@code YYYY-MM-DD}.
+     */
+    private static void decodeDueBack(String value, Game game) throws GameVaultException {
+        try {
+            game.setDueBack(LocalDate.parse(value));
+        } catch (DateTimeParseException e) {
+            throw new GameVaultException("due is '" + value + "', but it should be a date in the form YYYY-MM-DD");
+        }
+    }
+
     /**
      * Adds the tags in the TAGS field, if the line has one, to the game.
      * Blank entries (e.g. from a trailing comma) are ignored, and a tag listed twice is only added once,

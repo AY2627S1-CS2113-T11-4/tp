@@ -36,25 +36,33 @@ Expected output:
 ```
 ____________________________________________________________
 Here are the commands you can use:
-  add     Adds a game: add TITLE /min MIN /max MAX [/time MINUTES] [/diff LEVEL] [/tag TAG [MORE_TAGS]...]
-  list    Lists all games in your collection.
-  find    Finds games by title: find KEYWORD
-  filter  Shows games that fit a player count: filter COUNT [/time MINUTES] [/diff LEVEL]
-          or games with a tag: filter [COUNT] [/time MINUTES] [/diff LEVEL] /tag TAG
-  pick    Picks a random game that fits a player count: pick COUNT [/time MINUTES] [/diff LEVEL]
-  delete  Deletes a game: delete INDEX
-  edit    Edits a game: edit INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES|none]
-          [/diff LEVEL|none]
-  tag     Adds tags to a game: tag INDEX TAG [MORE_TAGS]...
-  untag   Removes tags from a game: untag INDEX TAG [MORE_TAGS]...
-  tags    Lists all tags in use and how many games have each.
-  log     Logs that a game was played: log INDEX /players COUNT [/date YYYY-MM-DD]
-  sort    Sorts your collection: sort title|players|time
-  lend    Records that a game is lent out: lend INDEX /to NAME
-  return  Records that a lent game is back: return INDEX
-  lentout Lists the games that are lent out and who has them.
-  help    Shows this list of commands.
-  exit    Exits GameVault.
+  add          Adds a game: add TITLE /min MIN /max MAX [/time MINUTES] [/diff LEVEL]
+               [/tag TAG [MORE_TAGS]...]
+  list         Lists all games in your collection.
+  find         Finds games by title: find KEYWORD
+  filter       Shows games that fit a player count: filter COUNT [/time MINUTES] [/diff LEVEL]
+               [/notplayedin DAYS]
+               or games with a tag: filter [COUNT] [/time MINUTES] [/diff LEVEL] /tag TAG
+  pick         Picks a random game that fits a player count: pick COUNT [/time MINUTES] [/diff LEVEL]
+  delete       Deletes a game: delete INDEX
+  edit         Edits a game: edit INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES|none]
+               [/diff LEVEL|none]
+  tag          Adds tags to a game: tag INDEX TAG [MORE_TAGS]...
+  log          Logs that a game was played: log INDEX /players COUNT [/date YYYY-MM-DD]
+  rate         Gives a game a thumbs up or down after playing: rate INDEX up|down
+  unrate       Removes a thumbs up or down given by mistake: unrate INDEX up|down
+  untag        Removes tags from a game: untag INDEX TAG [MORE_TAGS]...
+  tags         Lists all tags in use and how many games have each.
+  sort         Sorts your collection: sort title|players|time
+  lend         Records that a game is lent out: lend INDEX /to NAME
+  return       Records that a lent game is back: return INDEX
+  lentout      Lists the games that are lent out and who has them.
+  unavailable  Marks a game unavailable: unavailable INDEX /reason missing|damaged
+  available    Marks a game available again: available INDEX
+  borrow       Records who lent or gave you a game: borrow INDEX /from NAME [/due YYYY-MM-DD]
+  giveback     Records that a borrowed game was given back: giveback INDEX
+  help         Shows this list of commands.
+  exit         Exits GameVault.
 ____________________________________________________________
 ```
  
@@ -106,13 +114,32 @@ Expected output:
 ```
 ____________________________________________________________
 Here are the games in your collection:
-1. Catan (3-4 players, 60 min)
-2. Codenames (4-8 players) [party]
-3. Chess (2 players)
+1. Catan (3-4 players, 60 min) - last played 3 days ago
+2. Codenames (4-8 players) [party] - never played
+3. Chess (2 players) - last played today
 ____________________________________________________________
 ```
 
 If your collection is empty, GameVault shows `No games in your collection yet.` instead.
+<!-- @@author Xandurs -->
+
+Each game ends with when it was last played, worked out from the sessions you recorded with
+[`log`](#logging-a-play-session-log):
+
+* `last played today`, `last played 1 day ago` or `last played N days ago`
+* `never played` if no session has been logged for the game yet
+
+This helps you avoid suggesting a game the group played very recently. To hide those games when choosing what to
+play, use [`filter COUNT /notplayedin DAYS`](#finding-games-for-your-group-filter).
+<!-- @@author KRAZYZECTRON -->
+
+If a game you [borrowed](#recording-who-lent-or-gave-you-a-game-borrow-giveback) should already have been given back,
+`list` reminds you at the end, e.g.:
+
+```
+Overdue, please give these back:
+2. Hive - give back to Bob (was due 2026-10-25)
+```
 <!-- @@author -->
 
 ### Finding games for your group: `filter`
@@ -120,7 +147,7 @@ If your collection is empty, GameVault shows `No games in your collection yet.` 
 Shows the games that can be played by the given number of players, optionally only those that fit in the time
 you have.
  
-Format: `filter COUNT [/time MINUTES] [/diff LEVEL]`
+Format: `filter COUNT [/time MINUTES] [/diff LEVEL] [/notplayedin DAYS]`
  
 * `COUNT` is the number of players, and must be a whole number of at least 1.
 * A game is shown if `COUNT` is within its minimum and maximum players (both inclusive).
@@ -129,9 +156,10 @@ Format: `filter COUNT [/time MINUTES] [/diff LEVEL]`
 * If you give `/diff LEVEL`, only games at that level (`easy`, `medium` or `hard`) are shown, which helps you avoid
   something too complicated for new players. Games with no difficulty recorded are left out, and GameVault tells
   you how many were left out for this reason. `COUNT` is still needed.
+* Games that are lent out or [marked unavailable](#marking-a-game-unavailable-unavailable-available) are left out.
 * Your collection is not changed.
 
-Examples of usage: `filter 4`, `filter 4 /time 45`, `filter 4 /time 45 /diff easy`
+Examples of usage: `filter 4`, `filter 4 /time 45 /diff easy`, `filter 4 /notplayedin 14`
  
 Expected output:
  
@@ -153,6 +181,32 @@ No games fit 4 players in 45 minutes or less.
 (1 game(s) for 4 players were left out because they have no play time recorded.)
 ____________________________________________________________
 ```
+
+<!-- @@author Xandurs -->
+
+**Hiding games played recently.** Add `/notplayedin DAYS` to leave out games the group played in the last
+`DAYS` days, so you don't end up playing the same game again.
+
+* `DAYS` must be a whole number of at least 1.
+* Today counts as 0 days ago. For example, with `/notplayedin 14`, a game last played 13 days ago is hidden, but a
+  game last played 14 days ago is shown.
+* Games that have never been played are always shown.
+* GameVault tells you how many games were hidden for this reason.
+* `/notplayedin` can be combined with `/time` and `/diff`, in any order, but not with `/tag` (yet).
+* When a game was played comes from the sessions you recorded with [`log`](#logging-a-play-session-log).
+
+Example: `filter 4 /notplayedin 14`, when Catan was played 3 days ago, Azul 32 days ago, and Hive never:
+
+```
+____________________________________________________________
+Games that fit 4 players not played in the last 14 day(s):
+  Azul (2-4 players)
+  Hive (2-4 players)
+(1 game(s) were hidden because they were played in the last 14 day(s).)
+____________________________________________________________
+```
+
+<!-- @@author -->
 
 <!-- @@author KRAZYZECTRON -->
 #### Finding games by tag: `filter /tag`
@@ -234,7 +288,10 @@ Format: `pick COUNT [/time MINUTES] [/diff LEVEL]`
   Games with no play time recorded are not considered, and GameVault tells you how many were left out for this reason.
 * If you give `/diff LEVEL`, the game is picked only from games at that level. Games with no difficulty recorded
   are not considered, and GameVault tells you how many for this reason.
+* Games that are lent out or [marked unavailable](#marking-a-game-unavailable-unavailable-available) are not considered.
 * Each use may pick a different game. Your collection is not changed.
+* Games your group rated up with [`rate`](#rating-a-game-after-playing-rate) are more likely to be picked,
+  and games rated down are less likely. When any of the games that fit has been rated, `pick` reminds you of this.
 
 Examples of usage: `pick 4`, `pick 4 /time 45`, `pick 4 /diff easy`
 
@@ -439,6 +496,106 @@ Catan has now been played 2 times.
 ____________________________________________________________
 ```
 
+<!-- @@author MohamedFarsat -->
+### Rating a game after playing: `rate`
+
+Gives a game a thumbs up or a thumbs down after your group has played it, so that `pick` suggests the games your
+group enjoyed more often.
+
+Format: `rate INDEX up|down`
+
+* `INDEX` is the game's number in `list`, and must be a whole number of at least 1.
+* Use `up` if the group enjoyed the game, or `down` if they did not. `UP` and `Down` work too.
+* You can rate the same game as many times as you like, e.g. once after every game night. Each rating is added
+  to the game's count of thumbs up or thumbs down.
+* You do not need to [`log`](#logging-a-play-session-log) a game before rating it, since not every group logs
+  every game they play.
+* Rated the wrong game? Use [`unrate`](#undoing-a-rating-unrate) to take the rating back.
+* Once a game has been rated, `list` (and other commands that show the game) show its counts after it,
+  e.g. `Catan (3-4 players) +5/-1` for 5 thumbs up and 1 thumbs down.
+
+Examples of usage: `rate 1 up`, `rate 3 down`
+
+Expected output (for `rate 1 up`, when Catan already had 4 thumbs up and 1 thumbs down):
+
+```
+____________________________________________________________
+Thumbs up for Catan!
+Catan is now rated +5/-1 (thumbs up/thumbs down).
+____________________________________________________________
+```
+
+**How ratings affect `pick`:** each game that fits is given a weight of
+(thumbs up + 1) ÷ (thumbs down + 1), kept between 0.2 and 5, and `pick` chooses games in proportion to their weights:
+
+Rating | Weight | Compared with an unrated game
+-------|--------|------------------------------
+Not rated (`+0/-0`) | 1 | Equally likely
+`+3/-0` | 4 | 4 times as likely
+`+2/-2` | 1 | Equally likely
+`+0/-3` | 0.25 | A quarter as likely
+`+30/-0` | 5 (the most) | 5 times as likely
+`+0/-30` | 0.2 (the least) | A fifth as likely
+
+The limits mean a long-time favourite is picked more often, but cannot crowd out every other game, and a game with
+many thumbs down is picked less often, but is never ruled out, so your group still gets the occasional surprise.
+Ratings only affect `pick`: `filter` shows the same games whether or not they are rated.
+
+### Undoing a rating: `unrate`
+
+Removes one thumbs up or thumbs down from a game, e.g. if you typed `rate 2 down` but meant `rate 3 down`.
+
+Format: `unrate INDEX up|down`
+
+* `INDEX` is the game's number in `list`, and must be a whole number of at least 1.
+* Use `up` to remove one thumbs up, or `down` to remove one thumbs down. The game's other ratings are kept.
+* If the game has no rating of that kind, GameVault tells you and changes nothing.
+
+Example of usage: `unrate 2 down`
+
+Expected output (when Codenames had 1 thumbs up and 1 thumbs down):
+
+```
+____________________________________________________________
+Removed a thumbs down from Codenames.
+Codenames is now rated +1/-0 (thumbs up/thumbs down).
+____________________________________________________________
+```
+
+<!-- @@author KRAZYZECTRON -->
+### Marking a game unavailable: `unavailable`, `available`
+
+Marks a game you cannot play at the moment, for example because pieces are missing or it is damaged.
+`filter` and `pick` then leave it out, so you are never offered a game you cannot play, and `list` shows why.
+Mark it available again once it is back in play.
+
+Format: `unavailable INDEX /reason REASON` and `available INDEX`
+
+* `INDEX` is the game's number in `list`, and must be a whole number of at least 1.
+* `REASON` is `missing` (missing pieces) or `damaged`, in any case.
+* Marking a game that is already unavailable with a different reason replaces the old reason.
+* An unavailable game stays in your collection: `list`, `find` and `sort` still show it, with its reason after it.
+  `edit`, `tag`, `untag`, `log` and `rate` work on it as usual, and `edit` keeps its reason.
+* For games you have lent to someone, use [`lend`](#lending-a-game-to-a-friend-lend) instead,
+  which also records who has the game.
+
+Examples of usage:
+
+* `unavailable 1 /reason missing` marks game 1 as having missing pieces.
+* `available 1` marks game 1 as available again.
+
+Expected output (for `unavailable 1 /reason damaged`, when game 1 was already marked as having missing pieces):
+
+```
+____________________________________________________________
+Marked unavailable: Catan (3-4 players, 60 min) (unavailable: damaged)
+(Was: missing pieces.)
+Use 'available 1' once it can be played again.
+____________________________________________________________
+```
+
+`list` then shows the reason after the game, e.g. `1. Catan (3-4 players, 60 min) (unavailable: damaged)`.
+
 <!-- @@author -->
 
 <!-- @@author yy261 -->
@@ -525,6 +682,56 @@ ____________________________________________________________
 ```
 
 If no game is lent out, GameVault shows `None of your games are lent out. Everything is on your shelf.` instead.
+<!-- @@author KRAZYZECTRON -->
+### Recording who lent or gave you a game: `borrow`, `giveback`
+
+Records who a game came from, so you know who to give a borrowed game back to, and who to thank for a gift.
+For a borrowed game you can also record when it is due back, and `list` reminds you once it is overdue.
+This is the opposite of [`lend`](#lending-a-game-to-a-friend-lend), which is for games you lend out.
+
+Format: `borrow INDEX /from NAME [/due YYYY-MM-DD]` and `giveback INDEX`
+
+* `INDEX` is the game's number in `list`, and must be a whole number of at least 1.
+* `NAME` is the person the game is from, e.g. `Bob` or `Mary Tan`. It follows the same rules as for `lend`:
+  1 to 30 characters long and cannot contain `|`. Extra spaces are removed.
+* `/due` is the day the game must be given back, in the form `YYYY-MM-DD` (e.g. `2026-11-10`). It cannot be in
+  the past. Leave it out for a game that does not have to be given back, such as a gift.
+* `/from` and `/due` can be given in either order.
+* Using `borrow` again on the same game replaces the old record, e.g. to extend a loan.
+* `giveback` is for a borrowed game you have given back. Since it is no longer on your shelf, it is **removed from
+  your collection**, along with its play history and ratings, so `filter` and `pick` stop suggesting it.
+* `giveback` only works on games borrowed with `/due`. A game recorded without `/due` is a gift, so there is
+  nothing to give back; use `delete` if you no longer have it.
+* While you have them, borrowed games are on your shelf, so `filter` and `pick` still suggest them.
+  `edit` keeps who the game is from.
+
+Examples of usage:
+
+* `borrow 2 /from Bob /due 2026-11-10` records that game 2 is borrowed from Bob until 10 November 2026.
+* `borrow 3 /from Mary Tan` records that game 3 is from Mary Tan, e.g. a gift.
+* `giveback 2` records that game 2 has been given back, and removes it from your collection.
+
+Expected output (for `borrow 2 /from Bob /due 2026-11-10`):
+
+```
+____________________________________________________________
+Recorded: Hive (2 players) (borrowed from Bob, due 2026-11-10)
+'list' will remind you if it is not given back by 2026-11-10. Use 'giveback 2' once you have given it back.
+____________________________________________________________
+```
+
+Expected output (for `giveback 2`, with 3 games in your collection before):
+
+```
+____________________________________________________________
+Given back to Bob: Hive
+It has been removed from your collection. You now have 2 game(s).
+____________________________________________________________
+```
+
+For a gift, `giveback` changes nothing and shows e.g.
+`Azul was a gift from Mary Tan, so there is nothing to give back. Use 'delete 3' if you no longer have it.`
+
 <!-- @@author -->
 
 ### Exiting the program: `exit`
@@ -555,6 +762,7 @@ Azul | 2 | 4 | 45 | family,strategy
 Werewolf | 8 | 18 |  | party
 Hive | 2 | 2 |  |  | lent=Alice
 Love Letter | 2 | 4 | 20 |  | sessions=2026-10-25@3;2026-10-30@4
+Splendor | 2 | 4 | 30 |  | ratings=5/1
 ```
  
 * `MIN` and `MAX` must be whole numbers of at least 1, and `MAX` must not be less than `MIN`.
@@ -562,10 +770,17 @@ Love Letter | 2 | 4 | 20 |  | sessions=2026-10-25@3;2026-10-30@4
 * `TAGS`, if given, must be the fifth field. For a game with tags but no play time, leave `TIME` blank,
   as in the `Werewolf` line above. Each tag must follow the rules in [Tagging a game](#tagging-a-game-tag-untag).
 * Any further data comes after `TAGS` as named `KEY=VALUE` fields. For these lines, write `TIME` and `TAGS`
-  even if blank, as in the `Hive` and `Love Letter` lines above. The current named fields are `lent`
-  (see [`lend`](#lending-a-game-to-a-friend-lend)), `difficulty`, which is `easy`, `medium` or `hard`
-  (e.g. `difficulty=easy`), and `sessions`, which lists the logged play sessions as `DATE@PLAYERS`
-  (e.g. `2026-10-30@4`), separated by `;`.
+  even if blank, as in the `Hive` and `Love Letter` lines above. The named fields are:
+  * `lent`, the person the game is lent to (see [`lend`](#lending-a-game-to-a-friend-lend)).
+  * `difficulty`, how hard the game is: `easy`, `medium` or `hard` (e.g. `difficulty=easy`).
+  * `sessions`, which lists the logged play sessions as `DATE@PLAYERS` (e.g. `2026-10-30@4`), separated by `;`.
+  * `ratings`, which holds the thumbs-up and thumbs-down counts from [`rate`](#rating-a-game-after-playing-rate)
+    as `UP/DOWN` (e.g. `5/1`). Both counts must be whole numbers of at least 0.
+  * `unavailable`, which says why the game cannot be played at the moment: `missing` or `damaged`
+    (e.g. `unavailable=missing`).
+  * `from`, the person who lent or gave you the game (see [`borrow`](#recording-who-lent-or-gave-you-a-game-borrow-giveback)),
+    and `due`, the day it must be given back in the form `YYYY-MM-DD` (e.g. `from=Bob | due=2026-11-10`).
+    `due` can only be given together with `from`.
 * Blank lines are ignored.
 
 If a line is not in this format, GameVault skips that line, loads the rest of your games, and tells you which
@@ -593,7 +808,7 @@ Action | Format
 -------|-------
 Add | `add TITLE /min MIN /max MAX [/time MINUTES] [/diff LEVEL] [/tag TAG [MORE_TAGS]...]`, e.g. `add Catan /min 3 /max 4 /time 60 /tag strategy`
 List | `list`
-Filter | `filter COUNT [/time MINUTES] [/diff LEVEL]`, e.g. `filter 4 /time 45 /diff easy`<br>`filter [COUNT] [/time MINUTES] [/diff LEVEL] /tag TAG`, e.g. `filter 6 /tag party`
+Filter | `filter COUNT [/time MINUTES] [/diff LEVEL] [/notplayedin DAYS]`, e.g. `filter 4 /time 45 /diff easy`, `filter 4 /notplayedin 14`<br>`filter [COUNT] [/time MINUTES] [/diff LEVEL] /tag TAG`, e.g. `filter 6 /tag party`
 Find | `find KEYWORD`, e.g. `find mono`
 Pick | `pick COUNT [/time MINUTES] [/diff LEVEL]`, e.g. `pick 4 /time 45 /diff easy`
 Delete | `delete INDEX`, e.g. `delete 2`
@@ -606,5 +821,11 @@ Lend | `lend INDEX /to NAME`, e.g. `lend 2 /to Alice`
 Return | `return INDEX`, e.g. `return 2`
 List lent games | `lentout`
 Log | `log INDEX /players COUNT [/date YYYY-MM-DD]`, e.g. `log 1 /players 4 /date 2026-10-30`
+Rate | `rate INDEX up\|down`, e.g. `rate 1 up`
+Unrate | `unrate INDEX up\|down`, e.g. `unrate 2 down`
+Mark unavailable | `unavailable INDEX /reason missing\|damaged`, e.g. `unavailable 1 /reason missing`
+Mark available | `available INDEX`, e.g. `available 1`
+Borrow | `borrow INDEX /from NAME [/due YYYY-MM-DD]`, e.g. `borrow 2 /from Bob /due 2026-11-10`
+Give back | `giveback INDEX`, e.g. `giveback 2`
 Help | `help`
 Exit | `exit`

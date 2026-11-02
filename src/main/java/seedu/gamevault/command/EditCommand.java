@@ -14,8 +14,8 @@ import seedu.gamevault.ui.Ui;
 //@@author Xandurs
 /**
  * Changes the title, player range and/or play time of a game, then saves the updated collection to the data file.
-  * Fields that are not given keep the game's existing values, and the game's tags and play sessions
- * are always kept.
+  * Fields that are not given keep the game's existing values, and the game's tags, play sessions
+ * and unavailable reason are always kept.
  * The game keeps its position in the list.
  */
 public class EditCommand extends Command {
@@ -155,6 +155,17 @@ public class EditCommand extends Command {
         for (PlaySession session : oldGame.getSessions()) {
             editedGame.addSession(session);
         }
+        //@@author KRAZYZECTRON
+        // Availability is changed with unavailable/available, so keep the game's current reason, if any.
+        oldGame.getUnavailableReason().ifPresent(editedGame::markUnavailable);
+        // Who the game is from is changed with borrow/giveback, so keep that too.
+        if (oldGame.hasLender()) {
+            editedGame.recordLender(oldGame.getLender(), oldGame.getDueBack().orElse(null));
+        }
+        //@@author MohamedFarsat
+        // Ratings are changed with rate, not edit, so keep them too.
+        editedGame.setRatings(oldGame.getThumbsUp(), oldGame.getThumbsDown());
+        //@@author Xandurs
 
         if (editedGame.toFileString().equals(oldGame.toFileString())) {
             // Nothing would change, so tell the user instead of rewriting the data file.

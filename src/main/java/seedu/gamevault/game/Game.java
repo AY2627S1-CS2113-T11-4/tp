@@ -1,6 +1,7 @@
 package seedu.gamevault.game;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -19,10 +20,24 @@ public class Game {
     public static final String SESSIONS_FILE_KEY = "sessions";
     /** Separates the sessions within the sessions field, e.g. {@code 2026-06-01@3;2026-10-30@4}. */
     public static final String SESSION_FILE_SEPARATOR = ";";
+    /** Name of the data-file field that says why a game is unavailable, e.g. {@code unavailable=missing}. */
+    public static final String UNAVAILABLE_FILE_KEY = "unavailable";
+    /** Name of the data-file field that holds who lent or gave the game to the user, e.g. {@code from=Bob}. */
+    public static final String LENDER_FILE_KEY = "from";
+    /** Name of the data-file field that holds when the game must be given back, e.g. {@code due=2026-11-10}. */
+    public static final String DUE_BACK_FILE_KEY = "due";
     /** Name of the data-file field that holds who the game is lent to, e.g. {@code lent=Alice}. */
     public static final String LENT_FILE_KEY = "lent";
     /** Name of the data-file field that holds a game's difficulty, e.g. {@code difficulty=easy}. */
     public static final String DIFFICULTY_FILE_KEY = "difficulty";
+    /** Name of the data-file field that holds the thumbs-up and thumbs-down counts, e.g. {@code ratings=5/1}. */
+    public static final String RATINGS_FILE_KEY = "ratings";
+    /** Separates the thumbs-up count from the thumbs-down count in the ratings field, e.g. {@code 5/1}. */
+    public static final String RATINGS_FILE_SEPARATOR = "/";
+    /** Largest weight {@code pick} gives a game, so that a long-time favourite cannot crowd out every other game. */
+    public static final double MAX_PICK_WEIGHT = 5;
+    /** Smallest weight {@code pick} gives a game, the mirror of {@link #MAX_PICK_WEIGHT}. */
+    public static final double MIN_PICK_WEIGHT = 1 / MAX_PICK_WEIGHT;
     /** Value of {@code playTime} for a game whose play time has not been recorded. */
     private static final int NO_PLAY_TIME = 0;
 
@@ -34,10 +49,20 @@ public class Game {
     private final int playTime;
     /** Normalised tags (see {@link Tag}); a TreeSet keeps them unique and in alphabetical order. */
     private final TreeSet<String> tags = new TreeSet<>();
+    /** Why the game cannot be played at the moment, or null while it is available. */
+    private UnavailableReason unavailableReason;
+    /** Normalised name of the person who lent or gave this game to the user (see {@link Borrower}), or null. */
+    private String lender;
+    /** Date the game must be given back to {@link #lender}, or null if it does not have to be (e.g. a gift). */
+    private LocalDate dueBack;
     /** Normalised name of the person this game is lent to (see {@link Borrower}), or null if it is on the shelf. */
     private String borrower;
     /** How hard the game is to learn and play, or null if it has not been recorded. */
     private Difficulty difficulty;
+    /** Number of times the group gave this game a thumbs up after playing it (see {@code rate}). */
+    private int thumbsUp;
+    /** Number of times the group gave this game a thumbs down after playing it. */
+    private int thumbsDown;
 
     /**
      * Creates a game with no play time recorded.
@@ -142,6 +167,106 @@ public class Game {
         return Collections.unmodifiableSet(tags);
     }
 
+    /**
+     * Returns whether the user marked this game unavailable, e.g. because pieces are missing.
+     */
+    public boolean isMarkedUnavailable() {
+        return unavailableReason != null;
+    }
+
+    /**
+     * Returns why this game is unavailable, or an empty Optional if it is not marked unavailable.
+     */
+    public Optional<UnavailableReason> getUnavailableReason() {
+        return Optional.ofNullable(unavailableReason);
+    }
+
+    /**
+     * Marks this game unavailable for the given reason, replacing any earlier reason.
+     *
+     * @param reason Why the game cannot be played at the moment.
+     */
+    public void markUnavailable(UnavailableReason reason) {
+        assert reason != null : "Reason should not be null; use markAvailable() to clear it";
+        unavailableReason = reason;
+    }
+
+    /**
+     * Marks this game available again. Callers must check {@link #isMarkedUnavailable()} first,
+     * so that the user can be told when the game was already available.
+     */
+    public void markAvailable() {
+        assert isMarkedUnavailable() : "Game should be marked unavailable before it is made available";
+        unavailableReason = null;
+    }
+
+    /**
+     * Returns whether the user recorded who lent or gave this game to them (see the {@code borrow} command).
+     */
+    public boolean hasLender() {
+        return lender != null;
+    }
+
+    /**
+     * Returns the name of the person who lent or gave this game to the user.
+     * Only meaningful when {@link #hasLender()} is true.
+     */
+    public String getLender() {
+        assert hasLender() : "Check hasLender() before asking for the lender";
+        return lender;
+    }
+
+    /**
+     * Returns the date this game must be given back to its lender, or an empty Optional if there is none,
+     * e.g. because the game was a gift.
+     */
+    public Optional<LocalDate> getDueBack() {
+        return Optional.ofNullable(dueBack);
+    }
+
+    /**
+     * Records who lent or gave this game to the user, replacing any earlier record.
+     *
+     * @param name A valid, normalised name (see {@link Borrower}).
+     * @param dueBackDate Date the game must be given back, or null if it does not have to be given back.
+     */
+    public void recordLender(String name, LocalDate dueBackDate) {
+        assert Borrower.isValid(name) : "Lender name should be valid and normalised";
+        lender = name;
+        dueBack = dueBackDate;
+    }
+
+    /**
+     * Sets only the due-back date. This is for {@link seedu.gamevault.storage.GameDecoder}, which may read the
+     * {@code due} field before the {@code from} field and checks afterwards that both are there;
+     * commands should use {@link #recordLender} instead.
+     *
+     * @param dueBackDate Date the game must be given back.
+     */
+    public void setDueBack(LocalDate dueBackDate) {
+        assert dueBackDate != null : "Due-back date should not be null";
+        dueBack = dueBackDate;
+    }
+
+    /**
+     * Returns whether this game should already have been given back, i.e. its due-back date is before today.
+     * A game due back today is not overdue yet.
+     *
+     * @param today Today's date; passed in so that tests can use a fixed date.
+     */
+    public boolean isOverdue(LocalDate today) {
+        return dueBack != null && dueBack.isBefore(today);
+    }
+
+    /**
+     * Returns who the game is from in words, e.g. {@code from Bob} or {@code borrowed from Bob, due 2026-11-10}.
+     * Only meaningful when {@link #hasLender()} is true.
+     */
+    public String describeLender() {
+        assert hasLender() : "Check hasLender() before describing the lender";
+        return dueBack == null ? "from " + lender : "borrowed from " + lender + ", due " + dueBack;
+    }
+
     //@@author yy261
     /**
      * Returns whether this game can be played by the given number of players,
@@ -208,11 +333,14 @@ public class Game {
     }
 
     /**
-     * Returns whether this game can be played tonight, i.e. whether {@code filter} and {@code pick} may suggest it.
+     * Returns whether this game can be played tonight, i.e. whether {@code filter} and {@code pick} may suggest it:
+     * it is not lent out and not marked unavailable (e.g. because pieces are missing).
      * Suggestions should use this method instead of checking each reason a game might be unavailable.
      */
     public boolean isAvailable() {
-        return !isLent();
+        //@@author KRAZYZECTRON
+        return !isLent() && !isMarkedUnavailable();
+        //@@author yy261
     }
 
     /**
@@ -282,6 +410,16 @@ public class Game {
             }
             fields.add(SESSIONS_FILE_KEY + "=" + String.join(SESSION_FILE_SEPARATOR, encoded));
         }
+        //@@author KRAZYZECTRON
+        if (isMarkedUnavailable()) {
+            fields.add(UNAVAILABLE_FILE_KEY + "=" + unavailableReason.getKeyword());
+        }
+        if (hasLender()) {
+            fields.add(LENDER_FILE_KEY + "=" + lender);
+        }
+        if (dueBack != null) {
+            fields.add(DUE_BACK_FILE_KEY + "=" + dueBack);
+        }
         //@@author yy261
         if (isLent()) {
             fields.add(LENT_FILE_KEY + "=" + borrower);
@@ -289,14 +427,22 @@ public class Game {
         if (hasDifficulty()) {
             fields.add(DIFFICULTY_FILE_KEY + "=" + difficulty.getKeyword());
         }
+        //@@author MohamedFarsat
+        if (isRated()) {
+            fields.add(RATINGS_FILE_KEY + "=" + thumbsUp + RATINGS_FILE_SEPARATOR + thumbsDown);
+        }
         //@@author Xandurs
         return fields;
     }
     //@@author
     /**
      * Returns this game as it is shown to the user, e.g.
-     * {@code Catan (3-4 players, 60 min) [strategy] (lent to Alice)},
+     * {@code Catan (3-4 players, 60 min) [strategy] +5/-1 (lent to Alice)},
      * or {@code Chess (2 players)} when the minimum and maximum are the same and nothing else is set.
+     * The rating ({@code +5/-1}) is only shown once the game has been rated.
+     * An unavailable game ends with its reason, in the same style as a lent game,
+     * e.g. {@code Catan (3-4 players) (unavailable: missing pieces)}, and a game someone lent or gave to the user
+     * ends with who it is from, e.g. {@code Hive (2 players) (borrowed from Bob, due 2026-11-10)}.
      */
     @Override
     public String toString() {
@@ -306,8 +452,110 @@ public class Game {
         String time = hasPlayTime() ? ", " + playTime + " min" : "";
         String level = hasDifficulty() ? ", " + difficulty.getKeyword() : "";
         String tagList = tags.isEmpty() ? "" : " [" + String.join(", ", tags) + "]";
+        String rating = isRated() ? " " + describeRatings() : "";
         String lent = isLent() ? " (lent to " + borrower + ")" : "";
-        return title + " (" + players + " players" + time + level + ")" + tagList + lent;
+        String availability = isMarkedUnavailable()
+                ? " (unavailable: " + unavailableReason.getDescription() + ")"
+                : "";
+        String from = hasLender() ? " (" + describeLender() + ")" : "";
+        return title + " (" + players + " players" + time + level + ")" + tagList + rating + lent + availability + from;
+    }
+
+    //@@author MohamedFarsat
+    public int getThumbsUp() {
+        return thumbsUp;
+    }
+
+    public int getThumbsDown() {
+        return thumbsDown;
+    }
+
+    /**
+     * Returns whether this game has been given at least one thumbs up or thumbs down.
+     */
+    public boolean isRated() {
+        return thumbsUp > 0 || thumbsDown > 0;
+    }
+
+    /**
+     * Returns how many of the given thumb this game has, e.g. its number of thumbs up for {@link Thumb#UP}.
+     */
+    public int getRatingCount(Thumb thumb) {
+        return thumb == Thumb.UP ? thumbsUp : thumbsDown;
+    }
+
+    /**
+     * Returns whether one more of the given thumb can be recorded. This is only false when the count has reached
+     * {@link Integer#MAX_VALUE} (possible only by editing the data file), where adding 1 would wrap round to a
+     * negative number.
+     */
+    public boolean canAddRating(Thumb thumb) {
+        return getRatingCount(thumb) < Integer.MAX_VALUE;
+    }
+
+    /**
+     * Records one more thumbs up or thumbs down.
+     * Callers must check {@link #canAddRating} first, so the user can be told why nothing changed;
+     * the assertion here only catches programming errors.
+     */
+    public void addRating(Thumb thumb) {
+        assert canAddRating(thumb) : "Rating count should not overflow";
+        if (thumb == Thumb.UP) {
+            thumbsUp++;
+        } else {
+            thumbsDown++;
+        }
+    }
+
+    /**
+     * Returns whether this game has at least one of the given thumb that could be removed.
+     */
+    public boolean canRemoveRating(Thumb thumb) {
+        return getRatingCount(thumb) > 0;
+    }
+
+    /**
+     * Removes one thumbs up or thumbs down, e.g. to undo a rating given to the wrong game.
+     * Callers must check {@link #canRemoveRating} first.
+     */
+    public void removeRating(Thumb thumb) {
+        assert canRemoveRating(thumb) : "Rating count should not go below 0";
+        if (thumb == Thumb.UP) {
+            thumbsUp--;
+        } else {
+            thumbsDown--;
+        }
+    }
+
+    /**
+     * Replaces both rating counts, e.g. when loading the game from the data file or copying it in {@code edit}.
+     *
+     * @param thumbsUp Number of thumbs up (at least 0).
+     * @param thumbsDown Number of thumbs down (at least 0).
+     */
+    public void setRatings(int thumbsUp, int thumbsDown) {
+        assert thumbsUp >= 0 && thumbsDown >= 0 : "Rating counts should not be negative";
+        this.thumbsUp = thumbsUp;
+        this.thumbsDown = thumbsDown;
+    }
+
+    /**
+     * Returns the rating counts as shown to the user, e.g. {@code +5/-1} for 5 thumbs up and 1 thumbs down.
+     */
+    public String describeRatings() {
+        return "+" + thumbsUp + "/-" + thumbsDown;
+    }
+
+    /**
+     * Returns how strongly {@code pick} should favour this game: {@code (thumbsUp + 1) / (thumbsDown + 1)},
+     * kept between {@link #MIN_PICK_WEIGHT} and {@link #MAX_PICK_WEIGHT}.
+     * An unrated game has weight 1, a game rated +3/-0 has weight 4 (4 times as likely to be picked),
+     * and a game rated +0/-3 has weight 0.25. Adding 1 to both counts means the weight is never 0, and the limits
+     * stop a game rated e.g. +30/-0 from being picked almost every time, so {@code pick} still feels random.
+     */
+    public double getPickWeight() {
+        double weight = (thumbsUp + 1.0) / (thumbsDown + 1.0);
+        return Math.max(MIN_PICK_WEIGHT, Math.min(MAX_PICK_WEIGHT, weight));
     }
 
     //@@author Xandurs
@@ -335,5 +583,48 @@ public class Game {
             return Optional.empty();
         }
         return Optional.of(sessions.get(sessions.size() - 1).getDate());
+    }
+
+    /**
+     * Returns how many days ago this game was last played, e.g. 0 if it was played today,
+     * or an empty Optional if it has never been played.
+     *
+     * @param today Today's date; passed in so that tests can use a fixed date.
+     */
+    public Optional<Long> getDaysSinceLastPlayed(LocalDate today) {
+        assert today != null : "Today's date should not be null";
+        // log rejects future dates, but a hand-edited data file might not, so never report a negative number.
+        return getLastPlayed().map(lastPlayed -> Math.max(0L, ChronoUnit.DAYS.between(lastPlayed, today)));
+    }
+
+    /**
+     * Returns whether this game was played within the last {@code days} days, counting today as 0 days ago.
+     * For example, with {@code days} = 14, a game played 13 days ago was played within that time,
+     * but one played 14 days ago was not. A game that has never been played was not played within any time.
+     *
+     * @param days Number of days to look back; must be at least 1.
+     * @param today Today's date; passed in so that tests can use a fixed date.
+     */
+    public boolean wasPlayedWithin(int days, LocalDate today) {
+        assert days >= 1 : "Number of days should be at least 1";
+        return getDaysSinceLastPlayed(today).map(daysAgo -> daysAgo < days).orElse(false);
+    }
+
+    /**
+     * Returns when this game was last played, in words: {@code last played today},
+     * {@code last played 1 day ago}, {@code last played 12 days ago} or {@code never played}.
+     *
+     * @param today Today's date; passed in so that tests can use a fixed date.
+     */
+    public String describeLastPlayed(LocalDate today) {
+        Optional<Long> daysAgo = getDaysSinceLastPlayed(today);
+        if (daysAgo.isEmpty()) {
+            return "never played";
+        }
+        long days = daysAgo.get();
+        if (days == 0) {
+            return "last played today";
+        }
+        return "last played " + days + (days == 1 ? " day ago" : " days ago");
     }
 }

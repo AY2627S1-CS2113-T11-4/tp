@@ -40,16 +40,26 @@ class PickCommandTest {
     }
 
     /**
-     * Returns a Random that always gives {@code index}, so the test knows which game will be picked.
+     * Returns a Random whose {@code nextDouble()} always gives {@code fraction}, so the test knows where
+     * the weighted pick lands, e.g. 0.5 is halfway along the total weight of the matching games.
      */
-    private static Random alwaysReturning(int index) {
+    private static Random alwaysLandingAt(double fraction) {
+        assert fraction >= 0 && fraction < 1 : "nextDouble() only returns values from 0 (inclusive) to 1";
         return new Random() {
             @Override
-            public int nextInt(int bound) {
-                assert index < bound : "Fixed index should be within the bound";
-                return index;
+            public double nextDouble() {
+                return fraction;
             }
         };
+    }
+
+    /**
+     * Returns a Random that makes pick choose the game at {@code index} among {@code matchCount} matching games,
+     * when none of them is rated (so every game has the same weight).
+     */
+    private static Random alwaysReturning(int index, int matchCount) {
+        assert index < matchCount : "Index should be within the matching games";
+        return alwaysLandingAt((index + 0.5) / matchCount);
     }
 
     private void executePick(int playerCount, Random random) {
@@ -59,7 +69,7 @@ class PickCommandTest {
     @Test
     void execute_severalGamesFit_picksGameAtRandomPositionAmongMatches() {
         // Games that fit 4 players, in order: Catan, Codenames, Splendor. Position 2 is Splendor.
-        executePick(4, alwaysReturning(2));
+        executePick(4, alwaysReturning(2, 3));
         String printed = output.toString();
         assertTrue(printed.contains("How about: Splendor (2-4 players)"));
         assertTrue(printed.contains("(picked from 3 game(s) that fit 4 players)"));
@@ -97,7 +107,7 @@ class PickCommandTest {
 
     @Test
     void execute_gamePicked_collectionUnchanged() {
-        executePick(4, alwaysReturning(0));
+        executePick(4, alwaysReturning(0, 3));
         assertEquals(4, games.size());
     }
 
@@ -110,7 +120,7 @@ class PickCommandTest {
         timedGames.add(new Game("Codenames", 2, 8));
 
         // Games that fit 4 players in 30 minutes, in order: Love Letter, Splendor. Position 1 is Splendor.
-        new PickCommand(4, 30, alwaysReturning(1)).execute(timedGames, ui, new Storage("unused.txt"));
+        new PickCommand(4, 30, alwaysReturning(1, 2)).execute(timedGames, ui, new Storage("unused.txt"));
 
         String printed = output.toString();
         assertTrue(printed.contains("How about: Splendor (2-4 players, 30 min)"));
@@ -134,10 +144,71 @@ class PickCommandTest {
 
     @Test
     void execute_noTimeLimit_doesNotMentionUntimedGames() {
-        executePick(4, alwaysReturning(0));
+        executePick(4, alwaysReturning(0, 3));
         assertFalse(output.toString().contains("not considered"));
     }
 
+    //@@author MohamedFarsat
+    @Test
+    void execute_ratedUpGame_takesUpMoreOfTheTotalWeight() {
+        // Games that fit 4 players: Catan (weight 4 after +3/-0), Codenames (1), Splendor (1); total 6.
+        games.get(0).setRatings(3, 0);
+
+        executePick(4, alwaysLandingAt(0.5)); // 0.5 * 6 = 3, inside Catan's 0-4.
+        assertTrue(output.toString().contains("How about: Catan (3-4 players) +3/-0"));
+
+        output.reset();
+        executePick(4, alwaysLandingAt(0.7)); // 0.7 * 6 = 4.2, inside Codenames' 4-5.
+        assertTrue(output.toString().contains("How about: Codenames (2-8 players)"));
+
+        output.reset();
+        executePick(4, alwaysLandingAt(0.99)); // 5.94, inside Splendor's 5-6.
+        assertTrue(output.toString().contains("How about: Splendor (2-4 players)"));
+    }
+
+    @Test
+    void execute_ratedDownGame_takesUpLessOfTheTotalWeight() {
+        // Catan rated +0/-3 has weight 0.25, so the total is 2.25 and Catan only covers 0-0.25.
+        games.get(0).setRatings(0, 3);
+
+        executePick(4, alwaysLandingAt(0.1)); // 0.225
+        assertTrue(output.toString().contains("How about: Catan"));
+
+        output.reset();
+        executePick(4, alwaysLandingAt(0.12)); // 0.27, just past Catan.
+        assertTrue(output.toString().contains("How about: Codenames"));
+    }
+
+    @Test
+    void execute_manyPicks_ratedUpGamePickedAboutAsOftenAsItsWeightSays() {
+        games.get(0).setRatings(3, 0); // Catan should be picked about 4/6 of the time.
+        Random seededRandom = new Random(42);
+        int catanCount = 0;
+        for (int i = 0; i < 3000; i++) {
+            output.reset();
+            executePick(4, seededRandom);
+            if (output.toString().contains("How about: Catan")) {
+                catanCount++;
+            }
+        }
+        assertTrue(catanCount > 1800 && catanCount < 2200, "Catan was picked " + catanCount + " times");
+    }
+
+    @Test
+    void execute_someMatchRated_mentionsRatings() {
+        games.get(2).setRatings(1, 0);
+        executePick(4, alwaysLandingAt(0));
+        assertTrue(output.toString().contains("(Games rated up were more likely to be picked"));
+    }
+
+    @Test
+    void execute_noMatchRated_doesNotMentionRatings() {
+        games.get(1).setRatings(5, 0); // Werewolf does not fit 4 players, so it is not one of the matches.
+        executePick(4, alwaysLandingAt(0));
+        assertFalse(output.toString().contains("rated up"));
+    }
+
+    //@@author
     @Test
     void describeCriteria_withAndWithoutLimit_describesBoth() {
         assertEquals("4 players", PickCommand.describeCriteria(4, NO_LIMIT));
@@ -147,6 +218,22 @@ class PickCommandTest {
     @Test
     void isExit_returnsFalse() {
         assertFalse(new PickCommand(4).isExit());
+    }
+
+    //@@author MohamedFarsat
+    @Test
+    void execute_ratedButEvenGames_doesNotMentionRatings() {
+        games.get(0).setRatings(2, 2); // Rated, but weight 1, so the pick is still fully even.
+        executePick(4, alwaysLandingAt(0));
+        assertFalse(output.toString().contains("rated up"));
+    }
+
+    @Test
+    void execute_hugelyRatedFavourite_weightCappedSoOthersStillComeUp() {
+        // Catan's weight is capped at 5 (not 31), so with Codenames and Splendor (1 each) the total is 7.
+        games.get(0).setRatings(30, 0);
+        executePick(4, alwaysLandingAt(0.75)); // 0.75 * 7 = 5.25, just past Catan's 0-5.
+        assertTrue(output.toString().contains("How about: Codenames"));
     }
 
     //@@author yy261
@@ -159,7 +246,7 @@ class PickCommandTest {
         shelf.get(0).lendTo("Alice");
         shelf.get(1).lendTo("Ben");
 
-        new PickCommand(4, NO_LIMIT, alwaysReturning(0)).execute(shelf, ui, new Storage("unused.txt"));
+        new PickCommand(4, NO_LIMIT, alwaysReturning(0, 1)).execute(shelf, ui, new Storage("unused.txt"));
 
         String printed = output.toString();
         assertTrue(printed.contains("How about: Love Letter (2-4 players, 20 min)"));
@@ -178,7 +265,7 @@ class PickCommandTest {
         shelf.get(1).lendTo("Ben");
         shelf.get(2).lendTo("Cara");
 
-        new PickCommand(3, NO_LIMIT, alwaysReturning(0)).execute(shelf, ui, new Storage("unused.txt"));
+        new PickCommand(3, NO_LIMIT, alwaysLandingAt(0)).execute(shelf, ui, new Storage("unused.txt"));
 
         String printed = output.toString();
         assertTrue(printed.contains("No games fit 3 players, so there is nothing to pick from."));
@@ -199,7 +286,8 @@ class PickCommandTest {
         shelf.add(splendor);
         shelf.add(new Game("Codenames", 2, 8));
 
-        new PickCommand(4, NO_LIMIT, Difficulty.EASY, alwaysReturning(1)).execute(shelf, ui, new Storage("unused.txt"));
+        new PickCommand(4, NO_LIMIT, Difficulty.EASY, alwaysReturning(1, 2))
+                .execute(shelf, ui, new Storage("unused.txt"));
 
         String printed = output.toString();
         assertTrue(printed.contains("How about: Splendor (2-4 players, 30 min, easy)"));
@@ -209,7 +297,8 @@ class PickCommandTest {
 
     @Test
     void execute_noGamesAtDifficulty_saysNothingToPick() {
-        new PickCommand(4, NO_LIMIT, Difficulty.HARD, alwaysReturning(0)).execute(games, ui, new Storage("unused.txt"));
+        new PickCommand(4, NO_LIMIT, Difficulty.HARD, alwaysReturning(0, 1))
+                .execute(games, ui, new Storage("unused.txt"));
 
         assertTrue(output.toString().contains(
                 "No games fit 4 players at hard difficulty, so there is nothing to pick from."));

@@ -5,11 +5,16 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalDate;
+import java.util.Optional;
+
 import org.junit.jupiter.api.Test;
 
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Difficulty;
 import seedu.gamevault.game.Game;
+import seedu.gamevault.game.PlaySession;
+import seedu.gamevault.game.UnavailableReason;
 
 class GameDecoderTest {
 
@@ -139,6 +144,34 @@ class GameDecoderTest {
         assertEquals(original.toString(), GameDecoder.decodeLine(original.toFileString()).toString());
     }
 
+    //@@author KRAZYZECTRON
+    @Test
+    void decodeLine_unavailableField_returnsUnavailableGame() throws GameVaultException {
+        Game game = GameDecoder.decodeLine("Catan | 3 | 4 |  |  | unavailable=DAMAGED");
+        assertEquals(Optional.of(UnavailableReason.DAMAGED), game.getUnavailableReason());
+        assertFalse(GameDecoder.decodeLine("Catan | 3 | 4").isMarkedUnavailable());
+    }
+
+    @Test
+    void decodeLine_unknownUnavailableReason_throwsExceptionNamingReason() {
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> GameDecoder.decodeLine("Catan | 3 | 4 |  |  | unavailable=lost"));
+        assertEquals("unavailable reason 'lost' should be missing or damaged", e.getMessage());
+    }
+
+    @Test
+    void decodeLine_toFileStringWithUnavailableAndSessions_decodesToSameGame() throws GameVaultException {
+        Game original = new Game("Catan", 3, 4, 60);
+        original.addTag("strategy");
+        original.addSession(new PlaySession(LocalDate.of(2026, 10, 30), 4));
+        original.markUnavailable(UnavailableReason.MISSING);
+
+        Game decoded = GameDecoder.decodeLine(original.toFileString());
+
+        assertEquals(original.toFileString(), decoded.toFileString());
+        assertEquals(Optional.of(UnavailableReason.MISSING), decoded.getUnavailableReason());
+    }
+
     //@@author yy261
     @Test
     void decodeLine_withBorrower_returnsLentGame() throws GameVaultException {
@@ -204,5 +237,90 @@ class GameDecoderTest {
         assertEquals(original.toFileString(), decoded.toFileString());
         assertEquals(Difficulty.MEDIUM, decoded.getDifficulty());
         assertEquals("Alice", decoded.getBorrower());
+    }
+
+    //@@author MohamedFarsat
+    @Test
+    void decodeLine_withRatings_returnsRatedGame() throws GameVaultException {
+        Game game = GameDecoder.decodeLine("Catan | 3 | 4 |  |  | ratings=5/1");
+        assertEquals(5, game.getThumbsUp());
+        assertEquals(1, game.getThumbsDown());
+        assertEquals("+0/-2", GameDecoder.decodeLine("Hive | 2 | 2 |  |  | RATINGS = 0 / 2").describeRatings());
+    }
+
+    @Test
+    void decodeLine_noRatingsField_returnsUnratedGame() throws GameVaultException {
+        assertFalse(GameDecoder.decodeLine("Catan | 3 | 4 | 60 | strategy").isRated());
+    }
+
+    @Test
+    void decodeLine_invalidRatings_throwsException() {
+        String[] invalidValues = {"", "5", "5/1/2", "/1", "five/1", "5/-1", "-1/0", "1.5/0", "99999999999/0"};
+        for (String value : invalidValues) {
+            assertThrows(GameVaultException.class,
+                    () -> GameDecoder.decodeLine("Catan | 3 | 4 |  |  | ratings=" + value), value);
+        }
+    }
+
+    @Test
+    void decodeLine_negativeRating_throwsExceptionNamingField() {
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> GameDecoder.decodeLine("Catan | 3 | 4 |  |  | ratings=2/-1"));
+        assertEquals("DOWN in ratings should not be negative, but was -1", e.getMessage());
+    }
+
+    @Test
+    void decodeLine_toFileStringOfRatedGameWithEverything_decodesToSameGame() throws GameVaultException {
+        Game original = new Game("Catan", 3, 4, 60);
+        original.addTag("strategy");
+        original.lendTo("Alice");
+        original.setRatings(3, 2);
+        Game decoded = GameDecoder.decodeLine(original.toFileString());
+        assertEquals(original.toString(), decoded.toString());
+        assertEquals(original.toFileString(), decoded.toFileString());
+    }
+
+    //@@author KRAZYZECTRON
+    @Test
+    void decodeLine_fromAndDueInEitherOrder_returnsBorrowedGame() throws GameVaultException {
+        Game game = GameDecoder.decodeLine("Hive | 2 | 2 |  |  | due=2026-11-10 | from=  Mary   Tan ");
+        assertEquals("Mary Tan", game.getLender());
+        assertEquals(Optional.of(LocalDate.of(2026, 11, 10)), game.getDueBack());
+
+        Game gift = GameDecoder.decodeLine("Hive | 2 | 2 |  |  | from=Bob");
+        assertEquals("Bob", gift.getLender());
+        assertEquals(Optional.empty(), gift.getDueBack());
+    }
+
+    @Test
+    void decodeLine_pastDueDate_acceptedAsOverdue() throws GameVaultException {
+        Game game = GameDecoder.decodeLine("Hive | 2 | 2 |  |  | from=Bob | due=2020-01-01");
+        assertTrue(game.isOverdue(LocalDate.of(2026, 11, 2)));
+    }
+
+    @Test
+    void decodeLine_invalidFromOrDue_throwsExceptionNamingField() {
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> GameDecoder.decodeLine("Hive | 2 | 2 |  |  | due=2026-11-10"));
+        assertEquals("the field 'due' needs a 'from' field saying who the game is from", e.getMessage());
+        e = assertThrows(GameVaultException.class,
+                () -> GameDecoder.decodeLine("Hive | 2 | 2 |  |  | from=Bob | due=soon"));
+        assertTrue(e.getMessage().startsWith("due is 'soon'"));
+        e = assertThrows(GameVaultException.class,
+                () -> GameDecoder.decodeLine("Hive | 2 | 2 |  |  | from="));
+        assertTrue(e.getMessage().startsWith("from is ''"));
+    }
+
+    @Test
+    void decodeLine_toFileStringOfBorrowedGame_decodesToSameGame() throws GameVaultException {
+        Game original = new Game("Catan", 3, 4, 60);
+        original.addTag("strategy");
+        original.lendTo("Alice");
+        original.recordLender("Bob", LocalDate.of(2026, 11, 10));
+
+        Game decoded = GameDecoder.decodeLine(original.toFileString());
+
+        assertEquals(original.toFileString(), decoded.toFileString());
+        assertEquals(original.toString(), decoded.toString());
     }
 }

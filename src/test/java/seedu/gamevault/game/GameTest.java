@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -98,5 +99,185 @@ class GameTest {
 
         assertEquals("Catan | 3 | 4 | 60 | strategy", timed.toFileString());
         assertEquals("Codenames | 4 | 8 |  | party,word", untimed.toFileString());
+    }
+
+    //@@author MohamedFarsat
+    @Test
+    void newGame_notRated_hasWeightOneAndNoRatingShown() {
+        Game game = new Game("Catan", 3, 4);
+        assertFalse(game.isRated());
+        assertEquals(1.0, game.getPickWeight());
+        assertEquals("Catan (3-4 players)", game.toString());
+        assertEquals("Catan | 3 | 4", game.toFileString());
+    }
+
+    @Test
+    void addRating_upAndDown_countsAddUpAndAreShown() {
+        Game game = new Game("Catan", 3, 4, 60);
+        game.addRating(Thumb.UP);
+        game.addRating(Thumb.UP);
+        game.addRating(Thumb.DOWN);
+        assertTrue(game.isRated());
+        assertEquals("+2/-1", game.describeRatings());
+        assertEquals("Catan (3-4 players, 60 min) +2/-1", game.toString());
+    }
+
+    @Test
+    void getPickWeight_variousRatings_isUpPlusOneOverDownPlusOne() {
+        Game game = new Game("Catan", 3, 4);
+        game.setRatings(3, 0);
+        assertEquals(4.0, game.getPickWeight());
+        game.setRatings(0, 3);
+        assertEquals(0.25, game.getPickWeight());
+        game.setRatings(2, 2);
+        assertEquals(1.0, game.getPickWeight());
+    }
+
+    @Test
+    void toFileString_ratedGame_writesRatingsField() {
+        Game game = new Game("Catan", 3, 4, 60);
+        game.addTag("strategy");
+        game.setRatings(5, 1);
+        assertEquals("Catan | 3 | 4 | 60 | strategy | ratings=5/1", game.toFileString());
+    }
+
+    @Test
+    void toString_ratedAndLentGame_showsRatingBeforeBorrower() {
+        Game game = new Game("Catan", 3, 4);
+        game.addTag("strategy");
+        game.setRatings(1, 0);
+        game.lendTo("Alice");
+        assertEquals("Catan (3-4 players) [strategy] +1/-0 (lent to Alice)", game.toString());
+    }
+
+    @Test
+    void getPickWeight_extremeRatings_keptBetweenLimits() {
+        Game game = new Game("Catan", 3, 4);
+        game.setRatings(30, 0); // (30 + 1) / 1 = 31 without the limit.
+        assertEquals(Game.MAX_PICK_WEIGHT, game.getPickWeight());
+        game.setRatings(4, 0); // Exactly 5, so not changed.
+        assertEquals(5.0, game.getPickWeight());
+        game.setRatings(0, 30);
+        assertEquals(Game.MIN_PICK_WEIGHT, game.getPickWeight());
+    }
+
+    @Test
+    void removeRating_ratedGame_removesOneOfThatKindOnly() {
+        Game game = new Game("Catan", 3, 4);
+        game.setRatings(2, 1);
+        assertTrue(game.canRemoveRating(Thumb.DOWN));
+        game.removeRating(Thumb.DOWN);
+        assertEquals("+2/-0", game.describeRatings());
+        assertFalse(game.canRemoveRating(Thumb.DOWN));
+        assertTrue(game.canRemoveRating(Thumb.UP));
+    }
+
+    @Test
+    void canAddRating_countAtLimit_returnsFalseOnlyForThatKind() {
+        Game game = new Game("Catan", 3, 4);
+        assertTrue(game.canAddRating(Thumb.UP));
+        game.setRatings(Integer.MAX_VALUE, 0);
+        assertFalse(game.canAddRating(Thumb.UP));
+        assertTrue(game.canAddRating(Thumb.DOWN));
+        assertEquals(Integer.MAX_VALUE, game.getRatingCount(Thumb.UP));
+        assertEquals(0, game.getRatingCount(Thumb.DOWN));
+    }
+
+    @Test
+    void thumbFromKeyword_anyCaseAndSpaces_findsThumb() {
+        assertEquals(Thumb.UP, Thumb.fromKeyword(" UP ").orElseThrow());
+        assertEquals(Thumb.DOWN, Thumb.fromKeyword("Down").orElseThrow());
+        assertTrue(Thumb.fromKeyword("sideways").isEmpty());
+        assertTrue(Thumb.fromKeyword("").isEmpty());
+    }
+
+    //@@author KRAZYZECTRON
+    @Test
+    void isAvailable_lentOrMarkedUnavailable_returnsFalse() {
+        Game game = new Game("Catan", 3, 4);
+        assertTrue(game.isAvailable());
+
+        game.markUnavailable(UnavailableReason.MISSING);
+        assertFalse(game.isAvailable());
+        game.markAvailable();
+        assertTrue(game.isAvailable());
+
+        game.lendTo("Alice");
+        assertFalse(game.isAvailable());
+    }
+
+    @Test
+    void toString_lentAndUnavailable_showsBothInSameStyle() {
+        Game game = new Game("Catan", 3, 4);
+        game.lendTo("Alice");
+        game.markUnavailable(UnavailableReason.DAMAGED);
+        assertEquals("Catan (3-4 players) (lent to Alice) (unavailable: damaged)", game.toString());
+    }
+
+    @Test
+    void isOverdue_onlyAfterDueDate() {
+        Game game = new Game("Hive", 2, 2);
+        LocalDate due = LocalDate.of(2026, 11, 10);
+        assertFalse(game.isOverdue(due.plusDays(30)));
+
+        game.recordLender("Bob", due);
+        assertFalse(game.isOverdue(due.minusDays(1)));
+        assertFalse(game.isOverdue(due));
+        assertTrue(game.isOverdue(due.plusDays(1)));
+
+        game.recordLender("Bob", null);
+        assertFalse(game.isOverdue(due.plusDays(30)));
+    }
+
+    @Test
+    void borrowedGame_isStillAvailable() {
+        Game game = new Game("Hive", 2, 2);
+        game.recordLender("Bob", LocalDate.of(2026, 11, 10));
+        assertTrue(game.hasLender());
+        assertTrue(game.isAvailable());
+    }
+
+    //@@author Xandurs
+    @Test
+    void describeLastPlayed_neverPlayed_saysNeverPlayed() {
+        Game game = new Game("Catan", 3, 4);
+        assertEquals("never played", game.describeLastPlayed(LocalDate.of(2026, 11, 2)));
+        assertTrue(game.getDaysSinceLastPlayed(LocalDate.of(2026, 11, 2)).isEmpty());
+    }
+
+    @Test
+    void describeLastPlayed_playedBefore_countsDaysFromLatestSession() {
+        Game game = new Game("Catan", 3, 4);
+        game.addSession(new PlaySession(LocalDate.of(2026, 10, 1), 4));
+        game.addSession(new PlaySession(LocalDate.of(2026, 10, 20), 3));
+        LocalDate today = LocalDate.of(2026, 11, 2);
+
+        assertEquals(13L, game.getDaysSinceLastPlayed(today).orElseThrow());
+        assertEquals("last played 13 days ago", game.describeLastPlayed(today));
+        assertEquals("last played 1 day ago", game.describeLastPlayed(LocalDate.of(2026, 10, 21)));
+        assertEquals("last played today", game.describeLastPlayed(LocalDate.of(2026, 10, 20)));
+    }
+
+    @Test
+    void getDaysSinceLastPlayed_sessionAfterToday_returnsZero() {
+        // Only possible if the data file was edited by hand, since log rejects future dates.
+        Game game = new Game("Catan", 3, 4);
+        game.addSession(new PlaySession(LocalDate.of(2026, 12, 25), 4));
+        assertEquals(0L, game.getDaysSinceLastPlayed(LocalDate.of(2026, 11, 2)).orElseThrow());
+    }
+
+    @Test
+    void wasPlayedWithin_boundaries_countsTodayAsZeroDaysAgo() {
+        Game game = new Game("Catan", 3, 4);
+        game.addSession(new PlaySession(LocalDate.of(2026, 10, 20), 4));
+
+        assertTrue(game.wasPlayedWithin(14, LocalDate.of(2026, 11, 2))); // 13 days ago
+        assertFalse(game.wasPlayedWithin(14, LocalDate.of(2026, 11, 3))); // exactly 14 days ago
+        assertTrue(game.wasPlayedWithin(1, LocalDate.of(2026, 10, 20))); // played today
+    }
+
+    @Test
+    void wasPlayedWithin_neverPlayed_returnsFalse() {
+        assertFalse(new Game("Catan", 3, 4).wasPlayedWithin(30, LocalDate.of(2026, 11, 2)));
     }
 }

@@ -145,20 +145,74 @@ themselves, not on the order they were in before, so sorting twice gives the sam
 * Sort by more than one key, e.g. by player count, then by play time.
 <!-- @@author -->
 
-### Loading the data file
+<!-- @@author MohamedFarsat -->
+### Picking a random game (`pick`)
 
-When the app starts, `GameVault` calls `Storage#load`, which reads `data/games.txt` line by line. Each non-blank line
-is decoded by `GameDecoder#decodeLine`, which expects the format `TITLE | MIN | MAX | TIME`, where `TIME` is
-optional (e.g. `Catan | 3 | 4 | 60` or `Catan | 3 | 4`).
+The `pick` command helps a host who cannot decide what to play. It picks one random game that fits tonight's
+group, using the format `pick COUNT [/time MINUTES]`, e.g. `pick 4 /time 45`. It is implemented by
+`Parser#parsePick` and `PickCommand`, and reuses the filtering methods of `GameList`, so `pick` and `filter` always
+agree on which games fit. The pick is weighted by the group's ratings (see
+[Rating games and weighted picking](#rating-games-and-weighted-picking)), and lent or unavailable games are left out
+(see [Lending games to friends](#lending-games-to-friends) and [Marking a game unavailable](#marking-a-game-unavailable)).
 
-**Handling invalid lines.** If a line is invalid (e.g. a missing field, a non-numeric count, or `MAX < MIN`),
-`GameDecoder` throws a `GameVaultException` explaining why. `Storage#load` catches it, records the line number and
-reason, and moves on to the next line. After loading, `GameVault` shows these via `Ui#showSkippedLines`.
-A missing data file is not an error; the app simply starts with an empty collection.
+The sequence diagram below shows what happens when the user enters `pick 4 /time 45`.
 
-**Design considerations.**
-* *Skip the line vs. reject the whole file:* the data file is meant to be human-editable, so one typo should not
-  lose the user's entire collection. Skipping only the bad lines keeps every valid game.
+![Picking a random game](images/PickSequence.png)
+
+1. `Parser#parse(...)` sees the command word `pick` and calls `Parser#parsePick(...)`. `parsePick` uses
+   `Parser#splitByPrefixes(...)` to separate `COUNT` (`4`) from the optional `/time` value (`45`), and checks both
+   with `Parser#parsePositiveNumber(...)`, so an invalid value such as `pick 0` or `pick 4 /time soon` is rejected
+   with a `GameVaultException` before any command is created.
+2. `parsePick` creates a `PickCommand(4, 45)`. If `/time` is not given, it uses `PickCommand(4)` instead, which
+   stores `0` to mean "no time limit".
+3. `GameVault` calls `PickCommand#execute(...)`. With a time limit, it asks the `GameList` for
+   `filterAvailableByPlayersAndTime(4, 45)`. Without one, it uses `filterAvailableByPlayers(4)`. Both keep only games
+   for which `Game#isAvailable()` is true, so lent and unavailable games are left out. Either way, the collection
+   itself is not
+   changed, so `pick` never saves to the data file.
+4. If no game matches, the message says there is nothing to pick from. Otherwise, `PickCommand#chooseWeighted(...)`
+   asks each match for its `Game#getPickWeight()` and adds them up. It then takes a random point along that total
+   (`Random#nextDouble()` times the total) and picks the game whose share the point falls in, so games rated up are
+   more likely to be chosen. If some match has a weight other than 1, the message says that ratings were used.
+5. Only with a time limit, `PickCommand` also calls `GameList#countWithoutPlayTime(4)`. Games with no play time
+   recorded cannot be known to fit in 45 minutes, so they are left out, and the message says how many were left
+   out. This matches what `filter` does.
+6. `PickCommand` calls `GameList#describeLeftOut(4, 45, "considered")`, which finds the lent games that would
+   otherwise have fitted and turns them into a note such as
+   `(Not considered because they are lent out: Catan (to Alice))`, or an empty string if there are none.
+7. `PickCommand` shows the result through `Ui#showMessage(...)`, e.g.
+   `How about: Love Letter (2-4 players, 20 min)`.
+
+#### Design considerations
+
+**Aspect: How to make a random result testable**
+
+* **Alternative 1 (current choice):** `PickCommand` takes a `Random` object. The public constructors create a
+  normal `new Random()`, while a package-private constructor lets tests pass in their own.
+  * Pros: Tests can pass a `Random` whose `nextDouble()` always returns a chosen value, so they can check exactly
+    which game is picked, e.g. that a point 70% along the total weight lands on the second game, and that a game
+    that does not fit is never chosen.
+  * Cons: One extra constructor that only tests use.
+* **Alternative 2:** Call `Math.random()` (or create a `new Random()`) inside `execute(...)`.
+  * Pros: Slightly less code.
+  * Cons: Tests could only check that *some* matching game was picked, not which one, so bugs such as an
+    off-by-one in the weighted choice could go unnoticed.
+
+**Aspect: Where the filtering logic lives**
+
+* **Alternative 1 (current choice):** Reuse `GameList#filterAvailableByPlayers(...)` and
+  `GameList#filterAvailableByPlayersAndTime(...)`, which `filter` also uses.
+  * Pros: `pick` and `filter` cannot disagree. A game shown by `filter 4 /time 45` is exactly a game that
+    `pick 4 /time 45` can choose, and a fix to the filtering rules applies to both commands.
+  * Cons: `pick` depends on how `filter` defines "fits", so the two cannot easily use different rules later.
+* **Alternative 2:** Let `PickCommand` check each game itself.
+  * Pros: `pick` could later use its own rules without affecting `filter`.
+  * Cons: The same checks would exist in two places, which is duplicate code and makes the commands more likely
+    to drift apart.
+
+**Possible future improvement:** `pick` could use the play sessions recorded with `log` to avoid games the group
+played recently, so the same favourite is not suggested every time.
+<!-- @@author -->
 
 ### Saving and loading games (Storage)
 
@@ -373,6 +427,232 @@ clock is set wrongly would treat saved sessions as invalid and skip the whole ga
 
 * An `unlog INDEX` command to remove a session logged by mistake.
 * Accept other date forms, e.g. `today`, `yesterday` or `30/10/2026`.
+
+### Showing when games were last played
+
+`list` shows how long ago each game was last played (e.g. `Catan (3-4 players) - last played 3 days ago`), and
+`filter COUNT /notplayedin DAYS` hides games played within the last `DAYS` days. Both are worked out from the play
+sessions recorded by `log`, so nothing new is saved to the data file.
+
+**Model.** Three methods in `Game` build on `Game#getLastPlayed()`:
+
+* `getDaysSinceLastPlayed(today)` returns the number of days between the last session and `today`
+  (`ChronoUnit.DAYS.between(...)`), or an empty `Optional` if the game was never played. It never returns a
+  negative number, in case a hand-edited data file contains a session after today.
+* `wasPlayedWithin(days, today)` returns whether that number is less than `days`, so with `days` = 14, a game played
+  13 days ago counts as recent but one played 14 days ago does not. A never-played game is never recent.
+* `describeLastPlayed(today)` turns the number into words: `last played today`, `last played 1 day ago`,
+  `last played N days ago` or `never played`.
+
+**Listing.** `ListCommand` already stores `today` (used for overdue borrowed games). Its new
+`formatNumberedListWithLastPlayed(...)` adds ` - ` and `Game#describeLastPlayed(today)` to the end of each line.
+`ListCommand#formatNumberedList(...)` is left unchanged because `SortCommand` also uses it, and the sorted view
+does not need the extra detail.
+
+**Filtering.** `Parser#parseFilter(...)` reads the optional `/notplayedin DAYS` with `splitByPrefixes(...)` and
+checks it with `parsePositiveNumber(...)`, then creates `FilterCommand(count, minutes, notPlayedInDays)`.
+When `/notplayedin` is left out, `notPlayedInDays` is `FilterCommand.NO_DAYS_LIMIT` (0), so `filter` behaves
+exactly as before. In `FilterCommand#execute(...)`:
+
+1. The games that fit the player count (and time, if given) are found exactly as before.
+2. If there is a day limit, `removeRecentlyPlayed(matches)` removes every game for which
+   `Game#wasPlayedWithin(notPlayedInDays, today)` is true, and returns how many were removed.
+3. The criteria line says `not played in the last N day(s)`, and if any games were removed, a note says how many
+   were hidden, so the user knows why a game they expected is missing.
+
+#### Design considerations
+
+**Aspect: Store "last played" or work it out**
+
+* **Alternative 1 (current choice):** Work it out from the logged sessions each time it is needed.
+  * Pros: Nothing new to save or load, and it can never disagree with the play history.
+  * Cons: Every `list` looks at each game's last session, but this is quick because sessions are kept in date order.
+* **Alternative 2:** Store a `lastPlayed` date in each game and update it in `log`.
+  * Pros: Slightly less work when listing.
+  * Cons: The same fact is stored twice, and the two could disagree, e.g. after hand-editing the data file.
+
+**Aspect: How to pass in today's date**
+
+* **Alternative 1 (current choice):** Pass `today` into the `Game` methods, and give `ListCommand` and
+  `FilterCommand` a package-private constructor that takes it. Normal use passes `LocalDate.now()`.
+  * Pros: Tests can use a fixed date, so they don't start failing as the real date moves on.
+  * Cons: One extra parameter and constructor.
+* **Alternative 2:** Call `LocalDate.now()` inside `Game`.
+  * Pros: Simpler method signatures.
+  * Cons: Results change every day, so tests could only check vague things.
+
+**Aspect: Never-played games with `/notplayedin`**
+
+* **Alternative 1 (current choice):** Always show them.
+  * Pros: Matches the goal of avoiding games played *recently*; a never-played game is a fresh choice.
+  * Cons: A brand-new game appears even if the group hasn't decided whether they want it yet.
+* **Alternative 2:** Hide them as well.
+  * Pros: Shows only games with a known history.
+  * Cons: Hides exactly the games the group has not tried, which goes against the point of the feature.
+
+#### Possible future improvements
+
+* Support `/notplayedin` together with `/tag`, and in `pick`, so a random pick also avoids recent games.
+* Add `sort lastplayed`, to see the games that have gone longest without being played first.
+
+<!-- @@author MohamedFarsat -->
+### Rating games and weighted picking
+
+The `rate INDEX up|down` command lets the group give a game a thumbs up or a thumbs down after playing it, and
+`unrate INDEX up|down` takes one back if it was given by mistake. `pick` then favours games with more thumbs up, so
+its suggestions get better the more the group uses GameVault.
+
+**Model.** `Game` keeps two `int` counts, `thumbsUp` and `thumbsDown`, both starting at 0. The `Thumb` enumeration
+(`UP` or `DOWN`) says which count a method works on, e.g. `Game#addRating(Thumb.UP)`, and also holds the word the
+user types for it, like `SortOrder` does for sorting. The counts change only through `Game#addRating(...)` and
+`Game#removeRating(...)`, or `Game#setRatings(...)` when loading a game or copying it in `edit`. Like `lendTo(...)`,
+these methods only assert their rules; `Game#canAddRating(...)` and `Game#canRemoveRating(...)` let commands check
+first, so that the user can be told why nothing changed.
+`Game#isRated()` is true once either count is above 0, and `Game#toString()` then adds the counts, e.g.
+`Catan (3-4 players) +5/-1`. Because every command shows games through `toString()`, ratings appear in `list`,
+`find`, `filter` and `pick` without changing those commands.
+
+**Rating a game.** The sequence diagram below shows what happens when the user enters `rate 1 up`.
+
+![Sequence diagram for rate 1 up](images/RateSequence.png)
+
+1. `Parser#parseRate(...)` calls `parseRatingArguments(...)`, which `unrate` shares. It splits the arguments on
+   spaces and expects exactly two words. The first is checked by `parseIndex(...)`, shared with `delete`, `edit` and
+   `lend`, and the second is looked up with `Thumb#fromKeyword(...)`, which ignores case.
+2. `RateCommand#execute(...)` checks that game 1 exists, then gets it from the `GameList`.
+3. It checks `Game#canAddRating(Thumb.UP)`. This is only false if the count is already `Integer.MAX_VALUE`
+   (possible only by editing the data file), where adding 1 would wrap round to a negative number.
+4. It calls `Game#addRating(Thumb.UP)`, saves the collection with `Storage#save(...)`, and shows the new counts from
+   `Game#describeRatings()`.
+
+`UnrateCommand` works the same way, but checks `Game#canRemoveRating(...)` (the count must be above 0) and calls
+`Game#removeRating(...)`.
+
+**Weighted picking.** `Game#getPickWeight()` returns `(thumbsUp + 1) / (thumbsDown + 1)`, kept between
+`Game.MIN_PICK_WEIGHT` (0.2) and `Game.MAX_PICK_WEIGHT` (5). `PickCommand#chooseWeighted(...)`
+adds up the weights of the matching games, takes a random point between 0 and that total
+(`Random#nextDouble() * total`), and walks through the matches, subtracting each weight until the point falls inside
+one game's share. For example, if Catan (`+3/-0`, weight 4), Codenames (unrated, weight 1) and Splendor (unrated,
+weight 1) all fit, the total is 6 and Catan is picked whenever the point falls between 0 and 4, i.e. 4 times in 6.
+When no game is rated, every weight is 1, so `pick` behaves exactly as it did before ratings were added.
+`pick` adds a note that ratings were used only when some match has a weight other than 1, since a game rated
+e.g. `+2/-2` is rated but still has weight 1.
+The `Random` is still passed in through `PickCommand`'s package-private constructor, so tests can fix the point and
+check exactly which game is chosen.
+
+**Storage.** The counts are saved in the named field `ratings` as `UP/DOWN`, e.g.
+`Catan | 3 | 4 | 60 | strategy | ratings=5/1`. `Game#getNamedFileFields()` only writes the field for a rated game,
+so data files without ratings are unchanged. `GameDecoder#decodeRatings(...)` accepts counts of 0 or more and rejects
+anything else, such as `5/-1` or `5`, as an invalid line.
+
+#### Design considerations
+
+**Aspect: How ratings should change the chance of being picked**
+
+* **Alternative 1 (current choice):** Weight `(up + 1) / (down + 1)`, kept between 0.2 and 5.
+  * Pros: Thumbs up and thumbs down both matter, an unrated game sits in the middle with weight 1, and the weight is
+    never 0, so a disliked game can still come up now and then. Without the limits, a game rated `+30/-0` (weight 31)
+    would be picked about 89% of the time against 4 unrated games; with them, it is picked 5 times in 9.
+  * Cons: Weights are decimals, so the pick uses `nextDouble()` instead of `nextInt(...)`. Beyond the limits, extra
+    ratings no longer change the chance.
+* **Alternative 2:** One "ticket" per game, plus one per thumbs up beyond the thumbs down (at least 1 ticket).
+  * Pros: Whole numbers, and easy to explain.
+  * Cons: A game with many thumbs down is never less likely than an unrated one.
+* **Alternative 3:** Only pick from the highest-rated games.
+  * Pros: Simple.
+  * Cons: The same few games would come up every time, which defeats the point of a random pick.
+
+An alternative to the limits is to use `Math.log` so that each extra thumbs up counts for a little less. We chose
+fixed limits because they are easier to explain in the User Guide ("at most 5 times as likely").
+
+**Aspect: Whether a game must be logged before it can be rated**
+
+`rate` does not require the game to have logged play sessions. Logging is optional, and many groups will rate a game
+without logging every session, so refusing (or showing a note every time) would add friction for little benefit.
+
+**Aspect: Storing rating counts vs. a list of individual ratings**
+
+Only the two counts are stored, because the weight depends on nothing else. Storing each rating (e.g. with its date,
+like play sessions) would allow recent ratings to count for more, but would make the data file longer for no
+benefit to the current features.
+
+#### Possible future improvements
+
+* Let `pick` show the chance of the picked game, e.g. `(chance: 4 in 6)`, so the weighting is easy to see.
+
+<!-- @@author KRAZYZECTRON -->
+### Marking a game unavailable
+
+The `unavailable` command records why a game cannot be played at the moment, e.g. `unavailable 1 /reason missing`,
+and `available 1` clears it. `filter` and `pick` leave unavailable games out, and `list` shows the reason after the
+game, e.g. `Catan (3-4 players) (unavailable: missing pieces)`, in the same style as `(lent to Alice)`.
+
+**Model.** The reasons are an enum, `UnavailableReason` (`MISSING`, `DAMAGED`). Each value holds the keyword the user
+types, which is also how it is written in the data file, and a description shown to the user (e.g. `missing pieces`).
+`UnavailableReason#fromKeyword(...)` finds a reason by keyword, ignoring case, so the parser and `GameDecoder` accept
+exactly the same words. `UnavailableReason#keywords()` lists every keyword, and both the `unavailable` usage line and
+the error messages are built from it, so adding a reason only needs a new enum value. Each `Game` has an `unavailableReason` field, which is `null` while the game is available.
+`Game#markUnavailable(...)` sets it, `Game#markAvailable()` clears it, and `Game#getUnavailableReason()` returns it as
+an `Optional`, so callers cannot forget the "available" case.
+
+**Parsing.** `Parser#parseUnavailable(...)` uses `splitByPrefixes(...)` to read `INDEX` and `/reason`, then turns the
+reason into an `UnavailableReason`. A missing or unknown reason is reported with the list of valid reasons.
+`Parser#parseAvailable(...)` only reads `INDEX`.
+
+**Executing.** The sequence diagram below shows `unavailable 1 /reason missing`.
+
+![Sequence diagram for unavailable 1 /reason missing](images/UnavailableSequenceDiagram.png)
+
+1. `UnavailableCommand#execute(...)` checks that game 1 exists, then gets it from the `GameList`.
+2. It gets the game's current reason. If it is already `MISSING`, it reports this and saves nothing.
+3. Otherwise it calls `Game#markUnavailable(MISSING)`, which also replaces any other reason, and saves the
+   collection with `Storage#save(...)`.
+4. It shows the game (with its new reason), the old reason if there was one, and how to make it available again.
+
+`AvailableCommand#execute(...)` works the same way, but rejects a game that is not marked unavailable, since that is
+most likely the wrong `INDEX`.
+
+**Leaving unavailable games out of suggestions.** `Game#isAvailable()` returns
+`!isLent() && !isMarkedUnavailable()`. `filter`, `filter /tag` and `pick` already keep only games for which
+`isAvailable()` is true (see [Lending games to friends](#lending-games-to-friends)), so they leave unavailable games
+out without any change to those commands.
+
+**Storage.** The reason is saved in the named field `unavailable`, e.g. `Catan | 3 | 4 | 60 |  | unavailable=missing`,
+and read back by `GameDecoder#decodeUnavailableReason(...)`. Available games have no such field, so older data files
+still load. Because `EditCommand` builds a new `Game` when editing, it copies the old game's reason into the new one.
+
+#### Design considerations
+
+**Aspect: How to store the reason**
+
+* **Alternative 1 (current choice):** An enum of fixed reasons.
+  * Pros: Typos such as `misisng` are caught, and each reason can have a friendlier description.
+  * Cons: Adding a reason needs a code change.
+* **Alternative 2:** Free text, e.g. `/reason left at Alex's house`.
+  * Pros: Users can write anything.
+  * Cons: Nothing can be checked, and the text must be kept free of the `|` used in the data file.
+
+**Aspect: Lent-out games**
+
+Lent-out games are handled by the `lend` command, which also records who has the game, so `lent` is not one of the
+reasons here. Both features leave a game out of `filter` and `pick` through one shared check, `Game#isAvailable()`,
+rather than each adding its own, so the suggestion commands cannot disagree about which games can be played.
+
+**Aspect: Marking an unavailable game again with a different reason**
+
+* **Alternative 1 (current choice):** Replace the reason, and show the old one.
+  * Pros: One step when, for example, missing pieces turn out to be damage.
+  * Cons: The old reason is lost.
+* **Alternative 2:** Reject it until the game is made available first.
+  * Pros: Changes are always deliberate.
+  * Cons: An extra command for a common case.
+
+#### Possible future improvements
+
+* An optional note, e.g. which pieces are missing.
+* A way to list only the unavailable games.
+* Name unavailable games in the note that `filter` and `pick` add, as is already done for lent games
+  (`GameList#describeLeftOut(...)` currently names lent games only).
 
 <!-- @@author yy261 -->
 ### Filtering games by player count and play time
@@ -612,6 +892,90 @@ group size to work with, and every game shown can actually be played by the grou
 
 * `sort difficulty`, to list the easiest games first.
 * Accept more than one level, e.g. `/diff easy medium`.
+<!-- @@author KRAZYZECTRON -->
+### Recording who lent or gave a game
+
+The `borrow` command records who a game came from, and optionally when it must be given back, e.g.
+`borrow 2 /from Bob /due 2026-11-10`. `giveback 2` removes a borrowed game once it has been given back.
+`list` shows the record after the game, e.g.
+`Hive (2 players) (borrowed from Bob, due 2026-11-10)`, and ends with a reminder of any overdue games.
+This is the opposite direction to `lend` (see [Lending games to friends](#lending-games-to-friends)).
+
+**Model.** Each `Game` has two more fields: `lender`, the person the game is from, and `dueBack`, a `LocalDate`.
+Both are `null` when not recorded, and `dueBack` is also `null` for a game that does not have to be given back,
+such as a gift. `Game#recordLender(name, dueBack)` sets both together, and `Game#getDueBack()` returns an
+`Optional`. `Game#isOverdue(today)` is true only when the due-back date is before
+`today`, so a game due back today is not overdue yet. Lender names follow the same rules as borrower names in
+`lend`, so both reuse the `Borrower` class.
+
+**Parsing.** `Parser#parseBorrow(arguments, today)` uses `splitByPrefixes(...)` to read `INDEX`, `/from` and the
+optional `/due`. Today's date is passed in (`LocalDate.now()` in normal use), as in `log`, so that the rule
+"not in the past" can be unit-tested with a fixed date. `Parser#parseGiveBack(...)` only reads `INDEX`.
+
+**Executing.** The sequence diagram below shows `borrow 2 /from Bob /due 2026-11-10`.
+
+![Sequence diagram for borrow 2 /from Bob /due 2026-11-10](images/BorrowSequenceDiagram.png)
+
+1. `BorrowCommand#execute(...)` checks that game 2 exists, then gets it from the `GameList`.
+2. It compares the game's current record with the new one. If they are the same, it reports this and changes
+   nothing, so the error case never touches the game.
+3. Otherwise it calls `Game#recordLender("Bob", 2026-11-10)` and saves with `Storage#save(...)`.
+4. It shows the game, the old record if there was one, and how to use `giveback` once the game is given back.
+
+`GiveBackCommand#execute(...)` rejects a game that has no lender, since that is most likely the wrong `INDEX`, and
+a gift (a lender but no due-back date), since there is nothing to give back. Otherwise it removes the game with
+`GameList#delete(...)` and saves, because a game that has gone back to its owner is no longer on the user's shelf.
+
+**Overdue reminder.** `ListCommand` takes today's date (again `LocalDate.now()` in normal use, and a fixed date in
+tests). After the numbered list, it adds a line for each game where `Game#isOverdue(today)` is true, using the same
+numbers as the list, so the user can run `giveback` straight away.
+
+**Storage.** The record is saved in two named fields, `from` and `due`, e.g.
+`Hive | 2 | 2 |  |  | from=Bob | due=2026-11-10`. Named fields can come in any order in a hand-edited file, so
+`GameDecoder` reads them separately (`due` through `Game#setDueBack(...)`), and only checks that `due` has a
+matching `from` once the whole line is read. Past due-back dates are accepted when loading, since a game that was
+not given back in time is simply overdue. `EditCommand` copies the record into the edited game.
+
+#### Design considerations
+
+**Aspect: Effect on suggestions**
+
+* **Alternative 1 (current choice):** Borrowed games stay available, so `filter` and `pick` still suggest them.
+  * Pros: A borrowed game is on the user's shelf, so it can be played, and borrowing a game is often done so it can
+    be played at game night.
+  * Cons: None for now. A later option could prefer borrowed games in `pick`, so they are played before going back.
+* **Alternative 2:** Leave borrowed games out, like lent games.
+  * Pros: Treats every "lending" record the same way.
+  * Cons: Hides games the user has and can play.
+
+**Aspect: What `giveback` does with the game**
+
+* **Alternative 1 (current choice):** Remove the game from the collection.
+  * Pros: The game is no longer on the shelf, so `filter` and `pick` stop suggesting it, with nothing more to do.
+  * Cons: Its play history and ratings are lost, so borrowing it again starts afresh.
+* **Alternative 2:** Keep the game, but clear the record and mark it unavailable.
+  * Pros: Keeps its history and ratings.
+  * Cons: The collection fills up with games the user does not own, and "unavailable" suggests the game is
+    the user's own but cannot be played right now.
+
+**Aspect: Where the overdue reminder is shown**
+
+* **Alternative 1 (current choice):** At the end of `list`.
+  * Pros: `list` is the command users run most often, so the reminder is seen without remembering another command.
+  * Cons: `list` depends on today's date, so it needs a constructor that tests can give a fixed date.
+* **Alternative 2:** A separate command, e.g. `overdue`.
+  * Pros: `list` stays the same.
+  * Cons: Users who forget the game is borrowed will also forget to run the command.
+
+**Aspect: Due dates in the past**
+
+The `borrow` command rejects a due-back date in the past, since it is most likely a typo, such as the wrong year.
+`GameDecoder` accepts them, as a past due-back date in the data file just means the game is overdue.
+
+#### Possible future improvements
+
+* Show overdue games in the welcome message, so they are seen as soon as GameVault starts.
+* A command that lists only borrowed games, like `lentout` does for lent games.
 <!-- @@author -->
 
 
@@ -631,6 +995,7 @@ group size to work with, and every game shown can actually be played by the grou
 |v1.0|new user|see usage instructions|refer to them when I forget how to use the application|
 |v2.0|host with a large collection|find a game by part of its title|locate it without going through the entire list|
 |v2.0|host with many games|sort my collection by title, player count or play time|scan it more easily|
+|v2.1|host who runs regular game nights|see how long it has been since each game was last played|avoid repeating games the group just played|
 
 ## Non-Functional Requirements
 
