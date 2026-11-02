@@ -16,14 +16,17 @@ public class HelpCommand extends Command {
      */
     static final String HELP_MESSAGE = """
             Here are the commands you can use:
-              add          Adds a game: add TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]
+              add          Adds a game: add TITLE /min MIN /max MAX [/time MINUTES] [/diff LEVEL]
+                           [/tag TAG [MORE_TAGS]...]
               list         Lists all games in your collection.
               find         Finds games by title: find KEYWORD
-              filter       Shows games that fit a player count: filter COUNT [/time MINUTES] [/notplayedin DAYS]
-                           or games with a tag: filter [COUNT] [/time MINUTES] /tag TAG
-              pick         Picks a random game that fits a player count: pick COUNT [/time MINUTES]
+              filter       Shows games that fit a player count: filter COUNT [/time MINUTES] [/diff LEVEL]
+                           [/notplayedin DAYS]
+                           or games with a tag: filter [COUNT] [/time MINUTES] [/diff LEVEL] /tag TAG
+              pick         Picks a random game that fits a player count: pick COUNT [/time MINUTES] [/diff LEVEL]
               delete       Deletes a game: delete INDEX
               edit         Edits a game: edit INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES|none]
+                           [/diff LEVEL|none]
               tag          Adds tags to a game: tag INDEX TAG [MORE_TAGS]...
               log          Logs that a game was played: log INDEX /players COUNT [/date YYYY-MM-DD]
               rate         Gives a game a thumbs up or down after playing: rate INDEX up|down

@@ -11,6 +11,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 import seedu.gamevault.exception.GameVaultException;
+import seedu.gamevault.game.Difficulty;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.PlaySession;
 import seedu.gamevault.game.UnavailableReason;
@@ -207,6 +208,35 @@ class GameDecoderTest {
         original.addTag("strategy");
         original.lendTo("Alice");
         assertEquals(original.toString(), GameDecoder.decodeLine(original.toFileString()).toString());
+    }
+
+    //@@author yy261
+    @Test
+    void decodeLine_difficultyField_returnsGameWithDifficulty() throws GameVaultException {
+        assertEquals(Difficulty.HARD, GameDecoder.decodeLine("Catan | 3 | 4 |  |  | difficulty=HARD").getDifficulty());
+        assertFalse(GameDecoder.decodeLine("Catan | 3 | 4").hasDifficulty());
+    }
+
+    @Test
+    void decodeLine_unknownDifficulty_throwsExceptionNamingLevels() {
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> GameDecoder.decodeLine("Catan | 3 | 4 |  |  | difficulty=tricky"));
+        assertEquals("difficulty is 'tricky', but should be easy, medium or hard", e.getMessage());
+        assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan | 3 | 4 |  |  | difficulty="));
+    }
+
+    @Test
+    void decodeLine_toFileStringWithDifficultyAndBorrower_decodesToSameGame() throws GameVaultException {
+        Game original = new Game("Catan", 3, 4, 60);
+        original.addTag("strategy");
+        original.lendTo("Alice");
+        original.setDifficulty(Difficulty.MEDIUM);
+
+        Game decoded = GameDecoder.decodeLine(original.toFileString());
+
+        assertEquals(original.toFileString(), decoded.toFileString());
+        assertEquals(Difficulty.MEDIUM, decoded.getDifficulty());
+        assertEquals("Alice", decoded.getBorrower());
     }
 
     //@@author MohamedFarsat

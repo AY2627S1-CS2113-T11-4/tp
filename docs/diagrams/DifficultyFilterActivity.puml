@@ -1,0 +1,31 @@
+@startuml
+' How filter decides what to do with one game for "filter 4 /diff easy"
+start
+:Take the next game;
+if () then ([does not fit 4 players])
+  :Ignore the game;
+  stop
+else ([fits 4 players])
+endif
+if () then ([lent out])
+  if () then ([easy])
+    :Name it in the lent note;
+    stop
+  else ([not easy])
+    :Ignore the game;
+    stop
+  endif
+else ([available])
+endif
+switch ( )
+case ( [easy] )
+  :Show the game;
+  stop
+case ( [no difficulty recorded] )
+  :Count it in the "no difficulty" note;
+  stop
+case ( [another level] )
+  :Ignore the game;
+  stop
+endswitch
+@enduml

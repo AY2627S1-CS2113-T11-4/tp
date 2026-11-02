@@ -133,6 +133,37 @@ public class GameList {
     }
 
     /**
+     * Returns the available games that fit all the given conditions, in their original order.
+     * The collection itself is not changed.
+     *
+     * @param count Number of players to check; must be at least 1.
+     * @param minutes Time available, or {@link #NO_TIME_LIMIT}.
+     * @param difficulty Level the games must be at, or null for any level.
+     * @return A new list of the matching games; empty if none match.
+     */
+    public ArrayList<Game> filterAvailable(int count, int minutes, Difficulty difficulty) {
+        ArrayList<Game> matches = minutes == NO_TIME_LIMIT
+                ? filterAvailableByPlayers(count)
+                : filterAvailableByPlayersAndTime(count, minutes);
+        return keepDifficulty(matches, difficulty);
+    }
+
+    /**
+     * Returns the games in {@code candidates} at the given level, in the same order.
+     *
+     * @param difficulty Level to keep, or null to keep every game.
+     */
+    private static ArrayList<Game> keepDifficulty(List<Game> candidates, Difficulty difficulty) {
+        ArrayList<Game> matches = new ArrayList<>();
+        for (Game game : candidates) {
+            if (difficulty == null || game.fitsDifficulty(difficulty)) {
+                matches.add(game);
+            }
+        }
+        return matches;
+    }
+
+    /**
      * Returns the games in {@code candidates} that are available, in the same order.
      */
     private static ArrayList<Game> keepAvailable(List<Game> candidates) {
@@ -190,8 +221,22 @@ public class GameList {
      * @return The note, starting on a new line, or an empty string.
      */
     public String describeLeftOut(int count, int minutes, String verb) {
+        return describeLeftOut(count, minutes, null, verb);
+    }
+
+    /**
+     * Returns a note naming the lent games that would otherwise fit the given conditions, or an empty string
+     * if there are none, so that {@code filter} and {@code pick} can tell the user why a game is missing.
+     *
+     * @param count Number of players to check; must be at least 1.
+     * @param minutes Time available, or {@link #NO_TIME_LIMIT}.
+     * @param difficulty Level the games must be at, or null for any level.
+     * @param verb What did not happen to the games, e.g. {@code "shown"} or {@code "considered"}.
+     * @return The note, starting on a new line, or an empty string.
+     */
+    public String describeLeftOut(int count, int minutes, Difficulty difficulty, String verb) {
         List<Game> lentGames = minutes == NO_TIME_LIMIT ? findLentFitting(count) : findLentFitting(count, minutes);
-        return describeLeftOut(lentGames, verb);
+        return describeLeftOut(keepDifficulty(lentGames, difficulty), verb);
     }
 
     /**
@@ -218,6 +263,31 @@ public class GameList {
             note.append(game.getTitle()).append(" (to ").append(game.getBorrower()).append(")");
         }
         return note.append(")").toString();
+    }
+
+    /**
+     * Returns a note saying how many available games were left out only because they have no difficulty
+     * recorded, or an empty string if there are none, so the user knows why a game they expected is missing.
+     * Games that would not have fitted the time limit anyway are not counted.
+     *
+     * @param count Number of players to check; must be at least 1.
+     * @param minutes Time available, or {@link #NO_TIME_LIMIT}.
+     * @param verb What happened to the games, e.g. {@code "left out"} or {@code "not considered"}.
+     * @return The note, starting on a new line, or an empty string.
+     */
+    public String describeNoDifficulty(int count, int minutes, String verb) {
+        int unratedCount = 0;
+        for (Game game : filterAvailableByPlayers(count)) {
+            boolean mayFitTime = minutes == NO_TIME_LIMIT || !game.hasPlayTime() || game.fitsTime(minutes);
+            if (!game.hasDifficulty() && mayFitTime) {
+                unratedCount++;
+            }
+        }
+        if (unratedCount == 0) {
+            return "";
+        }
+        return System.lineSeparator() + "(" + unratedCount + " game(s) for " + count + " players were " + verb
+                + " because they have no difficulty recorded.)";
     }
     //@@author Xandurs
     /**
@@ -273,9 +343,23 @@ public class GameList {
      * @return Number of such games.
      */
     public int countWithoutPlayTime(int count) {
+        return countWithoutPlayTime(count, null);
+    }
+
+    //@@author yy261
+    /**
+     * Returns how many available games fit the given number of players but have no play time recorded,
+     * not counting games known to be at a different level, as they would not have fitted anyway.
+     *
+     * @param count Number of players to check; must be at least 1.
+     * @param difficulty Level the games must be at, or null for any level.
+     * @return Number of such games.
+     */
+    public int countWithoutPlayTime(int count, Difficulty difficulty) {
         int untimedCount = 0;
         for (Game game : filterAvailableByPlayers(count)) {
-            if (!game.hasPlayTime()) {
+            boolean mayFitLevel = difficulty == null || !game.hasDifficulty() || game.fitsDifficulty(difficulty);
+            if (!game.hasPlayTime() && mayFitLevel) {
                 untimedCount++;
             }
         }

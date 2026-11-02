@@ -12,7 +12,8 @@ import seedu.gamevault.ui.Ui;
  */
 public class AddCommand extends Command {
     public static final String COMMAND_WORD = "add";
-    public static final String USAGE = "add TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]";
+    public static final String USAGE =
+            "add TITLE /min MIN /max MAX [/time MINUTES] [/diff LEVEL] [/tag TAG [MORE_TAGS]...]";
 
     private final Game game;
 

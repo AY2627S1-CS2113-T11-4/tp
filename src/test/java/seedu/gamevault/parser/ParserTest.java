@@ -153,7 +153,7 @@ class ParserTest {
     @Test
     void parse_pickWithMissingCount_throwsExceptionShowingFormat() {
         GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("pick"));
-        assertEquals("COUNT is missing. Format: pick COUNT [/time MINUTES]", e.getMessage());
+        assertEquals("COUNT is missing. Format: " + PickCommand.USAGE, e.getMessage());
     }
 
     @Test
@@ -172,7 +172,7 @@ class ParserTest {
     @Test
     void parse_pickWithInvalidTime_throwsException() {
         GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("pick 4 /time"));
-        assertEquals("MINUTES is missing. Format: pick COUNT [/time MINUTES]", e.getMessage());
+        assertEquals("MINUTES is missing. Format: " + PickCommand.USAGE, e.getMessage());
         assertThrows(GameVaultException.class, () -> Parser.parse("pick 4 /time 0"));
         assertThrows(GameVaultException.class, () -> Parser.parse("pick 4 /time soon"));
         assertThrows(GameVaultException.class, () -> Parser.parse("pick 4 /time 30 /time 45"));
@@ -545,6 +545,62 @@ class ParserTest {
         assertTrue(e.getMessage().startsWith("DATE should be a real date in the form YYYY-MM-DD"));
         e = assertThrows(GameVaultException.class, () -> Parser.parseLog("1 /players 4 /date", TODAY));
         assertTrue(e.getMessage().startsWith("DATE is missing."));
+    }
+
+    //@@author yy261
+    @Test
+    void parse_addWithDifficulty_returnsAddCommand() throws GameVaultException {
+        assertInstanceOf(AddCommand.class, Parser.parse("add Catan /min 3 /max 4 /diff easy"));
+        assertInstanceOf(AddCommand.class, Parser.parse("add Catan /diff HARD /time 60 /max 4 /min 3 /tag strategy"));
+    }
+
+    @Test
+    void parse_invalidDifficulty_throwsExceptionListingLevels() {
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> Parser.parse("add Catan /min 3 /max 4 /diff impossible"));
+        assertEquals("LEVEL should be easy, medium or hard, but was 'impossible'.", e.getMessage());
+        assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 /diff tricky"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("pick 4 /diff tricky"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("edit 1 /diff tricky"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("filter /diff tricky /tag party"));
+    }
+
+    @Test
+    void parse_diffWithNoLevel_throwsExceptionShowingFormat() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 /diff"));
+        assertEquals("LEVEL is missing. Format: " + FilterCommand.USAGE, e.getMessage());
+        e = assertThrows(GameVaultException.class, () -> Parser.parse("pick 4 /diff"));
+        assertEquals("LEVEL is missing. Format: " + PickCommand.USAGE, e.getMessage());
+    }
+
+    @Test
+    void parse_noneOnlyMeansRemoveForEdit() throws GameVaultException {
+        assertInstanceOf(EditCommand.class, Parser.parse("edit 1 /diff none"));
+        assertInstanceOf(EditCommand.class, Parser.parse("edit 1 /diff None"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("add Catan /min 3 /max 4 /diff none"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("filter 4 /diff none"));
+    }
+
+    @Test
+    void parse_repeatedDiff_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> Parser.parse("filter 4 /diff easy /diff hard"));
+        assertEquals("/diff can only be given once.", e.getMessage());
+    }
+
+    @Test
+    void parse_filterAndPickWithDifficulty_returnCommands() throws GameVaultException {
+        assertInstanceOf(FilterCommand.class, Parser.parse("filter 4 /diff easy"));
+        assertInstanceOf(FilterCommand.class, Parser.parse("filter 4 /time 45 /diff easy"));
+        assertInstanceOf(FilterTagCommand.class, Parser.parse("filter /diff easy /tag party"));
+        assertInstanceOf(PickCommand.class, Parser.parse("pick 4 /diff easy"));
+        assertInstanceOf(PickCommand.class, Parser.parse("pick 4 /diff easy /time 45"));
+    }
+
+    @Test
+    void parse_filterWithDifficultyButNoCount_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("filter /diff easy"));
+        assertEquals("COUNT is missing. Format: " + FilterCommand.USAGE, e.getMessage());
     }
 
     //@@author KRAZYZECTRON
