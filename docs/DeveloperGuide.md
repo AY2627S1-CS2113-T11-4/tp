@@ -176,8 +176,8 @@ commas. `TIME` and `TAGS` are optional:
 * A game with tags always has `TAGS` as the fifth field, so `TIME` is left blank if there is no play time.
 * Any further data comes after `TAGS` as named `KEY=VALUE` fields, in any order. A game with a named field
   always has `TIME` and `TAGS` (possibly blank) first. The current named fields are `lent` (see
-  [Lending games to friends](#lending-games-to-friends)) and `sessions` (see
-  [Logging a play session](#logging-a-play-session)).
+  [Lending games to friends](#lending-games-to-friends)), `difficulty` (see
+  [Difficulty levels](#difficulty-levels)) and `sessions` (see [Logging a play session](#logging-a-play-session)).
 
 For example:
 
@@ -548,6 +548,70 @@ still show lent games, with `(lent to NAME)` after each one.
 * Record when a game was lent, and a due date, so `lentout` can show overdue games first.
 * Let the user mark a game as unavailable for other reasons, such as missing pieces, with the same effect on
   `filter` and `pick`.
+
+### Difficulty levels
+
+A host choosing a game for new players needs to avoid anything too complicated. Each game can therefore record how
+hard it is, with `/diff easy|medium|hard` on `add` and `edit`, and `filter` and `pick` can use `/diff` to consider only
+games at that level, e.g. `filter 4 /time 45 /diff easy`.
+
+**Model.** The levels are an enum, `Difficulty` (`EASY`, `MEDIUM`, `HARD`). Each value holds the keyword the user types,
+which is also how it is written in the data file. `Difficulty#fromKeyword(...)` finds a level by keyword, ignoring
+case, so `Parser` and `GameDecoder` accept exactly the same words. `Game` has a `difficulty` field, which is `null` when
+no level has been recorded, set through `Game#setDifficulty(...)`. `Game#fitsDifficulty(...)` returns false for a game
+with no level, in the same way that `Game#fitsTime(...)` does for a game with no play time.
+
+**Parsing.** `add`, `edit`, `filter`, `pick` and the `/tag` form of `filter` all pass `/diff` to
+`Parser#splitByPrefixes(...)` and read the value with `Parser#parseOptionalDifficulty(...)`, which returns `null` if
+`/diff` was not used, so every command gives the same error messages. Only `edit` accepts `/diff none`, which removes
+the level. `EditCommand` builds a new `Game`, so it copies the old level unless a new one was given or it was removed.
+
+**Storage.** The level is saved as the named field `difficulty`, e.g. `Catan | 3 | 4 | 60 |  | difficulty=easy`, which
+`Game#getNamedFileFields()` writes and `GameDecoder#decodeNamedField(...)` reads. A game with no level has no such
+field, so older data files still load and are saved unchanged.
+
+**Filtering.** `FilterCommand` and `PickCommand` call `GameList#filterAvailable(count, minutes, difficulty)`, which
+applies all the conditions in one place. A `null` difficulty means any level. The notes that explain why a game is
+missing take the level into account too, so that the user is only told about games that could have matched.
+The activity diagram below shows what happens to one game for `filter 4 /diff easy`.
+
+![Activity diagram of filter deciding what to do with one game](images/DifficultyFilterActivity.png)
+
+* `GameList#describeNoDifficulty(...)` counts the available games that were left out only because they have no level.
+  Games that would not have fitted the time limit anyway are not counted.
+* `GameList#countWithoutPlayTime(count, difficulty)` no longer counts an untimed game that is known to be at another
+  level. An untimed game with no level is counted in both notes, as recording either detail alone would not be enough.
+* `GameList#describeLeftOut(count, minutes, difficulty, verb)` only names lent games at the requested level.
+
+#### Design considerations
+
+**Aspect: How to store the level**
+
+* **Alternative 1 (current choice):** An enum of three fixed levels.
+  * Pros: Typos such as `esay` are caught, and `filter` can compare levels exactly.
+  * Cons: Adding a level needs a code change.
+* **Alternative 2:** A number, e.g. the 1 to 5 complexity ratings used on board game websites.
+  * Pros: Finer-grained, and could support a range.
+  * Cons: Hosts would have to agree what each number means, while `easy` is clear to everyone.
+
+**Aspect: Games with no difficulty recorded, when `/diff` is given**
+
+* **Alternative 1 (current choice):** Leave them out, and say how many were left out.
+  * Pros: Every game shown is known to be at that level, and this matches how `/time` treats games with no play time.
+  * Cons: A suitable game stays hidden until its level is recorded.
+* **Alternative 2:** Include them, as they might be at that level.
+  * Pros: No game is hidden.
+  * Cons: A host could be offered a very complicated game for a group of new players, which the feature should prevent.
+
+**Aspect: Whether `/diff` works without a player count**
+
+`filter` still needs `COUNT`, except in its `/tag` form. Keeping `COUNT` required means `FilterCommand` always has a
+group size to work with, and every game shown can actually be played by the group.
+
+#### Possible future improvements
+
+* `sort difficulty`, to list the easiest games first.
+* Accept more than one level, e.g. `/diff easy medium`.
 <!-- @@author -->
 
 

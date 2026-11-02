@@ -36,14 +36,15 @@ Expected output:
 ```
 ____________________________________________________________
 Here are the commands you can use:
-  add     Adds a game: add TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]
+  add     Adds a game: add TITLE /min MIN /max MAX [/time MINUTES] [/diff LEVEL] [/tag TAG [MORE_TAGS]...]
   list    Lists all games in your collection.
   find    Finds games by title: find KEYWORD
-  filter  Shows games that fit a player count: filter COUNT [/time MINUTES]
-          or games with a tag: filter [COUNT] [/time MINUTES] /tag TAG
-  pick    Picks a random game that fits a player count: pick COUNT [/time MINUTES]
+  filter  Shows games that fit a player count: filter COUNT [/time MINUTES] [/diff LEVEL]
+          or games with a tag: filter [COUNT] [/time MINUTES] [/diff LEVEL] /tag TAG
+  pick    Picks a random game that fits a player count: pick COUNT [/time MINUTES] [/diff LEVEL]
   delete  Deletes a game: delete INDEX
   edit    Edits a game: edit INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES|none]
+          [/diff LEVEL|none]
   tag     Adds tags to a game: tag INDEX TAG [MORE_TAGS]...
   untag   Removes tags from a game: untag INDEX TAG [MORE_TAGS]...
   tags    Lists all tags in use and how many games have each.
@@ -59,17 +60,20 @@ ____________________________________________________________
  
 ### Adding a game: `add`
  
-Adds a game to your collection, with the number of players it supports and, optionally, how long it takes.
+Adds a game to your collection, with the number of players it supports and, optionally, how long it takes
+and how hard it is.
  
-Format: `add TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]`
+Format: `add TITLE /min MIN /max MAX [/time MINUTES] [/diff LEVEL] [/tag TAG [MORE_TAGS]...]`
  
 * `MIN` and `MAX` are the fewest and most players the game supports. Both must be whole numbers of at least 1,
   and `MAX` must not be less than `MIN`.
 * `MINUTES` is how long one round usually takes, e.g. the time printed on the box.
   It must be a whole number of at least 1. Leave it out if you do not know it.
+* `LEVEL` is how hard the game is to learn and play: `easy`, `medium` or `hard`, in any case.
+  Leave it out if you are not sure. It is shown in `list`, e.g. `Catan (3-4 players, 60 min, medium)`.
 * `/tag` gives the game one or more tags, separated by spaces, e.g. `/tag party word`.
   Tags follow the same rules as the [`tag` command](#tagging-a-game-tag-untag).
-* `/min`, `/max`, `/time` and `/tag` can be given in any order after the title, but each only once.
+* `/min`, `/max`, `/time`, `/diff` and `/tag` can be given in any order after the title, but each only once.
 * `TITLE` cannot contain the `|` character.
 
 Examples of usage:
@@ -116,15 +120,18 @@ If your collection is empty, GameVault shows `No games in your collection yet.` 
 Shows the games that can be played by the given number of players, optionally only those that fit in the time
 you have.
  
-Format: `filter COUNT [/time MINUTES]`
+Format: `filter COUNT [/time MINUTES] [/diff LEVEL]`
  
 * `COUNT` is the number of players, and must be a whole number of at least 1.
 * A game is shown if `COUNT` is within its minimum and maximum players (both inclusive).
 * If you give `/time MINUTES`, only games that take `MINUTES` or less are shown.
   Games with no play time recorded are left out, and GameVault tells you how many were left out for this reason.
+* If you give `/diff LEVEL`, only games at that level (`easy`, `medium` or `hard`) are shown, which helps you avoid
+  something too complicated for new players. Games with no difficulty recorded are left out, and GameVault tells
+  you how many were left out for this reason. `COUNT` is still needed.
 * Your collection is not changed.
 
-Examples of usage: `filter 4`, `filter 4 /time 45`
+Examples of usage: `filter 4`, `filter 4 /time 45`, `filter 4 /time 45 /diff easy`
  
 Expected output:
  
@@ -153,7 +160,7 @@ ____________________________________________________________
 Shows the games that have the given tag (see [Tagging a game](#tagging-a-game-tag-untag)), optionally only those
 that also fit your group size and the time you have.
 
-Format: `filter [COUNT] [/time MINUTES] /tag TAG`
+Format: `filter [COUNT] [/time MINUTES] [/diff LEVEL] /tag TAG`
 
 * `TAG` is not case-sensitive, e.g. `filter /tag PARTY` finds games tagged `party`. Only one tag can be given.
 * `COUNT` and `/time MINUTES` are optional and work as in `filter COUNT [/time MINUTES]` above.
@@ -219,15 +226,17 @@ If no title contains the keyword, GameVault shows `No games have 'mono' in the t
 Picks one random game that can be played by the given number of players, optionally only from those that fit in
 the time you have, so your group doesn't have to spend time deciding.
 
-Format: `pick COUNT [/time MINUTES]`
+Format: `pick COUNT [/time MINUTES] [/diff LEVEL]`
 
 * `COUNT` is the number of players, and must be a whole number of at least 1.
 * The game is picked only from games where `COUNT` is within its minimum and maximum players (both inclusive).
 * If you give `/time MINUTES`, the game is picked only from games that take `MINUTES` or less.
   Games with no play time recorded are not considered, and GameVault tells you how many were left out for this reason.
+* If you give `/diff LEVEL`, the game is picked only from games at that level. Games with no difficulty recorded
+  are not considered, and GameVault tells you how many for this reason.
 * Each use may pick a different game. Your collection is not changed.
 
-Examples of usage: `pick 4`, `pick 4 /time 45`
+Examples of usage: `pick 4`, `pick 4 /time 45`, `pick 4 /diff easy`
 
 Expected output for `pick 4` (the game shown may differ):
 
@@ -278,18 +287,20 @@ If there is no game with that number, GameVault shows an error such as
 
 ### Editing a game: `edit`
  
-Changes the title, player range and/or play time of a game in your collection.
+Changes the title, player range, play time and/or difficulty of a game in your collection.
  
-Format: `edit INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES|none]`
+Format: `edit INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES|none] [/diff LEVEL|none]`
  
 * `INDEX` is the number shown next to the game in `list`, and must be a whole number of at least 1.
-* At least one of `/title`, `/min`, `/max` or `/time` must be given. Fields can be in any order.
+* At least one of `/title`, `/min`, `/max`, `/time` or `/diff` must be given. Fields can be in any order.
 * Fields you leave out keep their current values.
 * The same rules as `add` apply: `MIN` must be at least 1, `MAX` must not be less than `MIN`,
   `MINUTES` must be at least 1, and `TITLE` cannot contain `|`. These are checked against the game's current
   values for any field you leave out.
 * `/time MINUTES` sets or changes the play time. `/time none` removes it, and shows an error if the game has
   no play time recorded.
+* `/diff LEVEL` sets or changes the difficulty to `easy`, `medium` or `hard`. `/diff none` removes it, and shows
+  an error if the game has no difficulty recorded.
 * If the new details are the same as the current ones, GameVault tells you that no changes were made.
 * The game keeps its position in the list and its tags, and the change is saved to the data file.
 
@@ -298,6 +309,7 @@ Examples:
 * `edit 2 /title Catan Deluxe /min 2` changes the 2nd game's title and minimum.
 * `edit 1 /time 45` sets the 1st game's play time to 45 minutes.
 * `edit 1 /time none` removes the 1st game's play time.
+* `edit 2 /diff hard` sets the 2nd game's difficulty to hard.
 
 Expected output for `edit 1 /max 6`:
  
@@ -551,8 +563,9 @@ Love Letter | 2 | 4 | 20 |  | sessions=2026-10-25@3;2026-10-30@4
   as in the `Werewolf` line above. Each tag must follow the rules in [Tagging a game](#tagging-a-game-tag-untag).
 * Any further data comes after `TAGS` as named `KEY=VALUE` fields. For these lines, write `TIME` and `TAGS`
   even if blank, as in the `Hive` and `Love Letter` lines above. The current named fields are `lent`
-  (see [`lend`](#lending-a-game-to-a-friend-lend)) and `sessions`, which lists the logged play sessions as
-  `DATE@PLAYERS` (e.g. `2026-10-30@4`), separated by `;`.
+  (see [`lend`](#lending-a-game-to-a-friend-lend)), `difficulty`, which is `easy`, `medium` or `hard`
+  (e.g. `difficulty=easy`), and `sessions`, which lists the logged play sessions as `DATE@PLAYERS`
+  (e.g. `2026-10-30@4`), separated by `;`.
 * Blank lines are ignored.
 
 If a line is not in this format, GameVault skips that line, loads the rest of your games, and tells you which
@@ -578,13 +591,13 @@ and waits for your next command. Nothing is changed.
  
 Action | Format
 -------|-------
-Add | `add TITLE /min MIN /max MAX [/time MINUTES] [/tag TAG [MORE_TAGS]...]`, e.g. `add Catan /min 3 /max 4 /time 60 /tag strategy`
+Add | `add TITLE /min MIN /max MAX [/time MINUTES] [/diff LEVEL] [/tag TAG [MORE_TAGS]...]`, e.g. `add Catan /min 3 /max 4 /time 60 /tag strategy`
 List | `list`
-Filter | `filter COUNT [/time MINUTES]`, e.g. `filter 4 /time 45`<br>`filter [COUNT] [/time MINUTES] /tag TAG`, e.g. `filter 6 /tag party`
+Filter | `filter COUNT [/time MINUTES] [/diff LEVEL]`, e.g. `filter 4 /time 45 /diff easy`<br>`filter [COUNT] [/time MINUTES] [/diff LEVEL] /tag TAG`, e.g. `filter 6 /tag party`
 Find | `find KEYWORD`, e.g. `find mono`
-Pick | `pick COUNT [/time MINUTES]`, e.g. `pick 4 /time 45`
+Pick | `pick COUNT [/time MINUTES] [/diff LEVEL]`, e.g. `pick 4 /time 45 /diff easy`
 Delete | `delete INDEX`, e.g. `delete 2`
-Edit | `edit INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES\|none]`, e.g. `edit 1 /max 6`, `edit 1 /time none`
+Edit | `edit INDEX [/title TITLE] [/min MIN] [/max MAX] [/time MINUTES\|none] [/diff LEVEL\|none]`, e.g. `edit 1 /max 6`, `edit 1 /time none`, `edit 1 /diff hard`
 Tag | `tag INDEX TAG [MORE_TAGS]...`, e.g. `tag 2 party drawing`
 Untag | `untag INDEX TAG [MORE_TAGS]...`, e.g. `untag 2 co-op`
 List tags | `tags`
