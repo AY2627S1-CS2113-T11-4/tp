@@ -112,7 +112,8 @@ themselves, not on the order they were in before, so sorting twice gives the sam
 2. `SortCommand#execute` passes the order's comparator to `GameList#sort`, which uses the stable `List#sort`.
 3. The new order is saved with `Storage#save`, so `list` keeps showing it after the app restarts.
 4. The sorted games are shown numbered from 1, using `ListCommand#formatNumberedListWithLastPlayed`, which `list`
-      also uses, so each game shows when it was last played.
+   also uses, so each game shows when it was last played.
+   An empty collection is not sorted or saved; a message is shown instead.
 
 **Adding a new order** only needs a new `SortOrder` value with its keyword, description and comparator.
 `Parser`, `SortCommand` and the error messages do not need to change.
@@ -461,8 +462,9 @@ exactly as before. In `FilterCommand#execute(...)`:
 3. The criteria line says `not played in the last N day(s)`, and if any games were removed, a note says how many
 were left out, worded like the other notes, so the user knows why a game they expected is missing.
 4. The notes about games with no play time (`countUntimedNotRecentlyPlayed(...)`) and lent games
-(`findLentNotRecentlyPlayed(...)`) skip games for which `isRecentlyPlayed(...)` is true. Otherwise a game
-played yesterday that is lent out would be named as if it would have been shown.
+   (`findLentNotRecentlyPlayed(...)`) skip games for which `isRecentlyPlayed(...)` is true. Otherwise a game
+   played yesterday that is lent out would be named as if it would have been shown.
+
 
 #### Design considerations
 
