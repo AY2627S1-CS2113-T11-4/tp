@@ -26,6 +26,7 @@ import seedu.gamevault.game.Tag;
  * The {@code sessions} field holds the play sessions, each written as {@code DATE@PLAYERS}
  * (DATE in {@code YYYY-MM-DD} form) and separated by {@code ;}.
  * The {@code lent} field holds the name of the person the game is lent to, e.g. {@code lent=Alice}.
+ * The {@code ratings} field holds the thumbs-up and thumbs-down counts as {@code UP/DOWN}, e.g. {@code ratings=5/1}.
  * Users may edit the data file by hand, so every part of the line is checked and a
  * specific reason is given when something is wrong.</p>
  */
@@ -117,6 +118,9 @@ public class GameDecoder {
         case Game.LENT_FILE_KEY:
             decodeBorrower(value, game);
             break;
+        case Game.RATINGS_FILE_KEY:
+            decodeRatings(value, game);
+            break;
         default:
             throw new GameVaultException("unknown field '" + key + "'");
         }
@@ -163,6 +167,44 @@ public class GameDecoder {
             throw new GameVaultException("lent is '" + name + "', but a name should be " + Borrower.RULES);
         }
         game.lendTo(name);
+    }
+
+    //@@author MohamedFarsat
+    /**
+     * Sets the game's thumbs-up and thumbs-down counts from a {@code ratings} field, e.g. {@code ratings=5/1}.
+     *
+     * @throws GameVaultException If the value is not two whole numbers of at least 0 separated by {@code /}.
+     */
+    private static void decodeRatings(String value, Game game) throws GameVaultException {
+        String[] parts = value.split(Game.RATINGS_FILE_SEPARATOR, -1);
+        if (parts.length != 2) {
+            throw new GameVaultException("ratings '" + value + "' should be in the form UP"
+                    + Game.RATINGS_FILE_SEPARATOR + "DOWN, e.g. 5" + Game.RATINGS_FILE_SEPARATOR + "1");
+        }
+        int thumbsUp = parseCount(parts[0], "UP in ratings");
+        int thumbsDown = parseCount(parts[1], "DOWN in ratings");
+        game.setRatings(thumbsUp, thumbsDown);
+    }
+
+    /**
+     * Returns the whole number in {@code text}, which may be 0 (unlike {@link #parsePositiveNumber}),
+     * e.g. for a game that has never had a thumbs down.
+     *
+     * @param fieldName Name of the field, used in the error message.
+     * @throws GameVaultException If the text is not a whole number, or is negative.
+     */
+    private static int parseCount(String text, String fieldName) throws GameVaultException {
+        String trimmedText = text.trim();
+        int count;
+        try {
+            count = Integer.parseInt(trimmedText);
+        } catch (NumberFormatException e) {
+            throw new GameVaultException(fieldName + " should be a whole number, but was '" + trimmedText + "'");
+        }
+        if (count < 0) {
+            throw new GameVaultException(fieldName + " should not be negative, but was " + count);
+        }
+        return count;
     }
 
     //@@author KRAZYZECTRON

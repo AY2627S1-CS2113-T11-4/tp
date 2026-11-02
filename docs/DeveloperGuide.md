@@ -374,6 +374,91 @@ clock is set wrongly would treat saved sessions as invalid and skip the whole ga
 * An `unlog INDEX` command to remove a session logged by mistake.
 * Accept other date forms, e.g. `today`, `yesterday` or `30/10/2026`.
 
+<!-- @@author MohamedFarsat -->
+### Rating games and weighted picking
+
+The `rate INDEX up|down` command lets the group give a game a thumbs up or a thumbs down after playing it, and
+`unrate INDEX up|down` takes one back if it was given by mistake. `pick` then favours games with more thumbs up, so
+its suggestions get better the more the group uses GameVault.
+
+**Model.** `Game` keeps two `int` counts, `thumbsUp` and `thumbsDown`, both starting at 0. The `Thumb` enumeration
+(`UP` or `DOWN`) says which count a method works on, e.g. `Game#addRating(Thumb.UP)`, and also holds the word the
+user types for it, like `SortOrder` does for sorting. The counts change only through `Game#addRating(...)` and
+`Game#removeRating(...)`, or `Game#setRatings(...)` when loading a game or copying it in `edit`. Like `lendTo(...)`,
+these methods only assert their rules; `Game#canAddRating(...)` and `Game#canRemoveRating(...)` let commands check
+first, so that the user can be told why nothing changed.
+`Game#isRated()` is true once either count is above 0, and `Game#toString()` then adds the counts, e.g.
+`Catan (3-4 players) +5/-1`. Because every command shows games through `toString()`, ratings appear in `list`,
+`find`, `filter` and `pick` without changing those commands.
+
+**Rating a game.** The sequence diagram below shows what happens when the user enters `rate 1 up`.
+
+![Sequence diagram for rate 1 up](images/RateSequence.png)
+
+1. `Parser#parseRate(...)` calls `parseRatingArguments(...)`, which `unrate` shares. It splits the arguments on
+   spaces and expects exactly two words. The first is checked by `parseIndex(...)`, shared with `delete`, `edit` and
+   `lend`, and the second is looked up with `Thumb#fromKeyword(...)`, which ignores case.
+2. `RateCommand#execute(...)` checks that game 1 exists, then gets it from the `GameList`.
+3. It checks `Game#canAddRating(Thumb.UP)`. This is only false if the count is already `Integer.MAX_VALUE`
+   (possible only by editing the data file), where adding 1 would wrap round to a negative number.
+4. It calls `Game#addRating(Thumb.UP)`, saves the collection with `Storage#save(...)`, and shows the new counts from
+   `Game#describeRatings()`.
+
+`UnrateCommand` works the same way, but checks `Game#canRemoveRating(...)` (the count must be above 0) and calls
+`Game#removeRating(...)`.
+
+**Weighted picking.** `Game#getPickWeight()` returns `(thumbsUp + 1) / (thumbsDown + 1)`, kept between
+`Game.MIN_PICK_WEIGHT` (0.2) and `Game.MAX_PICK_WEIGHT` (5). `PickCommand#chooseWeighted(...)`
+adds up the weights of the matching games, takes a random point between 0 and that total
+(`Random#nextDouble() * total`), and walks through the matches, subtracting each weight until the point falls inside
+one game's share. For example, if Catan (`+3/-0`, weight 4), Codenames (unrated, weight 1) and Splendor (unrated,
+weight 1) all fit, the total is 6 and Catan is picked whenever the point falls between 0 and 4, i.e. 4 times in 6.
+When no game is rated, every weight is 1, so `pick` behaves exactly as it did before ratings were added.
+`pick` adds a note that ratings were used only when some match has a weight other than 1, since a game rated
+e.g. `+2/-2` is rated but still has weight 1.
+The `Random` is still passed in through `PickCommand`'s package-private constructor, so tests can fix the point and
+check exactly which game is chosen.
+
+**Storage.** The counts are saved in the named field `ratings` as `UP/DOWN`, e.g.
+`Catan | 3 | 4 | 60 | strategy | ratings=5/1`. `Game#getNamedFileFields()` only writes the field for a rated game,
+so data files without ratings are unchanged. `GameDecoder#decodeRatings(...)` accepts counts of 0 or more and rejects
+anything else, such as `5/-1` or `5`, as an invalid line.
+
+#### Design considerations
+
+**Aspect: How ratings should change the chance of being picked**
+
+* **Alternative 1 (current choice):** Weight `(up + 1) / (down + 1)`, kept between 0.2 and 5.
+  * Pros: Thumbs up and thumbs down both matter, an unrated game sits in the middle with weight 1, and the weight is
+    never 0, so a disliked game can still come up now and then. Without the limits, a game rated `+30/-0` (weight 31)
+    would be picked about 89% of the time against 4 unrated games; with them, it is picked 5 times in 9.
+  * Cons: Weights are decimals, so the pick uses `nextDouble()` instead of `nextInt(...)`. Beyond the limits, extra
+    ratings no longer change the chance.
+* **Alternative 2:** One "ticket" per game, plus one per thumbs up beyond the thumbs down (at least 1 ticket).
+  * Pros: Whole numbers, and easy to explain.
+  * Cons: A game with many thumbs down is never less likely than an unrated one.
+* **Alternative 3:** Only pick from the highest-rated games.
+  * Pros: Simple.
+  * Cons: The same few games would come up every time, which defeats the point of a random pick.
+
+An alternative to the limits is to use `Math.log` so that each extra thumbs up counts for a little less. We chose
+fixed limits because they are easier to explain in the User Guide ("at most 5 times as likely").
+
+**Aspect: Whether a game must be logged before it can be rated**
+
+`rate` does not require the game to have logged play sessions. Logging is optional, and many groups will rate a game
+without logging every session, so refusing (or showing a note every time) would add friction for little benefit.
+
+**Aspect: Storing rating counts vs. a list of individual ratings**
+
+Only the two counts are stored, because the weight depends on nothing else. Storing each rating (e.g. with its date,
+like play sessions) would allow recent ratings to count for more, but would make the data file longer for no
+benefit to the current features.
+
+#### Possible future improvements
+
+* Let `pick` show the chance of the picked game, e.g. `(chance: 4 in 6)`, so the weighting is easy to see.
+
 <!-- @@author yy261 -->
 ### Filtering games by player count and play time
 

@@ -29,15 +29,18 @@ import seedu.gamevault.command.ListLentCommand;
 import seedu.gamevault.command.ListTagsCommand;
 import seedu.gamevault.command.LogCommand;
 import seedu.gamevault.command.PickCommand;
+import seedu.gamevault.command.RateCommand;
 import seedu.gamevault.command.ReturnCommand;
 import seedu.gamevault.command.SortCommand;
 import seedu.gamevault.command.TagCommand;
+import seedu.gamevault.command.UnrateCommand;
 import seedu.gamevault.command.UntagCommand;
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Borrower;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.SortOrder;
 import seedu.gamevault.game.Tag;
+import seedu.gamevault.game.Thumb;
 
 /**
  * Turns a line typed by the user into the matching {@link Command}.
@@ -119,6 +122,10 @@ public class Parser {
             return new ListLentCommand();
         case LogCommand.COMMAND_WORD:
             return parseLog(arguments);
+        case RateCommand.COMMAND_WORD:
+            return parseRate(arguments);
+        case UnrateCommand.COMMAND_WORD:
+            return parseUnrate(arguments);
         default:
             throw new GameVaultException("Unknown command '" + parts[0]
                     + "'. Type 'help' to see all commands.");
@@ -269,6 +276,65 @@ public class Parser {
                     + " (e.g. return 2)");
         }
         return new ReturnCommand(parseIndex(indexText));
+    }
+
+    //@@author MohamedFarsat
+    /**
+     * Builds a {@link RateCommand} from arguments in the form {@code INDEX up|down}, e.g. {@code 2 up}.
+     *
+     * @throws GameVaultException If INDEX or the rating is missing or invalid, or there are extra words.
+     */
+    private static Command parseRate(String arguments) throws GameVaultException {
+        RatingArguments rating = parseRatingArguments(arguments, RateCommand.USAGE, "rate 2 up");
+        return new RateCommand(rating.displayNumber(), rating.thumb());
+    }
+
+    /**
+     * Builds an {@link UnrateCommand} from arguments in the form {@code INDEX up|down}, e.g. {@code 2 down}.
+     *
+     * @throws GameVaultException If INDEX or the rating is missing or invalid, or there are extra words.
+     */
+    private static Command parseUnrate(String arguments) throws GameVaultException {
+        RatingArguments rating = parseRatingArguments(arguments, UnrateCommand.USAGE, "unrate 2 down");
+        return new UnrateCommand(rating.displayNumber(), rating.thumb());
+    }
+
+    /**
+     * The two parts of the arguments of {@code rate} and {@code unrate}.
+     * A record is a short way to write a class that only holds some values.
+     */
+    private record RatingArguments(int displayNumber, Thumb thumb) {
+    }
+
+    /**
+     * Reads arguments in the form {@code INDEX up|down}, which {@code rate} and {@code unrate} share.
+     * {@code up} and {@code down} are not case-sensitive, so {@code 2 UP} works too.
+     *
+     * @param usage Format of the command, shown in error messages.
+     * @param example A valid use of the command, shown in error messages.
+     * @throws GameVaultException If INDEX or the rating is missing or invalid, or there are extra words.
+     */
+    private static RatingArguments parseRatingArguments(String arguments, String usage, String example)
+            throws GameVaultException {
+        String formatHint = " Format: " + usage + " (e.g. " + example + ")";
+        if (arguments.isBlank()) {
+            throw new GameVaultException("INDEX and up/down are missing." + formatHint);
+        }
+        String[] parts = arguments.trim().split("\\s+");
+        if (parts.length == 1) {
+            throw new GameVaultException("Please say 'up' or 'down' after INDEX." + formatHint);
+        }
+        if (parts.length > 2) {
+            throw new GameVaultException("Too many words: expected only INDEX and up/down." + formatHint);
+        }
+
+        int displayNumber = parseIndex(parts[0]);
+        Optional<Thumb> thumb = Thumb.fromKeyword(parts[1]);
+        if (thumb.isEmpty()) {
+            throw new GameVaultException("The rating should be 'up' or 'down', but was '" + parts[1] + "'."
+                    + formatHint);
+        }
+        return new RatingArguments(displayNumber, thumb.get());
     }
 
     //@@author SwaggyDaddy67
