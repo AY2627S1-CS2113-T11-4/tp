@@ -1,6 +1,8 @@
 package seedu.gamevault.command;
 
 import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Game;
@@ -19,6 +21,8 @@ import seedu.gamevault.ui.Ui;
 public class UnavailableCommand extends Command {
     public static final String COMMAND_WORD = "unavailable";
     public static final String USAGE = "unavailable INDEX /reason " + String.join("|", UnavailableReason.keywords());
+
+    private static final Logger logger = Logger.getLogger(UnavailableCommand.class.getName());
 
     private final int displayNumber;
     private final UnavailableReason reason;
@@ -54,6 +58,7 @@ public class UnavailableCommand extends Command {
 
         game.markUnavailable(reason);
         storage.save(games);
+        logger.log(Level.FINE, "Marked " + game.getTitle() + " unavailable: " + reason.getKeyword());
         String message = "Marked unavailable: " + game;
         if (oldReason.isPresent()) {
             message += System.lineSeparator() + "(Was: " + oldReason.get().getDescription() + ".)";
