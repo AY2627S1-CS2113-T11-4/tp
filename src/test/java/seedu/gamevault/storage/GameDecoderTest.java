@@ -73,8 +73,10 @@ class GameDecoderTest {
     }
 
     @Test
-    void decodeLine_playerCountBelowOne_throwsException() {
-        assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan | 0 | 4"));
+    void decodeLine_playerCountBelowOne_throwsExceptionNamingMinimum() {
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> GameDecoder.decodeLine("Catan | 0 | 4"));
+        assertEquals("MIN should be at least 1, but was 0", e.getMessage());
         assertThrows(GameVaultException.class, () -> GameDecoder.decodeLine("Catan | -2 | 4"));
     }
 
@@ -249,6 +251,15 @@ class GameDecoderTest {
     }
 
     @Test
+    void decodeLine_zeroThumbsDown_loadsAndSavesUnchanged() throws GameVaultException {
+        // 0 is the smallest count allowed, and the most common one: many games have no thumbs down.
+        Game game = GameDecoder.decodeLine("Catan | 3 | 4 |  |  | ratings=3/0");
+        assertEquals(3, game.getThumbsUp());
+        assertEquals(0, game.getThumbsDown());
+        assertEquals("Catan | 3 | 4 |  |  | ratings=3/0", game.toFileString());
+    }
+
+    @Test
     void decodeLine_noRatingsField_returnsUnratedGame() throws GameVaultException {
         assertFalse(GameDecoder.decodeLine("Catan | 3 | 4 | 60 | strategy").isRated());
     }
@@ -266,7 +277,7 @@ class GameDecoderTest {
     void decodeLine_negativeRating_throwsExceptionNamingField() {
         GameVaultException e = assertThrows(GameVaultException.class,
                 () -> GameDecoder.decodeLine("Catan | 3 | 4 |  |  | ratings=2/-1"));
-        assertEquals("DOWN in ratings should not be negative, but was -1", e.getMessage());
+        assertEquals("DOWN in ratings should be at least 0, but was -1", e.getMessage());
     }
 
     @Test
