@@ -2,14 +2,23 @@
 
 ## Acknowledgements
 
-{list here sources of all reused/adapted ideas, code, documentation, and third-party libraries -- include links to the original source as well}
+* The project was set up from the CS2113 [tP template](https://github.com/NUS-CS2113-AY2627-S1/tp)
+  (Gradle build, Checkstyle configuration and the GitHub Actions workflow).
+* The structure of this Developer Guide follows the
+  [SE-EDU AddressBook-Level3 Developer Guide](https://se-education.org/addressbook-level3/DeveloperGuide.html).
+* Third-party libraries and tools:
+  * [JUnit 5](https://junit.org/junit5/) for testing.
+  * The [Shadow Gradle plugin](https://gradleup.com/shadow/) to package GameVault as a single JAR file.
+  * [PlantUML](https://plantuml.com/) for the UML diagrams in this guide.
 
 ## Design & implementation
 ### Edit feature
 
-The edit feature lets the user change a game's title and/or player range without deleting and re-adding it.
+The edit feature lets the user change a game's title, player range, play time and difficulty without deleting and
+re-adding it. Tags are changed with `tag` and `untag` instead, so `edit` keeps them as they are.
 
-**Parsing.** `Parser#parseEdit` splits the arguments just before each field prefix (`/title`, `/min`, `/max`),
+**Parsing.** `Parser#parseEdit` splits the arguments just before each field prefix (`/title`, `/min`, `/max`,
+`/time`, `/diff`),
 so the fields can be given in any order. The first part is the `INDEX`, which is checked by `Parser#parseIndex`
 (shared with `delete`). Each field is then checked on its own, e.g. `MIN` must be a whole number of at least 1,
 and `TITLE` must not contain `|`. A field that is not given is passed to `EditCommand` as `null`,
@@ -1098,14 +1107,18 @@ Priorities: `* * *` = must have, `* *` = nice to have, `*` = unlikely to have.
 |v2.0|`* *`|host with a large collection|find a game by part of its title|locate it without going through the entire list|
 |v2.0|`* *`|host with many games|sort my collection by title, player count or play time|scan it more easily|
 |v2.0|`* *`|host|tag games (e.g. `party`, `strategy`) and filter by tag|find the kind of game the group is in the mood for|
+|v2.0|`* *`|host with many tags|see all the tags in use|filter by one without guessing its name|
 |v2.0|`* *`|indecisive host|have the app pick a random game that fits the group|stop spending time deciding|
 |v2.1|`* * *`|host who runs regular game nights|log each play session|keep my play history accurate|
 |v2.1|`* *`|host who runs regular game nights|see how long it has been since each game was last played|avoid repeating games the group just played|
+|v2.1|`* *`|host who wants variety|hide games played recently when filtering|stop the group from repeating the same game|
 |v2.1|`* *`|host who logs game nights|view a game's full play history|see how popular it has been|
 |v2.1|`* *`|host with games that rarely get played|see which games have never been played|give underused games a fair chance|
 |v2.1|`* *`|host with new players|record each game's difficulty and filter by it|avoid games that are too complicated for them|
 |v2.1|`* *`|host whose group has favourites|rate a game after playing it|have `pick` suggest games the group enjoyed more often|
+|v2.1|`*`|host who rated a game by mistake|undo a rating|keep `pick` accurate|
 |v2.1|`* *`|host who lends games to friends|record who has a game|know who to ask for it back, and not be offered it while it is away|
+|v2.1|`* *`|host who lends games to friends|see all the games that are lent out|know who to ask for each one|
 |v2.1|`* *`|host with damaged games|mark a game as unavailable (e.g. missing pieces)|not be offered a game we cannot play|
 |v2.1|`*`|host who borrows games|record who lent me a game and when it is due back|give it back on time|
 |v2.1|`*`|host who receives games as gifts|record who gave me a game|know who to thank|
@@ -1137,7 +1150,7 @@ Priorities: `* * *` = must have, `* *` = nice to have, `*` = unlikely to have.
 * *Overdue* - a borrowed game whose due-back date is before today.
 * *Data file* - `data/games.txt`, where GameVault saves the collection, one game per line.
 * *Named field* - a `KEY=VALUE` part of a line in the data file, e.g. `lent=Alice`, used for optional data such as
-  play sessions, ratings and difficulty.
+  play sessions, ratings, difficulty, availability and who has the game.
 
 ## Instructions for manual testing
 
@@ -1153,6 +1166,11 @@ testers; testers are expected to do more exploratory testing.
 1. Shutdown
    1. Type `exit`.<br>
       Expected: A goodbye message is shown and the app closes.
+
+### Viewing help
+
+1. Test case: `help`<br>
+   Expected: Every command is listed with a one-line description and its format.
 
 ### Loading sample data
 
@@ -1182,20 +1200,29 @@ testers; testers are expected to do more exploratory testing.
 
 ### Finding a game for the group
 
+1. Test case: `find cat`<br>
+   Expected: Catan is shown with its number from `list` (1).
+1. Test case: `find xyz`<br>
+   Expected: A message says no games have `xyz` in the title.
 1. Test case: `filter 4`, then `filter 4 /time 30`, then `filter 4 /diff easy`<br>
    Expected: Only games that fit all the given conditions are shown, with notes about games left out because they
    have no play time or difficulty recorded.
 1. Test case: `filter /tag party`<br>
    Expected: Codenames and Werewolf (and Uno, if added) are shown.
 1. Test case: `pick 4` several times<br>
-   Expected: A random game for 4 players is suggested each time. Azul (rated `+3/-0`) comes up more often.
+   Expected: A random game for 4 players is suggested each time. Over many tries, Azul (rated `+3/-0`) is likely
+   to come up more often than the others.
 1. Test case: `pick 30`<br>
    Expected: A message says no game fits.
 
 ### Lending, borrowing and unavailable games
 
 1. Test case: `lend 2 /to Alice`, then `filter 4`<br>
-   Expected: Codenames is not shown, and a note says it is lent to Alice. `return 2` makes it appear again.
+   Expected: Codenames is not shown, and a note says it is lent to Alice.
+1. Test case: `lentout`<br>
+   Expected: Codenames is listed with its number from `list` (2), lent to Alice.
+1. Test case: `return 2`, then `lentout`<br>
+   Expected: Codenames is back, and `lentout` says none of the games are lent out. `filter 4` shows it again.
 1. Test case: `unavailable 1 /reason missing`, then `pick 3` several times<br>
    Expected: Catan is never picked. `list` shows `(unavailable: missing pieces)`. `available 1` undoes this.
 1. Test case: `unavailable 1 missing`<br>
@@ -1217,9 +1244,28 @@ testers; testers are expected to do more exploratory testing.
 1. Test case: `log 3 /players 5`<br>
    Expected: An error says Hive cannot be played by 5 players.
 1. Test case: `unplayed`<br>
-   Expected: Every game with no logged session is listed.
+   Expected: Every game with no logged session is listed. Each game keeps its number from `list`, so Hive (3) is
+   skipped and the numbers go 1, 2, 4, 5.
+1. Test case: `filter 2`, then `filter 2 /notplayedin 1`<br>
+   Expected: The first shows Hive and Azul. The second shows only Azul, with a note that 1 game was left out
+   because it was played in the last 1 day(s).
 1. Test case: `rate 1 up`, then `unrate 1 up`<br>
    Expected: Catan's rating goes to `+1/-0`, then back to `+0/-0`.
+
+### Tags and sorting
+
+1. Test case: `tag 4 strategy co-op`<br>
+   Expected: Azul now has the tags `co-op`, `family` and `strategy`.
+1. Test case: `tag 4 strategy`<br>
+   Expected: An error says Azul is already tagged `strategy`.
+1. Test case: `tags`<br>
+   Expected: Every tag in use is listed in alphabetical order with its number of games, e.g. `strategy (2 game(s))`.
+1. Test case: `untag 4 co-op`, then `untag 4 co-op` again<br>
+   Expected: The first removes the tag. The second shows an error saying Azul does not have it.
+1. Test case: `sort players`, then `sort time`, then `sort title`<br>
+   Expected: Each time, the collection is shown in the new order: fewest players first (Hive first), shortest play
+   time first with Werewolf (no play time) last, then A to Z. `list` keeps the last order.
+   Sorting changes the numbers of the games, so do this after the other tests that use game numbers.
 
 ### Saving data
 
