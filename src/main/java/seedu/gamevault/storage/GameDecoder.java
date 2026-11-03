@@ -71,8 +71,8 @@ public class GameDecoder {
         if (title.isEmpty()) {
             throw new GameVaultException("TITLE is empty");
         }
-        int minPlayers = parsePositiveNumber(fields[1], "MIN");
-        int maxPlayers = parsePositiveNumber(fields[2], "MAX");
+        int minPlayers = parseNumber(fields[1], "MIN", 1);
+        int maxPlayers = parseNumber(fields[2], "MAX", 1);
         if (maxPlayers < minPlayers) {
             throw new GameVaultException("MAX (" + maxPlayers + ") is less than MIN (" + minPlayers + ")");
         }
@@ -176,7 +176,7 @@ public class GameDecoder {
                 throw new GameVaultException("session '" + sessionText + "' has an invalid date; "
                         + "use the form YYYY-MM-DD");
             }
-            int playerCount = parsePositiveNumber(parts[1], "PLAYERS in session '" + sessionText + "'");
+            int playerCount = parseNumber(parts[1], "PLAYERS in session '" + sessionText + "'", 1);
             game.addSession(new PlaySession(date, playerCount));
         }
     }
@@ -220,30 +220,10 @@ public class GameDecoder {
             throw new GameVaultException("ratings '" + value + "' should be in the form UP"
                     + Game.RATINGS_FILE_SEPARATOR + "DOWN, e.g. 5" + Game.RATINGS_FILE_SEPARATOR + "1");
         }
-        int thumbsUp = parseCount(parts[0], "UP in ratings");
-        int thumbsDown = parseCount(parts[1], "DOWN in ratings");
+        // A count may be 0, e.g. for a game that has never had a thumbs down.
+        int thumbsUp = parseNumber(parts[0], "UP in ratings", 0);
+        int thumbsDown = parseNumber(parts[1], "DOWN in ratings", 0);
         game.setRatings(thumbsUp, thumbsDown);
-    }
-
-    /**
-     * Returns the whole number in {@code text}, which may be 0 (unlike {@link #parsePositiveNumber}),
-     * e.g. for a game that has never had a thumbs down.
-     *
-     * @param fieldName Name of the field, used in the error message.
-     * @throws GameVaultException If the text is not a whole number, or is negative.
-     */
-    private static int parseCount(String text, String fieldName) throws GameVaultException {
-        String trimmedText = text.trim();
-        int count;
-        try {
-            count = Integer.parseInt(trimmedText);
-        } catch (NumberFormatException e) {
-            throw new GameVaultException(fieldName + " should be a whole number, but was '" + trimmedText + "'");
-        }
-        if (count < 0) {
-            throw new GameVaultException(fieldName + " should not be negative, but was " + count);
-        }
-        return count;
     }
 
     //@@author KRAZYZECTRON
@@ -321,27 +301,28 @@ public class GameDecoder {
         if (fields.length < FIELD_COUNT_WITH_TIME || fields[FIELD_COUNT_WITH_TIME - 1].isBlank()) {
             return NO_PLAY_TIME;
         }
-        return parsePositiveNumber(fields[FIELD_COUNT_WITH_TIME - 1], "TIME");
+        return parseNumber(fields[FIELD_COUNT_WITH_TIME - 1], "TIME", 1);
     }
 
     //@@author
     /**
-     * Returns the number in {@code text}, such as a player count or play time, which must be a whole number
-     * of at least 1.
+     * Returns the whole number in {@code text}, such as a player count, a play time or a rating count.
      *
      * @param fieldName Name of the field, used in the error message.
+     * @param minimum Smallest value allowed, e.g. 1 for a player count or 0 for a rating count.
+     * @throws GameVaultException If the text is not a whole number, or is less than {@code minimum}.
      */
-    private static int parsePositiveNumber(String text, String fieldName) throws GameVaultException {
+    private static int parseNumber(String text, String fieldName, int minimum) throws GameVaultException {
         String trimmedText = text.trim();
-        int count;
+        int number;
         try {
-            count = Integer.parseInt(trimmedText);
+            number = Integer.parseInt(trimmedText);
         } catch (NumberFormatException e) {
             throw new GameVaultException(fieldName + " should be a whole number, but was '" + trimmedText + "'");
         }
-        if (count < 1) {
-            throw new GameVaultException(fieldName + " should be at least 1, but was " + count);
+        if (number < minimum) {
+            throw new GameVaultException(fieldName + " should be at least " + minimum + ", but was " + number);
         }
-        return count;
+        return number;
     }
 }
