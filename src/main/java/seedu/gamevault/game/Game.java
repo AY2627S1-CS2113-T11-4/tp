@@ -404,11 +404,11 @@ public class Game {
     private List<String> getNamedFileFields() {
         List<String> fields = new ArrayList<>();
         if (!sessions.isEmpty()) {
-            List<String> encoded = new ArrayList<>();
+            List<String> encodedSessions = new ArrayList<>();
             for (PlaySession session : sessions) {
-                encoded.add(session.toFileString());
+                encodedSessions.add(session.toFileString());
             }
-            fields.add(SESSIONS_FILE_KEY + "=" + String.join(SESSION_FILE_SEPARATOR, encoded));
+            fields.add(SESSIONS_FILE_KEY + "=" + String.join(SESSION_FILE_SEPARATOR, encodedSessions));
         }
         //@@author KRAZYZECTRON
         if (isMarkedUnavailable()) {
