@@ -836,4 +836,35 @@ class ParserTest {
                 () -> Parser.parse("filter 4 /notplayedin 14 /tag party"));
         assertTrue(e.getMessage().contains("cannot be used together with /tag"));
     }
+
+    //@@author yy261
+    @Test
+    void parse_upperOrMixedCasePrefixes_treatedLikeLowerCase(@TempDir Path tempDir) throws GameVaultException {
+        GameList games = new GameList();
+        Storage storage = new Storage(tempDir.resolve("games.txt").toString());
+        Ui ui = new Ui(new ByteArrayInputStream(new byte[0]), new PrintStream(new ByteArrayOutputStream()));
+
+        Parser.parse("add Catan /MIN 3 /Max 4 /TIME 60 /Diff EASY /TAG strategy").execute(games, ui, storage);
+
+        assertEquals("Catan", games.get(0).getTitle());
+        assertEquals(3, games.get(0).getMinPlayers());
+        assertEquals(4, games.get(0).getMaxPlayers());
+        assertEquals(60, games.get(0).getPlayTime());
+        assertTrue(games.get(0).hasTag("strategy"));
+        assertInstanceOf(FilterCommand.class, Parser.parse("filter 4 /Time 30 /NOTPLAYEDIN 7"));
+        assertInstanceOf(LendCommand.class, Parser.parse("lend 1 /TO Alice"));
+    }
+
+    @Test
+    void parse_samePrefixInDifferentCase_rejectedAsRepeated() {
+        GameVaultException e = assertThrows(GameVaultException.class,
+                () -> Parser.parse("add Catan /min 3 /max 4 /time 30 /TIME 60"));
+        assertEquals("/time can only be given once.", e.getMessage());
+    }
+
+    @Test
+    void parse_prefixInsideTitleInAnyCase_notSplit() throws GameVaultException {
+        // "/MINIMAL" is still part of the title, because it is not the /min prefix on its own.
+        assertInstanceOf(AddCommand.class, Parser.parse("add Foo/MINIMAL /min 2 /max 3"));
+    }
 }

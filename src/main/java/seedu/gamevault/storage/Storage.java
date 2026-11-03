@@ -16,7 +16,9 @@ import seedu.gamevault.game.GameList;
 
 /**
  * Saves the game collection to, and loads it from, a text file on disk.
- * The file stores one game per line in the format {@code TITLE | MIN | MAX} (see {@link GameDecoder}).
+ * The file stores one game per line in the format {@code TITLE | MIN | MAX}, optionally followed by
+ * {@code | TIME}, {@code | TAGS} and named {@code KEY=VALUE} fields such as {@code lent=Alice}
+ * (see {@link GameDecoder} for the full format).
  * The data folder and file are created automatically when they do not exist yet.
  */
 public class Storage {
