@@ -2,14 +2,23 @@
 
 ## Acknowledgements
 
-{list here sources of all reused/adapted ideas, code, documentation, and third-party libraries -- include links to the original source as well}
+* The project was set up from the CS2113 [tP template](https://github.com/NUS-CS2113-AY2627-S1/tp)
+  (Gradle build, Checkstyle configuration and the GitHub Actions workflow).
+* The structure of this Developer Guide follows the
+  [SE-EDU AddressBook-Level3 Developer Guide](https://se-education.org/addressbook-level3/DeveloperGuide.html).
+* Third-party libraries and tools:
+  * [JUnit 5](https://junit.org/junit5/) for testing.
+  * The [Shadow Gradle plugin](https://gradleup.com/shadow/) to package GameVault as a single JAR file.
+  * [PlantUML](https://plantuml.com/) for the UML diagrams in this guide.
 
 ## Design & implementation
 ### Edit feature
 
-The edit feature lets the user change a game's title and/or player range without deleting and re-adding it.
+The edit feature lets the user change a game's title, player range, play time and difficulty without deleting and
+re-adding it. Tags are changed with `tag` and `untag` instead, so `edit` keeps them as they are.
 
-**Parsing.** `Parser#parseEdit` splits the arguments just before each field prefix (`/title`, `/min`, `/max`),
+**Parsing.** `Parser#parseEdit` splits the arguments just before each field prefix (`/title`, `/min`, `/max`,
+`/time`, `/diff`),
 so the fields can be given in any order. The first part is the `INDEX`, which is checked by `Parser#parseIndex`
 (shared with `delete`). Each field is then checked on its own, e.g. `MIN` must be a whole number of at least 1,
 and `TITLE` must not contain `|`. A field that is not given is passed to `EditCommand` as `null`,
@@ -1073,31 +1082,206 @@ The `borrow` command rejects a due-back date in the past, since it is most likel
 ## Product scope
 ### Target user profile
 
-{Describe the target user profile}
+GameVault is for people who regularly host board game or card game nights, for friends, family or a CCA, and who:
+
+* own a collection of games that is too large to remember in detail (typically 10 to a few hundred games),
+* often have to choose a game quickly for a group whose size and available time change from night to night,
+* lend games to friends, borrow games from them, and sometimes have games with missing pieces,
+* prefer typing to clicking, and are comfortable with a command-line app.
 
 ### Value proposition
 
-{Describe the value proposition: what problem does it solve?}
+When a group arrives, the host has to work out which games suit the number of people, the time available and how
+experienced the players are, while remembering which games are lent out, damaged or played too recently.
+GameVault keeps all of this in one place and answers the question in a single command, e.g.
+`filter 6 /time 45 /diff easy` or `pick 6`, which is faster than checking the boxes on a shelf. It also keeps a
+history of what was played and what the group enjoyed, so suggestions improve over time.
 
 ## User Stories
 
-|Version| As a ... | I want to ... | So that I can ...|
-|--------|----------|---------------|------------------|
-|v1.0|new user|see usage instructions|refer to them when I forget how to use the application|
-|v2.0|host with a large collection|find a game by part of its title|locate it without going through the entire list|
-|v2.0|host with many games|sort my collection by title, player count or play time|scan it more easily|
-|v2.1|host who runs regular game nights|see how long it has been since each game was last played|avoid repeating games the group just played|
-|v2.1|host who logs game nights|view a game's full play history|see how popular it has been|
-|v2.1|host with games that rarely get played|see which games have never been played|give underused games a fair chance|
+Priorities: `* * *` = must have, `* *` = nice to have, `*` = unlikely to have.
+
+|Version|Priority| As a ... | I want to ... | So that I can ...|
+|--------|--------|----------|---------------|------------------|
+|v1.0|`* * *`|new user|see usage instructions|refer to them when I forget how to use the application|
+|v1.0|`* * *`|host|add a game with the number of players it supports|build up my collection in the app|
+|v1.0|`* * *`|host|list all my games|see what I own at a glance|
+|v1.0|`* * *`|host|delete a game|remove games I no longer own|
+|v1.0|`* * *`|host|find the games that fit the number of people who turned up|choose a game that everyone can play|
+|v1.0|`* * *`|host|have my collection saved automatically|keep it between sessions without doing anything extra|
+|v1.0|`* *`|host who edits the data file by hand|be told which lines are invalid instead of losing the whole file|fix my mistakes easily|
+|v2.0|`* * *`|host with little time|record how long each game takes and filter by time|pick a game that fits the time we have|
+|v2.0|`* * *`|host|edit a game's details|correct mistakes without deleting and re-adding the game|
+|v2.0|`* *`|host with a large collection|find a game by part of its title|locate it without going through the entire list|
+|v2.0|`* *`|host with many games|sort my collection by title, player count or play time|scan it more easily|
+|v2.0|`* *`|host|tag games (e.g. `party`, `strategy`) and filter by tag|find the kind of game the group is in the mood for|
+|v2.0|`* *`|host with many tags|see all the tags in use|filter by one without guessing its name|
+|v2.0|`* *`|indecisive host|have the app pick a random game that fits the group|stop spending time deciding|
+|v2.1|`* * *`|host who runs regular game nights|log each play session|keep my play history accurate|
+|v2.1|`* *`|host who runs regular game nights|see how long it has been since each game was last played|avoid repeating games the group just played|
+|v2.1|`* *`|host who wants variety|hide games played recently when filtering|stop the group from repeating the same game|
+|v2.1|`* *`|host who logs game nights|view a game's full play history|see how popular it has been|
+|v2.1|`* *`|host with games that rarely get played|see which games have never been played|give underused games a fair chance|
+|v2.1|`* *`|host with new players|record each game's difficulty and filter by it|avoid games that are too complicated for them|
+|v2.1|`* *`|host whose group has favourites|rate a game after playing it|have `pick` suggest games the group enjoyed more often|
+|v2.1|`*`|host who rated a game by mistake|undo a rating|keep `pick` accurate|
+|v2.1|`* *`|host who lends games to friends|record who has a game|know who to ask for it back, and not be offered it while it is away|
+|v2.1|`* *`|host who lends games to friends|see all the games that are lent out|know who to ask for each one|
+|v2.1|`* *`|host with damaged games|mark a game as unavailable (e.g. missing pieces)|not be offered a game we cannot play|
+|v2.1|`*`|host who borrows games|record who lent me a game and when it is due back|give it back on time|
+|v2.1|`*`|host who receives games as gifts|record who gave me a game|know who to thank|
 
 ## Non-Functional Requirements
 
-{Give non-functional requirements}
+1. GameVault should work on any mainstream OS (Windows, macOS, Linux) that has Java 25 installed.
+1. GameVault should work without an internet connection, since all data is kept in a local file.
+1. GameVault should respond to any command within 1 second for a collection of up to 1000 games.
+1. A user who types at a normal speed should be able to choose a game faster with GameVault than by
+   looking through their shelf.
+1. The data file should be a plain text file that a user can read and edit by hand, and a mistake in one line
+   should not stop the other games from loading.
+1. Saved data should not be lost if GameVault is closed with `exit` or the terminal is closed after a command
+   finishes, since every change is saved immediately.
+1. GameVault should be a single JAR file that runs without being installed.
 
 ## Glossary
 
-* *glossary item* - Definition
+* *Mainstream OS* - Windows, Linux, Unix, macOS.
+* *Collection* - all the games the user has added to GameVault.
+* *INDEX* - the number shown next to a game in `list`, starting from 1, which other commands use to refer to that game.
+* *Play time* - how many minutes one round of a game usually takes.
+* *Play session* - one occasion on which a game was played, recorded with `log` (a date and the number of players).
+* *Available game* - a game that is on the user's shelf and can be played: not lent out and not marked unavailable.
+  Only available games are suggested by `filter` and `pick`.
+* *Lent game* - a game the user has lent to someone else (`lend`).
+* *Borrowed game* - a game someone else has lent to the user (`borrow ... /due DATE`).
+* *Overdue* - a borrowed game whose due-back date is before today.
+* *Data file* - `data/games.txt`, where GameVault saves the collection, one game per line.
+* *Named field* - a `KEY=VALUE` part of a line in the data file, e.g. `lent=Alice`, used for optional data such as
+  play sessions, ratings, difficulty, availability and who has the game.
 
 ## Instructions for manual testing
 
-{Give instructions on how to do a manual product testing e.g., how to load sample data to be used for testing}
+Given below are instructions to test the app manually. These instructions only provide a starting point for
+testers; testers are expected to do more exploratory testing.
+
+### Launch and shutdown
+
+1. Initial launch
+   1. Put `gamevault.jar` in an empty folder.
+   1. Open a terminal in that folder and run `java -jar gamevault.jar`.<br>
+      Expected: The welcome message is shown. A `data` folder containing an empty `games.txt` is created.
+1. Shutdown
+   1. Type `exit`.<br>
+      Expected: A goodbye message is shown and the app closes.
+
+### Viewing help
+
+1. Test case: `help`<br>
+   Expected: Every command is listed with a one-line description and its format.
+
+### Loading sample data
+
+1. Close GameVault, then replace the contents of `data/games.txt` with:
+   ```
+   Catan | 3 | 4 | 60 | strategy | difficulty=medium
+   Codenames | 4 | 8 | 15 | party,word | difficulty=easy
+   Hive | 2 | 2 | 20 |  | sessions=2026-10-25@2
+   Azul | 2 | 4 | 45 | family | ratings=3/0
+   Werewolf | 8 | 18 |  | party
+   ```
+1. Launch GameVault and enter `list`.<br>
+   Expected: All 5 games are listed, numbered 1 to 5, with their details.
+
+### Adding, editing and deleting a game
+
+1. Test case: `add Uno /min 2 /max 10 /time 20 /diff easy /tag party`<br>
+   Expected: Uno is added and the number of games is shown.
+1. Test case: `add Chess /min 2`<br>
+   Expected: No game is added. An error shows the correct format.
+1. Test case: `add Chess /min 3 /max 2`<br>
+   Expected: No game is added. An error says MAX cannot be less than MIN.
+1. Test case: `edit 1 /max 6 /time none`<br>
+   Expected: Catan now supports 3-6 players and has no play time. Its tags and difficulty are kept.
+1. Test case: `delete 0`, then `delete 99`<br>
+   Expected: No game is deleted. Each shows an error about the INDEX.
+
+### Finding a game for the group
+
+1. Test case: `find cat`<br>
+   Expected: Catan is shown with its number from `list` (1).
+1. Test case: `find xyz`<br>
+   Expected: A message says no games have `xyz` in the title.
+1. Test case: `filter 4`, then `filter 4 /time 30`, then `filter 4 /diff easy`<br>
+   Expected: Only games that fit all the given conditions are shown, with notes about games left out because they
+   have no play time or difficulty recorded.
+1. Test case: `filter /tag party`<br>
+   Expected: Codenames and Werewolf (and Uno, if added) are shown.
+1. Test case: `pick 4` several times<br>
+   Expected: A random game for 4 players is suggested each time. Over many tries, Azul (rated `+3/-0`) is likely
+   to come up more often than the others.
+1. Test case: `pick 30`<br>
+   Expected: A message says no game fits.
+
+### Lending, borrowing and unavailable games
+
+1. Test case: `lend 2 /to Alice`, then `filter 4`<br>
+   Expected: Codenames is not shown, and a note says it is lent to Alice.
+1. Test case: `lentout`<br>
+   Expected: Codenames is listed with its number from `list` (2), lent to Alice.
+1. Test case: `return 2`, then `lentout`<br>
+   Expected: Codenames is back, and `lentout` says none of the games are lent out. `filter 4` shows it again.
+1. Test case: `unavailable 1 /reason missing`, then `pick 3` several times<br>
+   Expected: Catan is never picked. `list` shows `(unavailable: missing pieces)`. `available 1` undoes this.
+1. Test case: `unavailable 1 missing`<br>
+   Expected: An error asks whether `/reason` was forgotten.
+1. Test case: `borrow 6 /from Bob /due 2020-01-01` (game 6 is the Uno added earlier)<br>
+   Expected: An error says the date cannot be in the past.
+1. Test case: `borrow 6 /from Bob /due` followed by a date a few days from today, then `giveback 6`<br>
+   Expected: Uno is recorded as borrowed, then removed from the collection when given back.
+1. Test case: `borrow 5 /from Mary Tan`, then `giveback 5`<br>
+   Expected: Werewolf is recorded as a gift from Mary Tan, and `giveback` refuses, since there is nothing to give back.
+1. To test the overdue reminder, close GameVault, add ` | from=Bob | due=2020-01-01` to the end of a line in
+   the data file that already has a TAGS field (e.g. the Catan line), and launch GameVault again.<br>
+   Expected: `list` ends with a reminder that Catan is overdue.
+
+### Play history and ratings
+
+1. Test case: `log 3 /players 2`, then `history 3`<br>
+   Expected: Hive's history shows two sessions, the newest dated today.
+1. Test case: `log 3 /players 5`<br>
+   Expected: An error says Hive cannot be played by 5 players.
+1. Test case: `unplayed`<br>
+   Expected: Every game with no logged session is listed. Each game keeps its number from `list`, so Hive (3) is
+   skipped and the numbers go 1, 2, 4, 5.
+1. Test case: `filter 2`, then `filter 2 /notplayedin 1`<br>
+   Expected: The first shows Hive and Azul. The second shows only Azul, with a note that 1 game was left out
+   because it was played in the last 1 day(s).
+1. Test case: `rate 1 up`, then `unrate 1 up`<br>
+   Expected: Catan's rating goes to `+1/-0`, then back to `+0/-0`.
+
+### Tags and sorting
+
+1. Test case: `tag 4 strategy co-op`<br>
+   Expected: Azul now has the tags `co-op`, `family` and `strategy`.
+1. Test case: `tag 4 strategy`<br>
+   Expected: An error says Azul is already tagged `strategy`.
+1. Test case: `tags`<br>
+   Expected: Every tag in use is listed in alphabetical order with its number of games, e.g. `strategy (2 game(s))`.
+1. Test case: `untag 4 co-op`, then `untag 4 co-op` again<br>
+   Expected: The first removes the tag. The second shows an error saying Azul does not have it.
+1. Test case: `sort players`, then `sort time`, then `sort title`<br>
+   Expected: Each time, the collection is shown in the new order: fewest players first (Hive first), shortest play
+   time first with Werewolf (no play time) last, then A to Z. `list` keeps the last order.
+   Sorting changes the numbers of the games, so do this after the other tests that use game numbers.
+
+### Saving data
+
+1. Dealing with a corrupted data file
+   1. Close GameVault and change one line of `data/games.txt` to `Catan | three | 4`.
+   1. Launch GameVault.<br>
+      Expected: A warning says which line was skipped and why. All the other games load normally.
+1. Dealing with a missing data file
+   1. Close GameVault and delete `data/games.txt`.
+   1. Launch GameVault.<br>
+      Expected: GameVault starts with an empty collection and creates a new `games.txt`.
