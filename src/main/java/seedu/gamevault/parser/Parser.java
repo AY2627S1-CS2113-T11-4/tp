@@ -172,7 +172,7 @@ public class Parser {
             throw new GameVaultException("The '" + commandWord + "' command does not take any arguments.");
         }
     }
-    //@@author Xandurs
+    //@@author
     /**
      * Builds an {@link AddCommand} from arguments in the form
      * {@code TITLE /min MIN /max MAX [/time MINUTES] [/diff LEVEL] [/tag TAG [MORE_TAGS]...]},

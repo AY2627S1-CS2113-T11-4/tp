@@ -372,7 +372,7 @@ public class Game {
         assert isLent() : "Only a lent game can be returned";
         borrower = null;
     }
-    //@@author Xandurs
+    //@@author
     /**
      * Returns this game as one line of the data file, in the format {@code TITLE | MIN | MAX},
      * followed by {@code | TIME} when a play time is recorded, by {@code | TAGS} when the game has tags,
