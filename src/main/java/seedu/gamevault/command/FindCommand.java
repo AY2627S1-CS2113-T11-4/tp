@@ -39,9 +39,8 @@ public class FindCommand extends Command {
     public void execute(GameList games, Ui ui, Storage storage) {
         assert games != null : "Game list to search should not be null";
 
-        // Lower-case both sides so that the comparison ignores case. Locale.ROOT makes it work the same way
-        // on every computer, whatever its language settings.
-        String lowerKeyword = keyword.toLowerCase(Locale.ROOT);
+        // Prepare both sides the same way, so the comparison ignores case and extra spaces.
+        String keywordToFind = toSearchText(keyword);
         List<Game> allGames = games.getGames();
         StringBuilder message = new StringBuilder(getHeader(keyword));
         int matchCount = 0;
@@ -49,7 +48,7 @@ public class FindCommand extends Command {
         // Loop by position rather than over a filtered list, so each match keeps its number from 'list'.
         for (int i = 0; i < allGames.size(); i++) {
             Game game = allGames.get(i);
-            if (game.getTitle().toLowerCase(Locale.ROOT).contains(lowerKeyword)) {
+            if (toSearchText(game.getTitle()).contains(keywordToFind)) {
                 int displayNumber = i + 1; // Users count from 1, while the list counts from 0.
                 message.append(System.lineSeparator())
                         .append(displayNumber).append(". ").append(game);
@@ -65,6 +64,17 @@ public class FindCommand extends Command {
         }
     }
 
+    //@@author KRAZYZECTRON
+    /**
+     * Returns the text in lower case with each run of whitespace replaced by a single space, so that
+     * {@code Ticket  to Ride} and {@code ticket to} compare equal. Locale.ROOT makes the lower-casing work
+     * the same way on every computer, whatever its language settings.
+     */
+    private static String toSearchText(String text) {
+        return text.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+    }
+
+    //@@author SwaggyDaddy67
     /**
      * Returns the line shown above the matching games.
      *

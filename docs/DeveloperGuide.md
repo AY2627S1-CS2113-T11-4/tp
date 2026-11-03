@@ -55,9 +55,12 @@ the correct format. Otherwise, a `FindCommand` holding the keyword is returned.
 ![Sequence diagram for find mono](images/FindSequenceDiagram.png)
 
 1. `FindCommand#execute` gets a read-only view of the collection from `GameList#getGames()`.
-2. It lower-cases the keyword once, using `Locale.ROOT` so that the result is the same on every computer (in
-   Turkish, for example, the default lower case of `I` is a dotless `ı`). It then goes through the games **by position**. For each game whose lower-cased title
-   contains the keyword, it adds a line made of the game's position plus one (the number `list` shows) and the game.
+2. It prepares the keyword once with `FindCommand#toSearchText(...)`, which lower-cases it and replaces each run of
+   whitespace with a single space. Lower-casing uses `Locale.ROOT`, so the result is the same on every computer (in
+   Turkish, for example, the default lower case of `I` is a dotless `ı`). It then goes through the games
+   **by position**. For each game whose title, prepared in the same way, contains the keyword, it adds a line made of
+   the game's position plus one (the number `list` shows) and the game. Preparing the title too means a title saved
+   with extra spaces, e.g. `Ticket  to Ride`, is still found.
 3. If at least one game matched, the header and the matching lines are passed to `Ui#showMessage`. Otherwise,
    a "no games have ... in the title" message is shown instead.
 
