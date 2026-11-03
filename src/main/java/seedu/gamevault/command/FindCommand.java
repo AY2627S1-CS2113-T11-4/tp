@@ -1,6 +1,9 @@
 package seedu.gamevault.command;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
@@ -18,6 +21,8 @@ public class FindCommand extends Command {
     public static final String COMMAND_WORD = "find";
     public static final String USAGE = "find KEYWORD";
 
+    private static final Logger logger = Logger.getLogger(FindCommand.class.getName());
+
     private final String keyword;
 
     /**
@@ -34,8 +39,9 @@ public class FindCommand extends Command {
     public void execute(GameList games, Ui ui, Storage storage) {
         assert games != null : "Game list to search should not be null";
 
-        // Lower-case both sides so that the comparison ignores case.
-        String lowerKeyword = keyword.toLowerCase();
+        // Lower-case both sides so that the comparison ignores case. Locale.ROOT makes it work the same way
+        // on every computer, whatever its language settings.
+        String lowerKeyword = keyword.toLowerCase(Locale.ROOT);
         List<Game> allGames = games.getGames();
         StringBuilder message = new StringBuilder(getHeader(keyword));
         int matchCount = 0;
@@ -43,7 +49,7 @@ public class FindCommand extends Command {
         // Loop by position rather than over a filtered list, so each match keeps its number from 'list'.
         for (int i = 0; i < allGames.size(); i++) {
             Game game = allGames.get(i);
-            if (game.getTitle().toLowerCase().contains(lowerKeyword)) {
+            if (game.getTitle().toLowerCase(Locale.ROOT).contains(lowerKeyword)) {
                 int displayNumber = i + 1; // Users count from 1, while the list counts from 0.
                 message.append(System.lineSeparator())
                         .append(displayNumber).append(". ").append(game);
@@ -51,6 +57,7 @@ public class FindCommand extends Command {
             }
         }
 
+        logger.log(Level.FINE, "Found {0} game(s) matching ''{1}''", new Object[]{matchCount, keyword});
         if (matchCount == 0) {
             ui.showMessage(getNoMatchMessage(keyword));
         } else {

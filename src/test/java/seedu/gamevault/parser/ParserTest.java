@@ -458,6 +458,18 @@ class ParserTest {
     }
 
     @Test
+    void parse_findWithExtraSpacesInKeyword_stillMatchesPhrase() throws GameVaultException {
+        GameList games = new GameList();
+        games.add(new Game("Catan", 3, 4));
+        games.add(new Game("Ticket to Ride", 2, 5));
+
+        String printed = run("find ticket   to", games, new Storage("unused.txt"));
+
+        assertTrue(printed.contains("Games with 'ticket to' in the title:"));
+        assertTrue(printed.contains("2. Ticket to Ride (2-5 players)"));
+    }
+
+    @Test
     void parse_findWithoutKeyword_throwsException() {
         GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("find   "));
         assertEquals("KEYWORD is missing. Format: " + FindCommand.USAGE + " (e.g. find cat)", e.getMessage());

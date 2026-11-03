@@ -432,11 +432,13 @@ public class Parser {
     /**
      * Builds a {@link FindCommand} from arguments in the form {@code KEYWORD}, e.g. {@code mono}.
      * The keyword may contain spaces, e.g. {@code ticket to}, and is matched as one piece of text.
+     * Runs of spaces inside the keyword are treated as one space, so {@code ticket  to} also finds
+     * "Ticket to Ride".
      *
      * @throws GameVaultException If KEYWORD is missing.
      */
     private static Command parseFind(String arguments) throws GameVaultException {
-        String keyword = arguments.trim();
+        String keyword = arguments.trim().replaceAll("\s+", " ");
         if (keyword.isEmpty()) {
             throw new GameVaultException("KEYWORD is missing. Format: " + FindCommand.USAGE
                     + " (e.g. find cat)");

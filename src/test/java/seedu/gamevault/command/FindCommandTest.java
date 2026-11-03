@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.util.Locale;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -74,6 +75,22 @@ class FindCommandTest {
         executeFind("ticket to", games);
 
         assertTrue(output.toString().contains("4. Ticket to Ride (2-5 players)"));
+    }
+
+    @Test
+    void execute_upperCaseKeywordOnTurkishComputer_stillMatches() {
+        Locale originalLocale = Locale.getDefault();
+        try {
+            // In Turkish, "TICKET".toLowerCase() gives a dotless i, so this only works with Locale.ROOT.
+            Locale.setDefault(Locale.forLanguageTag("tr"));
+            games.add(new Game("Ticket to Ride", 2, 5));
+
+            executeFind("TICKET", games);
+
+            assertTrue(output.toString().contains("4. Ticket to Ride (2-5 players)"));
+        } finally {
+            Locale.setDefault(originalLocale);
+        }
     }
 
     @Test
