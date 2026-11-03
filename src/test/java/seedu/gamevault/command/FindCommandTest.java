@@ -77,6 +77,26 @@ class FindCommandTest {
         assertTrue(output.toString().contains("4. Ticket to Ride (2-5 players)"));
     }
 
+    //@@author KRAZYZECTRON
+    @Test
+    void execute_titleWithExtraSpaces_stillMatches() {
+        games.add(new Game("Ticket  to Ride", 2, 5));
+
+        executeFind("ticket to", games);
+
+        assertTrue(output.toString().contains("4. Ticket  to Ride (2-5 players)"));
+    }
+
+    @Test
+    void execute_keywordWithTab_matchesLikeASpace() {
+        games.add(new Game("Ticket to Ride", 2, 5));
+
+        executeFind("ticket\tto", games);
+
+        assertTrue(output.toString().contains("4. Ticket to Ride (2-5 players)"));
+    }
+
+    //@@author SwaggyDaddy67
     @Test
     void execute_upperCaseKeywordOnTurkishComputer_stillMatches() {
         Locale originalLocale = Locale.getDefault();
