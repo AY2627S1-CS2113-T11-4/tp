@@ -47,6 +47,10 @@ else at least one session
     activate G
     G --> H : count
     deactivate G
+    H -> G : describeLastPlayed(today)
+    activate G
+    G --> H : "last played 3 days ago"
+    deactivate G
     H -> G : getLastPlayed()
     activate G
     G --> H : lastPlayed

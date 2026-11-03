@@ -511,11 +511,13 @@ Format: `history INDEX`
 
 * `INDEX` is the game's number in `list`, and must be a whole number of at least 1.
 * Sessions are shown oldest first, each with the date and how many people played.
-* The last line gives the total number of times the game was played and the date it was last played.
+* The last line gives the total number of times the game was played and how long ago it was last played,
+  worded as in `list` (e.g. `last played 3 days ago`), followed by the date.
 * If the game has no sessions logged, GameVault says it has never been played and shows the format of `log`.
 * Your collection is not changed.
 
-Example of usage: `history 1`, after logging Catan on 1 June 2026 with 3 players and on 30 October 2026 with 4
+Example of usage: `history 1` on 2 November 2026, after logging Catan on 1 June 2026 with 3 players and on
+30 October 2026 with 4
 
 Expected output:
 
@@ -524,7 +526,7 @@ ____________________________________________________________
 Play history of Catan (oldest first):
   2026-06-01 (3 players)
   2026-10-30 (4 players)
-Played 2 times in total, most recently on 2026-10-30.
+Played 2 times in total, last played 3 days ago (2026-10-30).
 ____________________________________________________________
 ```
 
@@ -539,20 +541,24 @@ Format: `unplayed`
 
 * Each game is shown with its number from `list`, so you can use it with `log` or `history` straight away.
 * The last line says how many of your games have never been played.
+* Games that are lent out or [marked unavailable](#marking-a-game-unavailable-unavailable-available) are still
+  listed, with their status, as they still need a first try. If any are, a note says how many cannot be played
+  right now.
 * If every game has been played at least once, GameVault says so instead.
 * Anything typed after `unplayed` (e.g. `unplayed all`) is reported as an error.
 * Your collection is not changed.
 
 Example of usage: `unplayed`
 
-Expected output, when only Catan has been played:
+Expected output, when only Catan has been played and Hive is lent to Alice:
 
 ```
 ____________________________________________________________
 Games you have never played:
 2. Codenames (4-8 players)
-3. Hive (2 players)
+3. Hive (2 players) (lent to Alice)
 2 of your 3 game(s) have never been played.
+(1 of these cannot be played right now, as it is lent out or marked unavailable.)
 ____________________________________________________________
 ```
 
