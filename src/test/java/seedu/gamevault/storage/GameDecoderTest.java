@@ -251,6 +251,15 @@ class GameDecoderTest {
     }
 
     @Test
+    void decodeLine_zeroThumbsDown_loadsAndSavesUnchanged() throws GameVaultException {
+        // 0 is the smallest count allowed, and the most common one: many games have no thumbs down.
+        Game game = GameDecoder.decodeLine("Catan | 3 | 4 |  |  | ratings=3/0");
+        assertEquals(3, game.getThumbsUp());
+        assertEquals(0, game.getThumbsDown());
+        assertEquals("Catan | 3 | 4 |  |  | ratings=3/0", game.toFileString());
+    }
+
+    @Test
     void decodeLine_noRatingsField_returnsUnratedGame() throws GameVaultException {
         assertFalse(GameDecoder.decodeLine("Catan | 3 | 4 | 60 | strategy").isRated());
     }
