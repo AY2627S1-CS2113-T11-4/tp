@@ -689,7 +689,7 @@ game, e.g. `Catan (3-4 players) (unavailable: missing pieces)`, in the same styl
 **Model.** The reasons are an enum, `UnavailableReason` (`MISSING`, `DAMAGED`). Each value holds the keyword the user
 types, which is also how it is written in the data file, and a description shown to the user (e.g. `missing pieces`).
 `UnavailableReason#fromKeyword(...)` finds a reason by keyword, ignoring case, so the parser and `GameDecoder` accept
-exactly the same words. `UnavailableReason#keywords()` lists every keyword, and both the `unavailable` usage line and
+exactly the same words. `UnavailableReason#getKeywords()` lists every keyword, and both the `unavailable` usage line and
 the error messages are built from it, so adding a reason only needs a new enum value.
 Each `Game` has an `unavailableReason` field, which is `null` while the game is available.
 `Game#markUnavailable(...)` sets it, `Game#markAvailable()` clears it, and `Game#getUnavailableReason()` returns it as

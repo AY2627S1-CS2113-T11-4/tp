@@ -55,7 +55,7 @@ public enum UnavailableReason {
      * Returns every reason's keyword in order, e.g. {@code [missing, damaged]}.
      * The usage line and error messages are built from this list, so a new reason only needs adding here.
      */
-    public static List<String> keywords() {
+    public static List<String> getKeywords() {
         List<String> keywords = new ArrayList<>();
         for (UnavailableReason reason : values()) {
             keywords.add(reason.keyword);
@@ -67,7 +67,7 @@ public enum UnavailableReason {
      * Returns every keyword in words, e.g. {@code missing or damaged}, for use in error messages.
      */
     public static String describeKeywords() {
-        List<String> keywords = keywords();
+        List<String> keywords = getKeywords();
         StringBuilder description = new StringBuilder();
         for (int i = 0; i < keywords.size(); i++) {
             if (i == keywords.size() - 1 && i > 0) {
