@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
 import seedu.gamevault.game.PlaySession;
+import seedu.gamevault.game.UnavailableReason;
 import seedu.gamevault.storage.Storage;
 import seedu.gamevault.ui.Ui;
 
@@ -58,6 +59,28 @@ class UnplayedCommandTest {
         String printed = output.toString();
         assertTrue(printed.contains(expected));
         assertFalse(printed.contains("Catan"));
+        assertFalse(printed.contains("cannot be played right now"));
+    }
+
+    @Test
+    void execute_unplayedGamesLentOrUnavailable_listsThemWithNote() {
+        games.get(1).lendTo("Alice");
+        games.get(2).markUnavailable(UnavailableReason.MISSING);
+
+        executeUnplayed(games);
+
+        String printed = output.toString();
+        assertTrue(printed.contains("2. Chess (2 players) (lent to Alice)"));
+        assertTrue(printed.contains("3. Codenames (4-8 players) (unavailable: missing pieces)"));
+        assertTrue(printed.contains(UnplayedCommand.getNotAvailableNote(2)));
+    }
+
+    @Test
+    void getNotAvailableNote_oneOrMoreGames_usesMatchingWording() {
+        assertEquals("(1 of these cannot be played right now, as it is lent out or marked unavailable.)",
+                UnplayedCommand.getNotAvailableNote(1));
+        assertEquals("(2 of these cannot be played right now, as they are lent out or marked unavailable.)",
+                UnplayedCommand.getNotAvailableNote(2));
     }
 
     @Test
@@ -84,7 +107,7 @@ class UnplayedCommandTest {
     void execute_emptyCollection_showsEmptyMessage() {
         executeUnplayed(new GameList());
 
-        assertTrue(output.toString().contains(UnplayedCommand.EMPTY_MESSAGE));
+        assertTrue(output.toString().contains(ListCommand.EMPTY_MESSAGE));
     }
 
     @Test

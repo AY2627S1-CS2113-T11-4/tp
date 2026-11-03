@@ -28,6 +28,8 @@ import seedu.gamevault.ui.Ui;
  * Tests for the history command.
  */
 class HistoryCommandTest {
+    private static final LocalDate TODAY = LocalDate.of(2026, 11, 2);
+
     @TempDir
     Path tempDir;
 
@@ -54,12 +56,12 @@ class HistoryCommandTest {
         catan.addSession(new PlaySession(LocalDate.of(2026, 10, 30), 4));
         catan.addSession(new PlaySession(LocalDate.of(2026, 6, 1), 3));
 
-        new HistoryCommand(1).execute(games, ui, storage);
+        new HistoryCommand(1, TODAY).execute(games, ui, storage);
 
         String expected = HistoryCommand.getHeader(catan) + System.lineSeparator()
                 + "  2026-06-01 (3 players)" + System.lineSeparator()
                 + "  2026-10-30 (4 players)" + System.lineSeparator()
-                + "Played 2 times in total, most recently on 2026-10-30.";
+                + "Played 2 times in total, last played 3 days ago (2026-10-30).";
         assertTrue(output.toString().contains(expected));
     }
 
@@ -67,14 +69,23 @@ class HistoryCommandTest {
     void execute_oneSession_saysPlayedOnce() throws GameVaultException {
         games.get(1).addSession(new PlaySession(LocalDate.of(2026, 9, 15), 2));
 
-        new HistoryCommand(2).execute(games, ui, storage);
+        new HistoryCommand(2, TODAY).execute(games, ui, storage);
 
-        assertTrue(output.toString().contains("Played once in total, most recently on 2026-09-15."));
+        assertTrue(output.toString().contains("Played once in total, last played 48 days ago (2026-09-15)."));
+    }
+
+    @Test
+    void execute_playedToday_saysLastPlayedToday() throws GameVaultException {
+        games.get(1).addSession(new PlaySession(TODAY, 2));
+
+        new HistoryCommand(2, TODAY).execute(games, ui, storage);
+
+        assertTrue(output.toString().contains("Played once in total, last played today (2026-11-02)."));
     }
 
     @Test
     void execute_neverPlayed_saysSoAndHowToLog() throws GameVaultException {
-        new HistoryCommand(1).execute(games, ui, storage);
+        new HistoryCommand(1, TODAY).execute(games, ui, storage);
 
         String printed = output.toString();
         assertTrue(printed.contains("Catan has never been played."));
@@ -84,7 +95,7 @@ class HistoryCommandTest {
     @Test
     void execute_indexPastEndOfList_throwsNoSuchGame() {
         GameVaultException e = assertThrows(GameVaultException.class,
-                () -> new HistoryCommand(3).execute(games, ui, storage));
+                () -> new HistoryCommand(3, TODAY).execute(games, ui, storage));
 
         assertEquals(DeleteCommand.getNoSuchGameMessage("3"), e.getMessage());
     }
@@ -93,7 +104,7 @@ class HistoryCommandTest {
     void execute_anyGame_doesNotChangeOrSaveCollection() throws GameVaultException {
         games.get(0).addSession(new PlaySession(LocalDate.of(2026, 10, 30), 4));
 
-        new HistoryCommand(1).execute(games, ui, storage);
+        new HistoryCommand(1, TODAY).execute(games, ui, storage);
 
         assertEquals(1, games.get(0).getPlayCount());
         assertFalse(Files.exists(dataFile));

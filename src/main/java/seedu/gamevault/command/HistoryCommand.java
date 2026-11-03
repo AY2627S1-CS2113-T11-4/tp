@@ -1,6 +1,9 @@
 package seedu.gamevault.command;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Game;
@@ -11,7 +14,8 @@ import seedu.gamevault.ui.Ui;
 
 //@@author SwaggyDaddy67
 /**
- * Shows every play session logged for one game, oldest first, followed by how many times it has been played.
+ * Shows every play session logged for one game, oldest first, followed by how many times it has been played
+ * and how long ago it was last played, worded as in {@code list}.
  * The game is chosen by the number shown next to it in {@code list}, which starts from 1.
  * Sessions are recorded with {@code log}; this command only reads them and does not change the collection.
  */
@@ -19,7 +23,11 @@ public class HistoryCommand extends Command {
     public static final String COMMAND_WORD = "history";
     public static final String USAGE = "history INDEX";
 
+    private static final Logger logger = Logger.getLogger(HistoryCommand.class.getName());
+
     private final int displayNumber;
+    /** Today's date, used to work out how long ago the game was last played. */
+    private final LocalDate today;
 
     /**
      * Creates a command that shows the play history of the game shown with the given number in {@code list}.
@@ -28,8 +36,18 @@ public class HistoryCommand extends Command {
      * @param displayNumber Number of the game as shown in {@code list} (at least 1).
      */
     public HistoryCommand(int displayNumber) {
+        this(displayNumber, LocalDate.now());
+    }
+
+    /**
+     * Creates a command like {@link #HistoryCommand(int)}, treating {@code today} as today's date,
+     * so that tests can check how long ago a game was played with a fixed date.
+     */
+    HistoryCommand(int displayNumber, LocalDate today) {
         assert displayNumber >= 1 : "Display number should be at least 1";
+        assert today != null : "Today's date should not be null";
         this.displayNumber = displayNumber;
+        this.today = today;
     }
 
     @Override
@@ -50,7 +68,8 @@ public class HistoryCommand extends Command {
         for (PlaySession session : sessions) {
             message.append(System.lineSeparator()).append("  ").append(session);
         }
-        message.append(System.lineSeparator()).append(getSummary(game));
+        message.append(System.lineSeparator()).append(getSummary(game, today));
+        logger.log(Level.FINE, "Showed {0} session(s) of {1}", new Object[]{sessions.size(), game.getTitle()});
         ui.showMessage(message.toString());
     }
 
@@ -62,10 +81,12 @@ public class HistoryCommand extends Command {
     }
 
     /**
-     * Returns the line shown below the sessions, e.g. {@code Played 2 times in total, most recently on 2026-10-30.}
+     * Returns the line shown below the sessions, e.g.
+     * {@code Played 2 times in total, last played 3 days ago (2026-10-30).}
+     * The "last played" part comes from {@link Game#describeLastPlayed(LocalDate)}, so it matches {@code list}.
      * Only called for a game with at least one session.
      */
-    static String getSummary(Game game) {
+    static String getSummary(Game game, LocalDate today) {
         assert game.getPlayCount() >= 1 : "Summary is only shown for games that have been played";
         String times;
         if (game.getPlayCount() == 1) {
@@ -73,7 +94,8 @@ public class HistoryCommand extends Command {
         } else {
             times = game.getPlayCount() + " times";
         }
-        return "Played " + times + " in total, most recently on " + game.getLastPlayed().orElseThrow() + ".";
+        return "Played " + times + " in total, " + game.describeLastPlayed(today)
+                + " (" + game.getLastPlayed().orElseThrow() + ").";
     }
 
     /**
