@@ -108,7 +108,8 @@ Shows every game in your collection, numbered from 1 in the order they are store
 
 Format: `list`
 
-* The numbers shown are the `INDEX` values used by `delete`, `edit` and `tag`.
+* The numbers shown are the `INDEX` values used by other commands, such as `delete`, `edit`, `tag`, `log`,
+  `history`, `rate`, `lend` and `unavailable`.
 * The order is the order you added the games in, unless you have used `sort`.
 * `list` does not take any parameters, so e.g. `list all` shows an error.
 
@@ -261,7 +262,8 @@ Format: `find KEYWORD`
 
 * The search is case-insensitive, e.g. `mono` finds `Monopoly`.
 * Part of a title is enough, e.g. `cat` finds `Catan`.
-* `KEYWORD` may contain spaces, e.g. `find ticket to` finds `Ticket to Ride`.
+* `KEYWORD` may contain spaces, e.g. `find ticket to` finds `Ticket to Ride`. Extra spaces between words are
+  ignored, so `find ticket   to` finds it too.
 * Each game is shown with its number from `list`, so you can use it with `delete`, `edit` or `tag` straight away.
 * Your collection is not changed.
 

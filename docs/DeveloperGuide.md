@@ -45,8 +45,9 @@ scrolling through the whole collection. Each result is shown with its number fro
 straight to `delete`, `edit` or `tag`.
 
 **Parsing.** `Parser#parse` recognises the `find` command word and calls `Parser#parseFind`, which trims the rest of
-the input and uses it as the keyword. The whole remaining text is one keyword, so `find ticket to` looks for the
-phrase "ticket to" rather than two separate words. An empty keyword is rejected with a `GameVaultException` that shows
+the input, replaces each run of spaces inside it with a single space, and uses the result as the keyword. The whole
+remaining text is one keyword, so `find ticket to` looks for the phrase "ticket to" rather than two separate words,
+and `find ticket   to` finds the same games. An empty keyword is rejected with a `GameVaultException` that shows
 the correct format. Otherwise, a `FindCommand` holding the keyword is returned.
 
 **Execution.** The sequence diagram below shows what happens when the user enters `find mono`.
@@ -54,7 +55,8 @@ the correct format. Otherwise, a `FindCommand` holding the keyword is returned.
 ![Sequence diagram for find mono](images/FindSequenceDiagram.png)
 
 1. `FindCommand#execute` gets a read-only view of the collection from `GameList#getGames()`.
-2. It lower-cases the keyword once, then goes through the games **by position**. For each game whose lower-cased title
+2. It lower-cases the keyword once, using `Locale.ROOT` so that the result is the same on every computer (in
+   Turkish, for example, the default lower case of `I` is a dotless `ı`). It then goes through the games **by position**. For each game whose lower-cased title
    contains the keyword, it adds a line made of the game's position plus one (the number `list` shows) and the game.
 3. If at least one game matched, the header and the matching lines are passed to `Ui#showMessage`. Otherwise,
    a "no games have ... in the title" message is shown instead.
@@ -106,7 +108,8 @@ The class diagram below shows the classes involved.
 * `TITLE`: alphabetical, ignoring case.
 * `PLAYERS`: by minimum players, then by maximum players.
 * `TIME`: shortest play time first. A game with no play time recorded is treated as taking `Integer.MAX_VALUE`
-  minutes, so it always comes after every game whose play time is known.
+  minutes, so it always comes after every game whose play time is known. This value is only used inside the
+  comparator. It is never shown to the user or saved, and the game itself still has no play time.
 
 Games that tie in `PLAYERS` or `TIME` are ordered by title. This makes the result depend only on the games
 themselves, not on the order they were in before, so sorting twice gives the same result.
@@ -115,8 +118,8 @@ themselves, not on the order they were in before, so sorting twice gives the sam
 
 ![Sequence diagram for sort time](images/SortSequenceDiagram.png)
 
-1. `Parser#parseSort` looks up the keyword with `SortOrder#fromKeyword`, which ignores case and surrounding spaces
-   and returns an empty `Optional` for an unknown keyword. A missing or unknown keyword is rejected with an error that
+1. `Parser#parseSort` looks up the keyword with `SortOrder#fromKeyword`, which ignores case (using `Locale.ROOT`, as `find` does)
+   and surrounding spaces, and returns an empty `Optional` for an unknown keyword. A missing or unknown keyword is rejected with an error that
    lists the valid choices. The list comes from `SortOrder#describeKeywords`, so it stays correct if an order is added.
 2. `SortCommand#execute` passes the order's comparator to `GameList#sort`, which uses the stable `List#sort`.
 3. The new order is saved with `Storage#save`, so `list` keeps showing it after the app restarts.
@@ -542,11 +545,11 @@ arguments, so `Parser#parse` calls `checkNoArguments(...)` and creates an `Unpla
 `ListCommand`, `HistoryCommand` takes today's date through a package-private constructor, so tests can use a fixed
 date. Normal use passes `LocalDate.now()`.
 
-**Listing unplayed games.** `UnplayedCommand#execute` goes through `GameList#getGames()` by position, like
-`FindCommand`, and keeps each game whose `Game#getPlayCount()` is 0, numbered with its position plus one. It ends
-with a count line such as `2 of your 3 game(s) have never been played.` While looping, it also counts the unplayed
-games for which `Game#isAvailable()` is false, and if there are any, adds a note that they cannot be played right
-now. An empty collection (which reuses `ListCommand.EMPTY_MESSAGE`) and a collection where every game has been played
+**Listing unplayed games.** `UnplayedCommand#execute` works in two steps. First, `findUnplayedNumbers(...)` goes
+through `GameList#getGames()` by position, like `FindCommand`, and keeps the number (position plus one) of each game
+whose `Game#getPlayCount()` is 0. Then `formatUnplayed(...)` builds the message: each of those games with its number,
+a count line such as `2 of your 3 game(s) have never been played.`, and, if any of the games have
+`Game#isAvailable()` false, a note that they cannot be played right now. An empty collection (which reuses `ListCommand.EMPTY_MESSAGE`) and a collection where every game has been played
 each get their own message instead of an empty list.
 
 #### Design considerations
