@@ -26,6 +26,7 @@ import seedu.gamevault.command.FilterTagCommand;
 import seedu.gamevault.command.FindCommand;
 import seedu.gamevault.command.GiveBackCommand;
 import seedu.gamevault.command.HelpCommand;
+import seedu.gamevault.command.HistoryCommand;
 import seedu.gamevault.command.LendCommand;
 import seedu.gamevault.command.ListCommand;
 import seedu.gamevault.command.ListLentCommand;
@@ -37,6 +38,7 @@ import seedu.gamevault.command.ReturnCommand;
 import seedu.gamevault.command.SortCommand;
 import seedu.gamevault.command.TagCommand;
 import seedu.gamevault.command.UnavailableCommand;
+import seedu.gamevault.command.UnplayedCommand;
 import seedu.gamevault.command.UnrateCommand;
 import seedu.gamevault.command.UntagCommand;
 import seedu.gamevault.exception.GameVaultException;
@@ -147,6 +149,13 @@ public class Parser {
             return parseRate(arguments);
         case UnrateCommand.COMMAND_WORD:
             return parseUnrate(arguments);
+        //@@author SwaggyDaddy67
+        case HistoryCommand.COMMAND_WORD:
+            return parseHistory(arguments);
+        case UnplayedCommand.COMMAND_WORD:
+            checkNoArguments(commandWord, arguments);
+            return new UnplayedCommand();
+        //@@author
         default:
             throw new GameVaultException("Unknown command '" + parts[0]
                     + "'. Type 'help' to see all commands.");
@@ -455,6 +464,20 @@ public class Parser {
                     + " (e.g. delete 2)");
         }
         return new DeleteCommand(parseIndex(indexText));
+    }
+
+    /**
+     * Builds a {@link HistoryCommand} from arguments in the form {@code INDEX}, e.g. {@code 2}.
+     *
+     * @throws GameVaultException If INDEX is missing, is not a whole number, or is less than 1.
+     */
+    private static Command parseHistory(String arguments) throws GameVaultException {
+        String indexText = arguments.trim();
+        if (indexText.isEmpty()) {
+            throw new GameVaultException("INDEX is missing. Format: " + HistoryCommand.USAGE
+                    + " (e.g. history 2)");
+        }
+        return new HistoryCommand(parseIndex(indexText));
     }
 
     //@@author

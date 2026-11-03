@@ -29,6 +29,7 @@ import seedu.gamevault.command.FilterTagCommand;
 import seedu.gamevault.command.FindCommand;
 import seedu.gamevault.command.GiveBackCommand;
 import seedu.gamevault.command.HelpCommand;
+import seedu.gamevault.command.HistoryCommand;
 import seedu.gamevault.command.LendCommand;
 import seedu.gamevault.command.ListCommand;
 import seedu.gamevault.command.ListLentCommand;
@@ -36,6 +37,7 @@ import seedu.gamevault.command.ListTagsCommand;
 import seedu.gamevault.command.LogCommand;
 import seedu.gamevault.command.TagCommand;
 import seedu.gamevault.command.UnavailableCommand;
+import seedu.gamevault.command.UnplayedCommand;
 import seedu.gamevault.command.UnrateCommand;
 import seedu.gamevault.command.UntagCommand;
 import seedu.gamevault.command.PickCommand;
@@ -211,6 +213,37 @@ class ParserTest {
     void parse_deleteWithIndexTooBigForInt_reportsNoSuchGame() {
         GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("delete 99999999999"));
         assertEquals(DeleteCommand.getNoSuchGameMessage("99999999999"), e.getMessage());
+    }
+
+    @Test
+    void parse_validHistory_returnsHistoryCommand() throws GameVaultException {
+        assertInstanceOf(HistoryCommand.class, Parser.parse("history 1"));
+        assertInstanceOf(HistoryCommand.class, Parser.parse("HISTORY   2 "));
+    }
+
+    @Test
+    void parse_historyWithoutIndex_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("history"));
+        assertEquals("INDEX is missing. Format: " + HistoryCommand.USAGE + " (e.g. history 2)", e.getMessage());
+    }
+
+    @Test
+    void parse_historyWithInvalidIndex_throwsException() {
+        assertThrows(GameVaultException.class, () -> Parser.parse("history two"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("history 0"));
+        assertThrows(GameVaultException.class, () -> Parser.parse("history 1 2"));
+    }
+
+    @Test
+    void parse_unplayed_returnsUnplayedCommand() throws GameVaultException {
+        assertInstanceOf(UnplayedCommand.class, Parser.parse("unplayed"));
+        assertInstanceOf(UnplayedCommand.class, Parser.parse("  UNPLAYED  "));
+    }
+
+    @Test
+    void parse_unplayedWithArguments_throwsException() {
+        GameVaultException e = assertThrows(GameVaultException.class, () -> Parser.parse("unplayed all"));
+        assertEquals("The 'unplayed' command does not take any arguments.", e.getMessage());
     }
 
     //@@author Xandurs

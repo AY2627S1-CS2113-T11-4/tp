@@ -501,6 +501,83 @@ were left out, worded like the other notes, so the user knows why a game they ex
 * Support `/notplayedin` together with `/tag`, and in `pick`, so a random pick also avoids recent games.
 * Add `sort lastplayed`, to see the games that have gone longest without being played first.
 
+<!-- @@author SwaggyDaddy67 -->
+### Play history and unplayed games
+
+`history INDEX` shows every session logged for one game, oldest first, with how many times it was played and how
+long ago it was last played. `unplayed` lists the games with no sessions at all, so that games which keep being passed over get a
+fair chance. Both only read the sessions recorded by `log`, so neither changes the collection or the data file.
+
+**Parsing.** `Parser#parseHistory` trims the arguments and passes them to `Parser#parseIndex`, the same check used by
+`delete` and `edit`, so a missing, non-numeric or too-small `INDEX` gives the same error messages. `unplayed` takes no
+arguments, so `Parser#parse` calls `checkNoArguments(...)` and creates an `UnplayedCommand` directly, as for `list`.
+
+**Viewing the history.** The sequence diagram below shows what happens when the user enters `history 1`.
+
+![Sequence diagram for history 1](images/HistorySequenceDiagram.png)
+
+1. `HistoryCommand#execute` checks that game 1 exists (otherwise it throws the same "no game numbered" error as
+   `delete`), then gets it with `GameList#get(0)`.
+2. It gets the game's sessions with `Game#getSessions()`. These are already sorted oldest first by
+   `Game#addSession(...)`, so no sorting is needed here.
+3. If there are no sessions, it shows a message saying the game has never been played, with the format of `log`.
+4. Otherwise, it adds one line per session (`PlaySession#toString()`, e.g. `2026-10-30 (4 players)`), then a summary
+   line built from `Game#getPlayCount()`, `Game#describeLastPlayed(today)` and `Game#getLastPlayed()`, e.g.
+   `Played 2 times in total, last played 3 days ago (2026-10-30).`, and passes the message to `Ui#showMessage`.
+
+`Game#describeLastPlayed(today)` is the method `list` uses, so both commands word "last played" the same way. Like
+`ListCommand`, `HistoryCommand` takes today's date through a package-private constructor, so tests can use a fixed
+date. Normal use passes `LocalDate.now()`.
+
+**Listing unplayed games.** `UnplayedCommand#execute` goes through `GameList#getGames()` by position, like
+`FindCommand`, and keeps each game whose `Game#getPlayCount()` is 0, numbered with its position plus one. It ends
+with a count line such as `2 of your 3 game(s) have never been played.` While looping, it also counts the unplayed
+games for which `Game#isAvailable()` is false, and if there are any, adds a note that they cannot be played right
+now. An empty collection (which reuses `ListCommand.EMPTY_MESSAGE`) and a collection where every game has been played
+each get their own message instead of an empty list.
+
+#### Design considerations
+
+**Aspect: How unplayed games are numbered**
+
+* **Alternative 1 (current choice):** Show each game with its number from `list`.
+  * Pros: The number can be passed straight to `log` or `history`, which is what the user usually does next.
+  * Cons: The numbers have gaps, e.g. `2.` followed by `5.`.
+* **Alternative 2:** Number the games from 1.
+  * Pros: Looks tidier.
+  * Cons: `log 1 ...` after `unplayed` could log the wrong game. `find` keeps the `list` numbers for the same reason.
+
+**Aspect: Order of the sessions in `history`**
+
+* **Alternative 1 (current choice):** Oldest first.
+  * Pros: Matches the order `Game` already keeps, so no sorting or copying is needed, and reads like a diary.
+  * Cons: For a game played many times, the most recent sessions are at the bottom.
+* **Alternative 2:** Newest first.
+  * Pros: The most recent session is seen first.
+  * Cons: Needs a reversed copy of the list. The summary line already gives the last-played date, so the gain is small.
+
+**Aspect: Unplayed games that are lent out or unavailable**
+
+* **Alternative 1 (current choice):** List them with their status, and add a note saying how many cannot be played
+  right now.
+  * Pros: The list still answers "which games have we never tried", and the note stops the user planning a game
+    night around a game that is not on the shelf.
+  * Cons: The user has to read the status on each line to see which ones they are.
+* **Alternative 2:** Leave them out, as `filter` and `pick` do.
+  * Pros: Every game shown can be played tonight.
+  * Cons: A game that is lent out for a while would drop out of the list, even though it has still never been played.
+
+**Aspect: A new command or an option on an existing one**
+
+`unplayed` could have been `filter /unplayed` or `list /unplayed`. A separate command was chosen because `filter`
+always needs a player count while `unplayed` is about the whole collection, and an option on `list` would change a
+command that users rely on to show every game.
+
+#### Possible future improvements
+
+* Show more statistics in `history`, e.g. the average number of players.
+* Let `unplayed` take a player count, e.g. `unplayed 4`, to find unplayed games for tonight's group.
+
 <!-- @@author MohamedFarsat -->
 ### Rating games and weighted picking
 
@@ -1002,6 +1079,8 @@ The `borrow` command rejects a due-back date in the past, since it is most likel
 |v2.0|host with a large collection|find a game by part of its title|locate it without going through the entire list|
 |v2.0|host with many games|sort my collection by title, player count or play time|scan it more easily|
 |v2.1|host who runs regular game nights|see how long it has been since each game was last played|avoid repeating games the group just played|
+|v2.1|host who logs game nights|view a game's full play history|see how popular it has been|
+|v2.1|host with games that rarely get played|see which games have never been played|give underused games a fair chance|
 
 ## Non-Functional Requirements
 
