@@ -239,10 +239,7 @@ class PickCommandTest {
     //@@author yy261
     @Test
     void execute_someGamesLent_picksOnlyFromAvailableGames() {
-        GameList shelf = new GameList();
-        shelf.add(new Game("Catan", 3, 4, 60));
-        shelf.add(new Game("Codenames", 2, 8));
-        shelf.add(new Game("Love Letter", 2, 4, 20));
+        GameList shelf = SampleGames.timedShelf();
         shelf.get(0).lendTo("Alice");
         shelf.get(1).lendTo("Ben");
 
@@ -257,10 +254,7 @@ class PickCommandTest {
 
     @Test
     void execute_everyFittingGameLent_saysNothingToPickAndWhy() {
-        GameList shelf = new GameList();
-        shelf.add(new Game("Catan", 3, 4, 60));
-        shelf.add(new Game("Codenames", 2, 8));
-        shelf.add(new Game("Love Letter", 2, 4, 20));
+        GameList shelf = SampleGames.timedShelf();
         shelf.get(0).lendTo("Alice");
         shelf.get(1).lendTo("Ben");
         shelf.get(2).lendTo("Cara");
@@ -274,17 +268,7 @@ class PickCommandTest {
 
     @Test
     void execute_withDifficulty_picksOnlyAtThatLevel() {
-        GameList shelf = new GameList();
-        Game catan = new Game("Catan", 3, 4, 60);
-        catan.setDifficulty(Difficulty.MEDIUM);
-        shelf.add(catan);
-        Game loveLetter = new Game("Love Letter", 2, 4, 20);
-        loveLetter.setDifficulty(Difficulty.EASY);
-        shelf.add(loveLetter);
-        Game splendor = new Game("Splendor", 2, 4, 30);
-        splendor.setDifficulty(Difficulty.EASY);
-        shelf.add(splendor);
-        shelf.add(new Game("Codenames", 2, 8));
+        GameList shelf = SampleGames.shelfWithDifficulties();
 
         new PickCommand(4, NO_LIMIT, Difficulty.EASY, alwaysReturning(1, 2))
                 .execute(shelf, ui, new Storage("unused.txt"));

@@ -114,10 +114,7 @@ class CommandTest {
 
     @Test
     void filterCommand_lentGameFits_leavesItOutAndSaysWhoHasIt() {
-        GameList games = new GameList();
-        games.add(new Game("Catan", 3, 4, 60));
-        games.add(new Game("Codenames", 2, 8));
-        games.add(new Game("Love Letter", 2, 4, 20));
+        GameList games = SampleGames.timedShelf();
         games.get(1).lendTo("Ben");
 
         new FilterCommand(4).execute(games, ui, new Storage("unused.txt"));
@@ -131,10 +128,7 @@ class CommandTest {
 
     @Test
     void filterCommand_lentGamesAndTimeLimit_mentionsOnlyThoseThatFitInTime() {
-        GameList games = new GameList();
-        games.add(new Game("Catan", 3, 4, 60));
-        games.add(new Game("Codenames", 2, 8));
-        games.add(new Game("Love Letter", 2, 4, 20));
+        GameList games = SampleGames.timedShelf();
         games.get(0).lendTo("Alice");
         games.get(2).lendTo("Ben");
 
@@ -149,10 +143,7 @@ class CommandTest {
 
     @Test
     void filterCommand_noLentGames_addsNoNote() {
-        GameList games = new GameList();
-        games.add(new Game("Catan", 3, 4, 60));
-        games.add(new Game("Codenames", 2, 8));
-        games.add(new Game("Love Letter", 2, 4, 20));
+        GameList games = SampleGames.timedShelf();
 
         new FilterCommand(4).execute(games, ui, new Storage("unused.txt"));
 
@@ -161,17 +152,7 @@ class CommandTest {
 
     @Test
     void filterCommand_withDifficulty_showsOnlyGamesAtThatLevel() {
-        GameList games = new GameList();
-        Game catan = new Game("Catan", 3, 4, 60);
-        catan.setDifficulty(Difficulty.MEDIUM);
-        games.add(catan);
-        Game loveLetter = new Game("Love Letter", 2, 4, 20);
-        loveLetter.setDifficulty(Difficulty.EASY);
-        games.add(loveLetter);
-        Game splendor = new Game("Splendor", 2, 4, 30);
-        splendor.setDifficulty(Difficulty.EASY);
-        games.add(splendor);
-        games.add(new Game("Codenames", 2, 8));
+        GameList games = SampleGames.shelfWithDifficulties();
 
         new FilterCommand(4, 0, Difficulty.EASY).execute(games, ui, new Storage("unused.txt"));
 
@@ -186,17 +167,7 @@ class CommandTest {
 
     @Test
     void filterCommand_withTimeAndDifficulty_appliesBothConditions() {
-        GameList games = new GameList();
-        Game catan = new Game("Catan", 3, 4, 60);
-        catan.setDifficulty(Difficulty.MEDIUM);
-        games.add(catan);
-        Game loveLetter = new Game("Love Letter", 2, 4, 20);
-        loveLetter.setDifficulty(Difficulty.EASY);
-        games.add(loveLetter);
-        Game splendor = new Game("Splendor", 2, 4, 30);
-        splendor.setDifficulty(Difficulty.EASY);
-        games.add(splendor);
-        games.add(new Game("Codenames", 2, 8));
+        GameList games = SampleGames.shelfWithDifficulties();
 
         new FilterCommand(4, 25, Difficulty.EASY).execute(games, ui, new Storage("unused.txt"));
 
@@ -208,17 +179,7 @@ class CommandTest {
 
     @Test
     void filterCommand_noGamesAtDifficulty_showsNoGamesMessage() {
-        GameList games = new GameList();
-        Game catan = new Game("Catan", 3, 4, 60);
-        catan.setDifficulty(Difficulty.MEDIUM);
-        games.add(catan);
-        Game loveLetter = new Game("Love Letter", 2, 4, 20);
-        loveLetter.setDifficulty(Difficulty.EASY);
-        games.add(loveLetter);
-        Game splendor = new Game("Splendor", 2, 4, 30);
-        splendor.setDifficulty(Difficulty.EASY);
-        games.add(splendor);
-        games.add(new Game("Codenames", 2, 8));
+        GameList games = SampleGames.shelfWithDifficulties();
 
         new FilterCommand(4, 0, Difficulty.HARD).execute(games, ui, new Storage("unused.txt"));
 
@@ -227,17 +188,7 @@ class CommandTest {
 
     @Test
     void filterCommand_withoutDifficulty_addsNoDifficultyNote() {
-        GameList games = new GameList();
-        Game catan = new Game("Catan", 3, 4, 60);
-        catan.setDifficulty(Difficulty.MEDIUM);
-        games.add(catan);
-        Game loveLetter = new Game("Love Letter", 2, 4, 20);
-        loveLetter.setDifficulty(Difficulty.EASY);
-        games.add(loveLetter);
-        Game splendor = new Game("Splendor", 2, 4, 30);
-        splendor.setDifficulty(Difficulty.EASY);
-        games.add(splendor);
-        games.add(new Game("Codenames", 2, 8));
+        GameList games = SampleGames.shelfWithDifficulties();
 
         new FilterCommand(4).execute(games, ui, new Storage("unused.txt"));
 
@@ -246,19 +197,9 @@ class CommandTest {
 
     @Test
     void filterCommand_lentGameAtOtherLevel_notMentioned() {
-        GameList games = new GameList();
-        Game catan = new Game("Catan", 3, 4, 60);
-        catan.setDifficulty(Difficulty.MEDIUM);
-        games.add(catan);
-        Game loveLetter = new Game("Love Letter", 2, 4, 20);
-        loveLetter.setDifficulty(Difficulty.EASY);
-        games.add(loveLetter);
-        Game splendor = new Game("Splendor", 2, 4, 30);
-        splendor.setDifficulty(Difficulty.EASY);
-        games.add(splendor);
-        games.add(new Game("Codenames", 2, 8));
-        catan.lendTo("Alice");
-        loveLetter.lendTo("Ben");
+        GameList games = SampleGames.shelfWithDifficulties();
+        games.get(0).lendTo("Alice"); // Catan, which is medium
+        games.get(1).lendTo("Ben"); // Love Letter, which is easy
 
         new FilterCommand(4, 0, Difficulty.EASY).execute(games, ui, new Storage("unused.txt"));
 
@@ -270,9 +211,7 @@ class CommandTest {
     @Test
     void filterCommand_untimedGameAtOtherLevel_notCounted() {
         GameList games = new GameList();
-        Game codenames = new Game("Codenames", 2, 8);
-        codenames.setDifficulty(Difficulty.HARD);
-        games.add(codenames);
+        games.add(SampleGames.withDifficulty(new Game("Codenames", 2, 8), Difficulty.HARD));
 
         new FilterCommand(4, 30, Difficulty.EASY).execute(games, ui, new Storage("unused.txt"));
 

@@ -19,6 +19,7 @@ If you can type fast, GameVault gets you there faster than flipping through boxe
 Notes about the command format:
  
 * Command words are not case-sensitive, e.g. `HELP` works the same as `help`.
+* Prefixes are not case-sensitive either, e.g. `filter 4 /TIME 30` works the same as `filter 4 /time 30`.
 * Words in `UPPER_CASE` are parameters you supply, e.g. in `filter COUNT`, `COUNT` can be `4`.
 * Parameters in square brackets are optional, e.g. `filter COUNT [/time MINUTES]` can be used as `filter 4`
   or as `filter 4 /time 45`.

@@ -123,28 +123,58 @@ public class FilterCommand extends Command {
 
     @Override
     public void execute(GameList games, Ui ui, Storage storage) {
-        boolean hasTimeLimit = minutes != NO_TIME_LIMIT;
         ArrayList<Game> matches = games.filterAvailable(playerCount, minutes, difficulty);
-        String criteria = playerCount + " players" + (hasTimeLimit ? " in " + minutes + " minutes or less" : "")
-                + (difficulty == null ? "" : " at " + difficulty.describe());
+        // Without /notplayedin no game counts as recently played, so nothing is removed.
+        int recentlyPlayedCount = removeRecentlyPlayed(matches);
+
+        StringBuilder message = new StringBuilder(describeMatches(matches));
+        appendNotes(message, games, recentlyPlayedCount);
+        ui.showMessage(message.toString());
+    }
+
+    /**
+     * Returns the conditions in words, e.g. {@code 4 players in 45 minutes or less at easy difficulty}.
+     */
+    private String describeCriteria() {
+        String criteria = playerCount + " players";
+        if (minutes != NO_TIME_LIMIT) {
+            criteria += " in " + minutes + " minutes or less";
+        }
+        if (difficulty != null) {
+            criteria += " at " + difficulty.describe();
+        }
         //@@author Xandurs
-        boolean hasDaysLimit = notPlayedInDays != NO_DAYS_LIMIT;
-        int recentlyPlayedCount = hasDaysLimit ? removeRecentlyPlayed(matches) : 0;
-        if (hasDaysLimit) {
+        if (notPlayedInDays != NO_DAYS_LIMIT) {
             criteria += " not played in the last " + notPlayedInDays + " day(s)";
         }
         //@@author yy261
+        return criteria;
+    }
 
-        StringBuilder message = new StringBuilder();
+    /**
+     * Returns the heading and the matching games, one per line, or a message saying that no game fits.
+     */
+    private String describeMatches(List<Game> matches) {
         if (matches.isEmpty()) {
-            message.append("No games fit ").append(criteria).append(".");
-        } else {
-            // Results are not numbered: 'delete INDEX' uses positions from 'list', not from this filtered view.
-            message.append("Games that fit ").append(criteria).append(":");
-            for (Game game : matches) {
-                message.append(System.lineSeparator()).append("  ").append(game);
-            }
+            return "No games fit " + describeCriteria() + ".";
         }
+        // Results are not numbered: 'delete INDEX' uses positions from 'list', not from this filtered view.
+        StringBuilder lines = new StringBuilder("Games that fit " + describeCriteria() + ":");
+        for (Game game : matches) {
+            lines.append(System.lineSeparator()).append("  ").append(game);
+        }
+        return lines.toString();
+    }
+
+    /**
+     * Adds the notes that explain why games the user might expect are missing: games with no play time or no
+     * difficulty recorded, games played too recently, and games that are lent out. Each note is only added when
+     * it applies.
+     *
+     * @param recentlyPlayedCount How many matching games were hidden by {@code /notplayedin}.
+     */
+    private void appendNotes(StringBuilder message, GameList games, int recentlyPlayedCount) {
+        boolean hasTimeLimit = minutes != NO_TIME_LIMIT;
         if (hasTimeLimit) {
             appendUntimedNote(message, games);
         }
@@ -162,7 +192,6 @@ public class FilterCommand extends Command {
         }
         message.append(GameList.describeLeftOut(findLentNotRecentlyPlayed(games, hasTimeLimit), "shown"));
         //@@author yy261
-        ui.showMessage(message.toString());
     }
 
     //@@author Xandurs

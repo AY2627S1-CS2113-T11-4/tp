@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -292,17 +293,25 @@ public class Parser {
      * Splits arguments such as {@code Catan /min 3 /max 4} into the text before the first prefix
      * (stored under {@link #PREAMBLE}) and the text after each prefix (stored under the prefix itself).
      * A prefix only counts when it stands alone as a word, so a title like {@code Foo/minimal} is not split.
+     * Like command words, prefixes are not case-sensitive, so {@code /TIME 30} works the same as {@code /time 30}.
      * Prefixes that do not appear are left out of the result.
      *
      * @param arguments Arguments typed after the command word.
-     * @param prefixes Prefixes this command accepts, e.g. {@code /min}.
-     * @return Trimmed text for the preamble and for each prefix found.
+     * @param prefixes Prefixes this command accepts, in lower case, e.g. {@code /min}.
+     * @return Trimmed text for the preamble and for each prefix found, stored under the lower-case prefix.
      * @throws GameVaultException If a prefix appears more than once.
      */
     private static Map<String, String> splitByPrefixes(String arguments, String... prefixes)
             throws GameVaultException {
         // Matches any of the prefixes when it has whitespace (or the start/end of the text) on both sides.
-        Pattern prefixPattern = Pattern.compile("(?<!\\S)(" + String.join("|", prefixes) + ")(?!\\S)");
+        // Pattern.quote makes each prefix match literally, even if a future prefix contains characters such as '.'.
+        List<String> quotedPrefixes = new ArrayList<>();
+        for (String prefix : prefixes) {
+            assert prefix.equals(prefix.toLowerCase(Locale.ROOT)) : "Prefixes should be given in lower case";
+            quotedPrefixes.add(Pattern.quote(prefix));
+        }
+        Pattern prefixPattern = Pattern.compile("(?<!\\S)(" + String.join("|", quotedPrefixes) + ")(?!\\S)",
+                Pattern.CASE_INSENSITIVE);
         Matcher matcher = prefixPattern.matcher(arguments);
 
         Map<String, String> fields = new HashMap<>();
@@ -310,7 +319,8 @@ public class Parser {
         int valueStart = 0;
         while (matcher.find()) {
             fields.put(currentKey, arguments.substring(valueStart, matcher.start()).trim());
-            currentKey = matcher.group(1);
+            // Store the prefix in lower case, so callers can look it up with the prefix constants.
+            currentKey = matcher.group(1).toLowerCase(Locale.ROOT);
             if (fields.containsKey(currentKey)) {
                 throw new GameVaultException(currentKey + " can only be given once.");
             }
