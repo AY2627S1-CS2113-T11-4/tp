@@ -47,22 +47,22 @@ public class TagCommand extends Command {
         }
 
         Game game = games.get(displayNumber - 1); // The list shows games from 1, while GameList counts from 0.
-        List<String> alreadyThere = new ArrayList<>();
+        List<String> tagsAlreadyThere = new ArrayList<>();
         for (String tag : tags) {
             if (game.hasTag(tag)) {
-                alreadyThere.add(tag);
+                tagsAlreadyThere.add(tag);
             } else {
                 game.addTag(tag);
             }
         }
-        if (alreadyThere.size() == tags.size()) {
+        if (tagsAlreadyThere.size() == tags.size()) {
             throw new GameVaultException(game.getTitle() + " is already tagged " + quote(tags) + ".");
         }
 
         storage.save(games);
         String message = "Tagged: " + game;
-        if (!alreadyThere.isEmpty()) {
-            message += System.lineSeparator() + "(Already tagged " + quote(alreadyThere) + ", so skipped.)";
+        if (!tagsAlreadyThere.isEmpty()) {
+            message += System.lineSeparator() + "(Already tagged " + quote(tagsAlreadyThere) + ", so skipped.)";
         }
         ui.showMessage(message);
     }

@@ -45,25 +45,25 @@ public class UntagCommand extends Command {
         }
 
         Game game = games.get(displayNumber - 1); // The list shows games from 1, while GameList counts from 0.
-        List<String> removed = new ArrayList<>();
-        List<String> notThere = new ArrayList<>();
+        List<String> removedTags = new ArrayList<>();
+        List<String> tagsNotThere = new ArrayList<>();
         for (String tag : tags) {
             if (game.hasTag(tag)) {
                 game.removeTag(tag);
-                removed.add(tag);
+                removedTags.add(tag);
             } else {
-                notThere.add(tag);
+                tagsNotThere.add(tag);
             }
         }
-        if (removed.isEmpty()) {
+        if (removedTags.isEmpty()) {
             throw new GameVaultException(game.getTitle() + " does not have the tag(s) " + TagCommand.quote(tags)
                     + ".");
         }
 
         storage.save(games);
-        String message = "Removed tag(s) " + TagCommand.quote(removed) + ": " + game;
-        if (!notThere.isEmpty()) {
-            message += System.lineSeparator() + "(Did not have " + TagCommand.quote(notThere) + ", so skipped.)";
+        String message = "Removed tag(s) " + TagCommand.quote(removedTags) + ": " + game;
+        if (!tagsNotThere.isEmpty()) {
+            message += System.lineSeparator() + "(Did not have " + TagCommand.quote(tagsNotThere) + ", so skipped.)";
         }
         ui.showMessage(message);
     }

@@ -20,7 +20,7 @@ import seedu.gamevault.ui.Ui;
  */
 public class UnavailableCommand extends Command {
     public static final String COMMAND_WORD = "unavailable";
-    public static final String USAGE = "unavailable INDEX /reason " + String.join("|", UnavailableReason.keywords());
+    public static final String USAGE = "unavailable INDEX /reason " + String.join("|", UnavailableReason.getKeywords());
 
     private static final Logger logger = Logger.getLogger(UnavailableCommand.class.getName());
 

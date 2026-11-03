@@ -22,8 +22,8 @@ class UnavailableReasonTest {
     }
 
     @Test
-    void keywords_everyReasonInOrder() {
-        assertEquals(List.of("missing", "damaged"), UnavailableReason.keywords());
+    void getKeywords_everyReasonInOrder() {
+        assertEquals(List.of("missing", "damaged"), UnavailableReason.getKeywords());
     }
 
     @Test
