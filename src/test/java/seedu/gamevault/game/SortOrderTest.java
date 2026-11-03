@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import org.junit.jupiter.api.Test;
 
@@ -18,10 +19,10 @@ class SortOrderTest {
      * Returns the titles of the given games after sorting a copy of them in the given order.
      */
     private static List<String> sortedTitles(SortOrder order, Game... games) {
-        List<Game> sorted = new ArrayList<>(List.of(games));
-        sorted.sort(order.getComparator());
+        List<Game> sortedGames = new ArrayList<>(List.of(games));
+        sortedGames.sort(order.getComparator());
         List<String> titles = new ArrayList<>();
-        for (Game game : sorted) {
+        for (Game game : sortedGames) {
             titles.add(game.getTitle());
         }
         return titles;
@@ -66,6 +67,18 @@ class SortOrderTest {
         assertEquals(SortOrder.TITLE, SortOrder.fromKeyword("title").orElseThrow());
         assertEquals(SortOrder.PLAYERS, SortOrder.fromKeyword(" PLAYERS ").orElseThrow());
         assertEquals(SortOrder.TIME, SortOrder.fromKeyword("Time").orElseThrow());
+    }
+
+    @Test
+    void fromKeyword_upperCaseOnTurkishComputer_stillMatches() {
+        Locale originalLocale = Locale.getDefault();
+        try {
+            // In Turkish, "TITLE".toLowerCase() gives a dotless i, so this only works with Locale.ROOT.
+            Locale.setDefault(Locale.forLanguageTag("tr"));
+            assertEquals(SortOrder.TITLE, SortOrder.fromKeyword("TITLE").orElseThrow());
+        } finally {
+            Locale.setDefault(originalLocale);
+        }
     }
 
     @Test

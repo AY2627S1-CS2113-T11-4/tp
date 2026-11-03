@@ -1,6 +1,7 @@
 package seedu.gamevault.game;
 
 import java.util.Comparator;
+import java.util.Locale;
 import java.util.Optional;
 
 //@@author SwaggyDaddy67
@@ -20,7 +21,7 @@ public enum SortOrder {
                     .thenComparingInt(Game::getMaxPlayers)
                     .thenComparing(Game::getTitle, String.CASE_INSENSITIVE_ORDER)),
     TIME("time", "play time (shortest first, games with no play time last)",
-            Comparator.comparing(SortOrder::playTimeForSorting)
+            Comparator.comparingInt(SortOrder::playTimeForSorting)
                     .thenComparing(Game::getTitle, String.CASE_INSENSITIVE_ORDER));
 
     private final String keyword;
@@ -53,7 +54,8 @@ public enum SortOrder {
      */
     public static Optional<SortOrder> fromKeyword(String text) {
         assert text != null : "Sort keyword should not be null";
-        String keywordToFind = text.trim().toLowerCase();
+        // Locale.ROOT keeps 'TITLE' matching 'title' on every computer, e.g. one set to Turkish.
+        String keywordToFind = text.trim().toLowerCase(Locale.ROOT);
         for (SortOrder order : values()) {
             if (order.keyword.equals(keywordToFind)) {
                 return Optional.of(order);
