@@ -8,6 +8,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.time.LocalDate;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,13 @@ class UnplayedCommandTest {
 
     private void logOnce(int index) {
         games.get(index).addSession(new PlaySession(LocalDate.of(2026, 10, 30), 4));
+    }
+
+    @Test
+    void findUnplayedNumbers_somePlayed_keepsNumbersFromList() {
+        logOnce(1);
+
+        assertEquals(List.of(1, 3), UnplayedCommand.findUnplayedNumbers(games.getGames()));
     }
 
     @Test

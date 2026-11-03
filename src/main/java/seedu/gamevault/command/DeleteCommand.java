@@ -1,5 +1,8 @@
 package seedu.gamevault.command;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import seedu.gamevault.exception.GameVaultException;
 import seedu.gamevault.game.Game;
 import seedu.gamevault.game.GameList;
@@ -14,6 +17,8 @@ import seedu.gamevault.ui.Ui;
 public class DeleteCommand extends Command {
     public static final String COMMAND_WORD = "delete";
     public static final String USAGE = "delete INDEX";
+
+    private static final Logger logger = Logger.getLogger(DeleteCommand.class.getName());
 
     private final int displayNumber;
 
@@ -48,6 +53,7 @@ public class DeleteCommand extends Command {
         int index = displayNumber - 1; // The list shows games from 1, while GameList counts from 0.
         Game deletedGame = games.delete(index);
         storage.save(games);
+        logger.log(Level.FINE, "Deleted {0}, {1} game(s) left", new Object[]{deletedGame.getTitle(), games.size()});
         ui.showMessage("Deleted: " + deletedGame + System.lineSeparator()
                 + "You now have " + games.size() + " game(s) in your collection.");
     }

@@ -1,5 +1,6 @@
 package seedu.gamevault.command;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -35,33 +36,50 @@ public class UnplayedCommand extends Command {
             return;
         }
 
-        StringBuilder message = new StringBuilder(HEADER);
-        int unplayedCount = 0;
-        int notAvailableCount = 0;
-        // Loop by position rather than over a filtered list, so each game keeps its number from 'list'.
-        for (int i = 0; i < allGames.size(); i++) {
-            Game game = allGames.get(i);
-            if (game.getPlayCount() == 0) {
-                int displayNumber = i + 1; // Users count from 1, while the list counts from 0.
-                message.append(System.lineSeparator())
-                        .append(displayNumber).append(". ").append(game);
-                unplayedCount++;
-                if (!game.isAvailable()) {
-                    notAvailableCount++;
-                }
-            }
-        }
-
-        if (unplayedCount == 0) {
+        List<Integer> unplayedNumbers = findUnplayedNumbers(allGames);
+        logger.log(Level.FINE, "Found {0} unplayed game(s)", unplayedNumbers.size());
+        if (unplayedNumbers.isEmpty()) {
             ui.showMessage(ALL_PLAYED_MESSAGE);
             return;
         }
-        message.append(System.lineSeparator()).append(getCountLine(unplayedCount, allGames.size()));
+        ui.showMessage(formatUnplayed(allGames, unplayedNumbers));
+    }
+
+    /**
+     * Returns the numbers from {@code list} (starting from 1) of the games that have no sessions logged.
+     * The numbers are kept rather than renumbered from 1, so they can be used straight away with
+     * {@code log} or {@code history}.
+     */
+    static List<Integer> findUnplayedNumbers(List<Game> allGames) {
+        List<Integer> unplayedNumbers = new ArrayList<>();
+        for (int i = 0; i < allGames.size(); i++) {
+            if (allGames.get(i).getPlayCount() == 0) {
+                unplayedNumbers.add(i + 1); // Users count from 1, while the list counts from 0.
+            }
+        }
+        return unplayedNumbers;
+    }
+
+    /**
+     * Returns the full message: the header, each unplayed game with its number from {@code list},
+     * the count line, and the note about games that cannot be played right now, if there are any.
+     */
+    private static String formatUnplayed(List<Game> allGames, List<Integer> unplayedNumbers) {
+        StringBuilder message = new StringBuilder(HEADER);
+        int notAvailableCount = 0;
+        for (int displayNumber : unplayedNumbers) {
+            Game game = allGames.get(displayNumber - 1);
+            message.append(System.lineSeparator()).append(displayNumber).append(". ").append(game);
+            if (!game.isAvailable()) {
+                notAvailableCount++;
+            }
+        }
+
+        message.append(System.lineSeparator()).append(getCountLine(unplayedNumbers.size(), allGames.size()));
         if (notAvailableCount > 0) {
             message.append(System.lineSeparator()).append(getNotAvailableNote(notAvailableCount));
         }
-        logger.log(Level.FINE, "Found {0} unplayed game(s)", unplayedCount);
-        ui.showMessage(message.toString());
+        return message.toString();
     }
 
     /**
