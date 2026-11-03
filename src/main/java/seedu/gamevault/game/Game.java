@@ -372,7 +372,7 @@ public class Game {
         assert isLent() : "Only a lent game can be returned";
         borrower = null;
     }
-    //@@author Xandurs
+    //@@author
     /**
      * Returns this game as one line of the data file, in the format {@code TITLE | MIN | MAX},
      * followed by {@code | TIME} when a play time is recorded, by {@code | TAGS} when the game has tags,
@@ -404,11 +404,11 @@ public class Game {
     private List<String> getNamedFileFields() {
         List<String> fields = new ArrayList<>();
         if (!sessions.isEmpty()) {
-            List<String> encoded = new ArrayList<>();
+            List<String> encodedSessions = new ArrayList<>();
             for (PlaySession session : sessions) {
-                encoded.add(session.toFileString());
+                encodedSessions.add(session.toFileString());
             }
-            fields.add(SESSIONS_FILE_KEY + "=" + String.join(SESSION_FILE_SEPARATOR, encoded));
+            fields.add(SESSIONS_FILE_KEY + "=" + String.join(SESSION_FILE_SEPARATOR, encodedSessions));
         }
         //@@author KRAZYZECTRON
         if (isMarkedUnavailable()) {

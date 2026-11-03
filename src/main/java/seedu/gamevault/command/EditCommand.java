@@ -115,10 +115,51 @@ public class EditCommand extends Command {
 
         int index = displayNumber - 1; // The list shows games from 1, while GameList counts from 0.
         Game oldGame = games.get(index);
+        Game editedGame = buildEditedGame(oldGame);
+
+        if (editedGame.toFileString().equals(oldGame.toFileString())) {
+            // Nothing would change, so tell the user instead of rewriting the data file.
+            ui.showMessage("No changes made: the game is already " + oldGame);
+            return;
+        }
+
+        games.set(index, editedGame);
+        storage.save(games);
+        logger.log(Level.FINE, "Edited game " + displayNumber + ": " + oldGame + " -> " + editedGame);
+        ui.showMessage("Edited: " + oldGame + System.lineSeparator() + "Now: " + editedGame);
+    }
+
+    /**
+     * Returns a new game with the requested changes applied to {@code oldGame}, keeping every detail
+     * that edit does not change. {@code oldGame} itself is not changed.
+     *
+     * @throws GameVaultException If the edit is invalid (see {@link #checkEditIsValid}).
+     */
+    private Game buildEditedGame(Game oldGame) throws GameVaultException {
         String title = newTitle != null ? newTitle : oldGame.getTitle();
         int minPlayers = newMinPlayers != null ? newMinPlayers : oldGame.getMinPlayers();
         int maxPlayers = newMaxPlayers != null ? newMaxPlayers : oldGame.getMaxPlayers();
+        checkEditIsValid(oldGame, minPlayers, maxPlayers);
 
+        int playTime = choosePlayTime(oldGame);
+        Game editedGame = playTime == CLEAR_PLAY_TIME
+                ? new Game(title, minPlayers, maxPlayers)
+                : new Game(title, minPlayers, maxPlayers, playTime);
+        applyDifficulty(oldGame, editedGame);
+        copyUnchangedDetails(oldGame, editedGame);
+        return editedGame;
+    }
+
+    /**
+     * Checks that the edit makes sense for {@code oldGame}: the new player range is valid, and anything the user
+     * asked to remove is there to remove. Removing something that is not there is most likely the wrong INDEX,
+     * so it is reported rather than ignored.
+     *
+     * @param minPlayers The edited game's minimum players, new or kept.
+     * @param maxPlayers The edited game's maximum players, new or kept.
+     * @throws GameVaultException If MAX is less than MIN, or the play time or difficulty to remove is not there.
+     */
+    private void checkEditIsValid(Game oldGame, int minPlayers, int maxPlayers) throws GameVaultException {
         if (maxPlayers < minPlayers) {
             logger.log(Level.FINE, "Edit rejected: MAX " + maxPlayers + " is less than MIN " + minPlayers);
             throw new GameVaultException("MAX (" + maxPlayers + ") cannot be less than MIN (" + minPlayers
@@ -127,15 +168,32 @@ public class EditCommand extends Command {
         if (isClearingMissingPlayTime(oldGame)) {
             throw new GameVaultException("This game has no play time to remove. The game is currently: " + oldGame);
         }
-
+        //@@author yy261
         if (isClearingDifficulty && !oldGame.hasDifficulty()) {
             throw new GameVaultException("This game has no difficulty to remove. The game is currently: " + oldGame);
         }
+        //@@author Xandurs
+    }
 
-        int playTime = choosePlayTime(oldGame);
-        Game editedGame = playTime == CLEAR_PLAY_TIME
-                ? new Game(title, minPlayers, maxPlayers)
-                : new Game(title, minPlayers, maxPlayers, playTime);
+    //@@author yy261
+    /**
+     * Gives {@code editedGame} the new difficulty if one was given, otherwise keeps {@code oldGame}'s difficulty,
+     * unless the user asked to remove it with {@code /diff none}.
+     */
+    private void applyDifficulty(Game oldGame, Game editedGame) {
+        if (newDifficulty != null) {
+            editedGame.setDifficulty(newDifficulty);
+        } else if (oldGame.hasDifficulty() && !isClearingDifficulty) {
+            editedGame.setDifficulty(oldGame.getDifficulty());
+        }
+    }
+
+    //@@author Xandurs
+    /**
+     * Copies everything that edit does not change from {@code oldGame} to {@code editedGame}: tags, lending,
+     * play sessions, availability, who the game is from, and ratings. Each of these has its own command.
+     */
+    private void copyUnchangedDetails(Game oldGame, Game editedGame) {
         // Tags cannot be changed with edit (use tag/untag), so carry them over unchanged.
         for (String tag : oldGame.getTags()) {
             editedGame.addTag(tag);
@@ -144,11 +202,6 @@ public class EditCommand extends Command {
         // Lending cannot be changed with edit either (use lend/return), so keep the game lent if it was.
         if (oldGame.isLent()) {
             editedGame.lendTo(oldGame.getBorrower());
-        }
-        if (newDifficulty != null) {
-            editedGame.setDifficulty(newDifficulty);
-        } else if (oldGame.hasDifficulty() && !isClearingDifficulty) {
-            editedGame.setDifficulty(oldGame.getDifficulty());
         }
         //@@author Xandurs
         // Play history is not something edit changes either, so keep every logged session.
@@ -166,17 +219,6 @@ public class EditCommand extends Command {
         // Ratings are changed with rate, not edit, so keep them too.
         editedGame.setRatings(oldGame.getThumbsUp(), oldGame.getThumbsDown());
         //@@author Xandurs
-
-        if (editedGame.toFileString().equals(oldGame.toFileString())) {
-            // Nothing would change, so tell the user instead of rewriting the data file.
-            ui.showMessage("No changes made: the game is already " + oldGame);
-            return;
-        }
-
-        games.set(index, editedGame);
-        storage.save(games);
-        logger.log(Level.FINE, "Edited game " + displayNumber + ": " + oldGame + " -> " + editedGame);
-        ui.showMessage("Edited: " + oldGame + System.lineSeparator() + "Now: " + editedGame);
     }
 
     /**

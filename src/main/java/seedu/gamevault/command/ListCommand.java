@@ -56,7 +56,7 @@ public class ListCommand extends Command {
         //@@author Xandurs
         ui.showMessage(LIST_HEADER + formatNumberedListWithLastPlayed(gamesToShow, today)
                 + formatOverdue(gamesToShow));
-        
+        //@@author SwaggyDaddy67
     }
 
     //@@author Xandurs
@@ -82,7 +82,7 @@ public class ListCommand extends Command {
         }
         return lines.toString();
     }
-    
+
     //@@author KRAZYZECTRON
     /**
      * Returns a reminder listing the overdue borrowed games with their numbers from {@code list},
