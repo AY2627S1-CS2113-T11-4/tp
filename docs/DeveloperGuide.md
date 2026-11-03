@@ -239,9 +239,13 @@ commas. `TIME` and `TAGS` are optional:
 * A game with no tags has no `TAGS` field, and `TIME` is left out too if no play time is recorded.
 * A game with tags always has `TAGS` as the fifth field, so `TIME` is left blank if there is no play time.
 * Any further data comes after `TAGS` as named `KEY=VALUE` fields, in any order. A game with a named field
-  always has `TIME` and `TAGS` (possibly blank) first. The current named fields are `lent` (see
-  [Lending games to friends](#lending-games-to-friends)), `difficulty` (see
-  [Difficulty levels](#difficulty-levels)) and `sessions` (see [Logging a play session](#logging-a-play-session)).
+  always has `TIME` and `TAGS` (possibly blank) first. The current named fields are:
+  * `sessions` (see [Logging a play session](#logging-a-play-session))
+  * `ratings` (see [Rating games and weighted picking](#rating-games-and-weighted-picking))
+  * `unavailable` (see [Marking a game unavailable](#marking-a-game-unavailable))
+  * `lent` (see [Lending games to friends](#lending-games-to-friends))
+  * `difficulty` (see [Difficulty levels](#difficulty-levels))
+  * `from` and `due` (see [Recording who lent or gave a game](#recording-who-lent-or-gave-a-game))
 
 For example:
 
@@ -683,7 +687,8 @@ game, e.g. `Catan (3-4 players) (unavailable: missing pieces)`, in the same styl
 types, which is also how it is written in the data file, and a description shown to the user (e.g. `missing pieces`).
 `UnavailableReason#fromKeyword(...)` finds a reason by keyword, ignoring case, so the parser and `GameDecoder` accept
 exactly the same words. `UnavailableReason#keywords()` lists every keyword, and both the `unavailable` usage line and
-the error messages are built from it, so adding a reason only needs a new enum value. Each `Game` has an `unavailableReason` field, which is `null` while the game is available.
+the error messages are built from it, so adding a reason only needs a new enum value.
+Each `Game` has an `unavailableReason` field, which is `null` while the game is available.
 `Game#markUnavailable(...)` sets it, `Game#markAvailable()` clears it, and `Game#getUnavailableReason()` returns it as
 an `Optional`, so callers cannot forget the "available" case.
 
