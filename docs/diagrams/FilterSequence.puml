@@ -1,5 +1,5 @@
 @startuml
-' Running "filter 4 /time 45": finding games for 4 players that take 45 minutes or less
+' Running "filter 4 /time 45": finding available games for 4 players that take 45 minutes or less
 hide footbox
 
 participant ":GameVault" as GV
@@ -16,9 +16,10 @@ P -> P : splitByPrefixes(...)
 note right of P
   count = "4"
   /time = "45"
+  (no /diff or /notplayedin)
 end note
 create FC
-P -> FC : new FilterCommand(4, 45)
+P -> FC : new FilterCommand(4, 45, ...)
 activate FC
 FC --> P
 deactivate FC
@@ -27,7 +28,7 @@ deactivate P
 
 GV -> FC : execute(games, ui, storage)
 activate FC
-FC -> GL : filterByPlayersAndTime(4, 45)
+FC -> GL : filterAvailable(4, 45, null)
 activate GL
 loop each game in the list
   GL -> G : fitsPlayerCount(4)
@@ -39,17 +40,28 @@ loop each game in the list
     activate G
     G --> GL
     deactivate G
+    opt fits in 45 minutes
+      GL -> G : isAvailable()
+      activate G
+      G --> GL
+      deactivate G
+    end
   end
 end
 GL --> FC : matches
 deactivate GL
 
-FC -> GL : countWithoutPlayTime(4)
+FC -> GL : countWithoutPlayTime(4, null)
 activate GL
 GL --> FC : untimedCount
 deactivate GL
 
-FC -> UI : showMessage(matches and note)
+FC -> GL : describe lent games left out
+activate GL
+GL --> FC : note
+deactivate GL
+
+FC -> UI : showMessage(matches and notes)
 activate UI
 UI --> FC
 deactivate UI

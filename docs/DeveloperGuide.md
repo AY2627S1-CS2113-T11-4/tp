@@ -746,10 +746,11 @@ in the time we have?* For example, `filter 4 /time 45` shows the games for 4 pla
 The feature involves these classes:
 
 * `Parser` turns the user's input into a `FilterCommand`.
-* `FilterCommand` holds the player count and the optional time limit, and shows the results.
+* `FilterCommand` holds the player count and the optional conditions (time limit, difficulty level and how recently
+  the game may have been played), and shows the results.
 * `GameList` picks out the matching games, asking each `Game` whether it fits.
-* `Game` stores an optional play time and knows whether it fits a player count (`fitsPlayerCount`) and a time
-  limit (`fitsTime`).
+* `Game` stores an optional play time and knows whether it fits a player count (`fitsPlayerCount`), a time
+  limit (`fitsTime`) and whether it can be played tonight (`isAvailable`, i.e. not lent out or marked unavailable).
 
 The sequence diagram below shows what happens when the user enters `filter 4 /time 45`.
 
@@ -759,14 +760,18 @@ The sequence diagram below shows what happens when the user enters `filter 4 /ti
    `Parser#parseFilter(...)`.
 2. `parseFilter` uses `Parser#splitByPrefixes(...)` to split the arguments into the text before the first prefix
    (the player count, `4`) and the text after each prefix (`/time` → `45`). Both are checked to be whole numbers of
-   at least 1. If `/time` is not given, `FilterCommand(4)` is created, which means "no time limit".
+   at least 1. The optional `/diff` and `/notplayedin` parts are read in the same way (see
+   [Difficulty levels](#difficulty-levels) and [Showing when games were last played](#showing-when-games-were-last-played));
+   here they are not given, so the `FilterCommand` has no level and no day limit.
    (If `/tag` is given instead, a `FilterTagCommand` is created; see the tagging feature.)
-3. `GameVault` calls `FilterCommand#execute(...)`, which asks `GameList#filterByPlayersAndTime(4, 45)` for the
-   matching games. A game matches if `Game#fitsPlayerCount(4)` and `Game#fitsTime(45)` are both true.
-   The order of the collection is kept, and the collection itself is not changed.
-4. `FilterCommand` then calls `GameList#countWithoutPlayTime(4)` to count the games that fit 4 players but were
-   left out only because they have no play time recorded.
-5. `FilterCommand` passes the matches and, if that count is above 0, a short note to `Ui#showMessage(...)`:
+3. `GameVault` calls `FilterCommand#execute(...)`, which asks `GameList#filterAvailable(4, 45, null)` for the
+   matching games. A game matches if `Game#fitsPlayerCount(4)`, `Game#fitsTime(45)` and `Game#isAvailable()` are all
+   true (`null` means any difficulty level). The order of the collection is kept, and the collection itself is not
+   changed.
+4. `FilterCommand` then calls `GameList#countWithoutPlayTime(4, null)` to count the available games that fit 4 players
+   but were left out only because they have no play time recorded. It also asks `GameList` for a note naming any lent
+   games that would otherwise have matched (see [Lending games to friends](#lending-games-to-friends)).
+5. `FilterCommand` passes the matches and any notes to `Ui#showMessage(...)`:
 
 ```
 Games that fit 4 players in 45 minutes or less:
@@ -785,10 +790,13 @@ a separate word, i.e. it has a space (or the start or end of the input) on both 
 * the prefixes can be given in any order, e.g. `add Catan /time 60 /max 4 /min 3`,
 * a title such as `Foo/minimal` is not split at `/min`, and
 * giving the same prefix twice (e.g. `filter 4 /time 30 /time 60`) is rejected with a clear error,
-  instead of one of the values being silently ignored.
+  instead of one of the values being silently ignored, and
+* prefixes are not case-sensitive, like command words, so `/TIME 30` works the same as `/time 30`. The pattern is
+  built with `Pattern.CASE_INSENSITIVE`, and each prefix found is stored in lower case so callers can look it up with
+  the prefix constants. Each prefix is wrapped in `Pattern.quote(...)`, so it is matched literally.
 
-The same method is used by `add`, `edit`, `pick` and the `/tag` form of `filter`, so all commands follow the same
-rules.
+The same method is used by every command that takes prefixes (`add`, `edit`, `filter`, `pick`, `lend`, `log`,
+`unavailable` and `borrow`), so all commands follow the same rules.
 
 #### Design considerations
 
